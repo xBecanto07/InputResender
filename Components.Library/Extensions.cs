@@ -1,0 +1,39 @@
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using SBld = System.Text.StringBuilder;
+
+namespace Components.Library {
+	public static class Extensions {
+		public const int K = 1000;
+		public const int M = K * K;
+		public const int G = M * K;
+		public static string ToShortString ( this int val ) {
+			if ( val > G ) return $"{val / G}G";
+			if ( val > M ) return $"{val / M}M";
+			if ( val > K ) return $"{val / K}K";
+			return val.ToString ();
+		}
+		public static int CalcSetHash<T> (this ICollection<T> Set) {
+			int N = Set.Count;
+			int hash = N.GetHashCode ();
+			foreach ( T t in Set ) hash ^= t.GetHashCode ();
+			return hash;
+		}
+		public static string AsString<T> (this ICollection<T> Set, string sep = ", ") {
+			if (Set == null) return null;
+			bool empty = true;
+			SBld SB = new SBld ();
+			foreach ( T t in Set ) {
+				if ( !empty ) SB.Append ( sep );
+				SB.Append ( t.ToString () );
+			}
+			return SB.ToString ();
+		}
+		public static IntPtr ToUnmanaged (this IntPtr value) {
+			var ptr = Marshal.AllocHGlobal ( IntPtr.Size );
+			var bAr = BitConverter.GetBytes ( value );
+			Marshal.Copy ( bAr, 0, ptr, bAr.Length );
+			return ptr;
+		}
+	}
+}

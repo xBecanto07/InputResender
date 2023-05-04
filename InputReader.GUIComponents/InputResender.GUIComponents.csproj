@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Components.Convertors\Components.Convertors.csproj" />
+    <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
+    <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
+    <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
+  </ItemGroup>
+
+</Project>
