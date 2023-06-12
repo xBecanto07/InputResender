@@ -1,6 +1,4 @@
 ﻿using Components.Library;
-using FluentAssertions;
-using System.Windows.Input;
 
 namespace Components.Interfaces {
 	public abstract class DInputReader : ComponentBase<CoreBase> {
@@ -9,13 +7,14 @@ namespace Components.Interfaces {
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(SetupHook), typeof(void)),
 				(nameof(ReleaseHook), typeof(void)),
-				(nameof(SimulateInput), typeof(void))
+				(nameof(SimulateInput), typeof(uint))
 			};
 
 		/// <summary>Prepare a hardware hook, that will on recieving an input event call a returned Action, providing input vektor ID and input data</summary>
-		public abstract void SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback );
-		public abstract void ReleaseHook ( HHookInfo hookInfo );
-		public abstract void SimulateInput ( HInputEventDataHolder input, bool allowRecapture );
+		/// <param name="hookInfo">Use given info to initialize hook(s). Fills back info about created hooks (e.g. hookIDs).</param>
+		public abstract ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback );
+		public abstract int ReleaseHook ( HHookInfo hookInfo );
+		public abstract uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture );
 	}
 
 	public class MInputReader : DInputReader {
@@ -26,13 +25,9 @@ namespace Components.Interfaces {
 
 		public override int ComponentVersion => 0;
 
-		public override void ReleaseHook ( HHookInfo hookInfo ) {
-			CallbackList.Remove ( hookInfo );
-		}
-		public override void SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback ) {
-			CallbackList.Add ( hookInfo, callback );
-		}
-		public override void SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) { }
+		public override int ReleaseHook ( HHookInfo hookInfo ) { CallbackList.Remove ( hookInfo ); return 1; }
+		public override ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback ) { CallbackList.Add ( hookInfo, callback ); return new nint[]{ 1 }; }
+		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) { return 0; }
 
 		public void SimulateEvent ( HInputEventDataHolder eventData ) {
 			if ( CallbackList.TryGetValue ( eventData.HookInfo, out var action ) ) action ( eventData );
@@ -41,35 +36,17 @@ namespace Components.Interfaces {
 	}
 	
 
-	public abstract class HInputEventDataHolder : DataHolderBase {
-		public const int PressThreshold = ushort.MaxValue;
-		public HHookInfo HookInfo { get; protected set; }
-		public int InputCode { get; protected set; }
-		public int ValueX { get; protected set; }
-		public int ValueY { get; protected set; }
-		public int ValueZ { get; protected set; }
 
-		public float Pressed { get {
-				const double D = PressThreshold;
-				double X = ValueX / D, Y = ValueY / D, Z = ValueZ / D;
-				return (float)Math.Sqrt ( X * X + Y * Y + Z * Z );
-			} }
-
-		public HInputEventDataHolder ( DInputReader owner, HHookInfo hookInfo ) : base ( owner ) { HookInfo = hookInfo; }
-
-		public override bool Equals ( object obj ) {
-			if ( obj == null ) return false;
-			if ( obj.GetType () != GetType () ) return false;
-			var item = (HInputEventDataHolder)obj;
-			return (InputCode == item.InputCode) & (HookInfo == item.HookInfo) & (ValueX == item.ValueX) & (ValueY == item.ValueY) & (ValueZ == item.ValueZ);
-		}
-		public override int GetHashCode () => (HookInfo, InputCode, ValueX, ValueY, ValueZ).GetHashCode ();
-		public override string ToString () => $"{HookInfo.DeviceID}.{InputCode}:{HookInfo.LatestChangeType} [{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}]";
-	}
 	public class HKeyboardEventDataHolder : HInputEventDataHolder {
-		public HKeyboardEventDataHolder ( DInputReader owner, int deviceID, int keycode, float pressValue ) : base ( owner, new HHookInfo ( owner, deviceID, pressValue > 0.3f ? VKChange.KeyDown : VKChange.KeyUp ) ) {
+		public HKeyboardEventDataHolder ( DInputReader owner, int deviceID, int keycode, float pressValue ) : this ( owner, new HHookInfo ( owner, deviceID, pressValue > 0.3f ? VKChange.KeyDown : VKChange.KeyUp ), keycode, pressValue ) {
 			InputCode = keycode;
 			ValueX = (int)(pressValue * PressThreshold);
+			ValueY = ValueZ = 0;
+		}
+		public HKeyboardEventDataHolder ( DInputReader owner, HHookInfo hookInfo, int keycode, float pressValue ) : base ( owner, hookInfo ) {
+			InputCode = keycode;
+			ValueX = (int)(pressValue * PressThreshold);
+			ValueY = ValueZ = 0;
 		}
 
 		public override DataHolderBase Clone () => new HKeyboardEventDataHolder ( (DInputReader)Owner, HookInfo.DeviceID, InputCode, ValueX / (float)ushort.MaxValue );

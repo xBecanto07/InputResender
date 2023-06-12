@@ -1,10 +1,12 @@
 ﻿using Components.Interfaces;
+using InputResender.GUIComponents;
 using System.Net;
 
 namespace Components.Implementations {
 	public class MainAppCore : DMainAppCore {
 		public MainAppCore () : base (
 			null,
+			(core) => new WinLowLevelLibs (core),
 			( core ) => new VInputReader_KeyboardHook ( core ),
 			null,
 			null,

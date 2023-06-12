@@ -19,13 +19,13 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void SetupSimulateRelease_RaisesCallbackOnce () {
 			HInputEventDataHolder inputData = GenerateKeyboardEvent ();
-			HHookInfo hookInfo = GenerateHookInfo ();
 			EventList.Clear ();
-			TestObject.SetupHook ( hookInfo, SimpleTestCallback );
+			var hooks = TestObject.SetupHook ( inputData.HookInfo, SimpleTestCallback );
+			inputData.AddHookIDs ( hooks );
 			TestObject.SimulateInput ( inputData, true );
-			TestObject.ReleaseHook ( hookInfo );
+			TestObject.ReleaseHook ( inputData.HookInfo );
 			TestObject.SimulateInput ( inputData, true );
-			onInputReceived.WaitOne ( 100 ).Should ().BeFalse ();
+			onInputReceived.WaitOne ( 100 ).Should ().BeTrue ();
 			EventList.Should ().HaveCount ( 1 );
 			// No other callback should processed (some key presses during the test could be an issue).
 			// Same input event as was simulated should be captured, but by value, not by reference (for hardware input the dataHolder will not be available and so it should be always recreated).
@@ -33,14 +33,23 @@ namespace Components.InterfaceTests {
 		}
 
 		[Fact]
-		public void ReleaseNonexistingHookThrowsKeyNotFound () {
-			Action act = () => TestObject.ReleaseHook ( GenerateHookInfo () );
-			act.Should ().Throw<KeyNotFoundException> ();
+		public void ReleaseNonexistingHookPassesWithNoChange () {
+			TestObject.ReleaseHook ( GenerateHookInfo () ).Should ().Be ( 0 );
 		}
 
-		protected HInputEventDataHolder GenerateKeyboardEvent ( DInputReader owner = null ) {
+		[Fact]
+		public void SetupReleaseHook () {
+			HInputEventDataHolder inputData = GenerateKeyboardEvent ();
+			var hooks = TestObject.SetupHook ( inputData.HookInfo, SimpleTestCallback );
+			hooks.Should ().Equal ( 1 );
+			inputData.AddHookIDs ( hooks );
+			TestObject.ReleaseHook ( inputData.HookInfo ).Should ().Be ( 1 );
+		}
+
+		protected HInputEventDataHolder GenerateKeyboardEvent ( HHookInfo hookInfo = null, DInputReader owner = null ) {
 			if ( owner == null ) owner = TestObject;
-			return new HKeyboardEventDataHolder ( owner, 0, 1, ushort.MaxValue );
+			if ( hookInfo == null ) hookInfo = GenerateHookInfo ();
+			return new HKeyboardEventDataHolder ( owner, hookInfo, 1, 1 );
 		}
 
 		protected bool SimpleTestCallback ( HInputEventDataHolder inpudData ) {

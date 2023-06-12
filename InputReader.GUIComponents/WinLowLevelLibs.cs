@@ -3,7 +3,7 @@ using Components.Library;
 using System.Runtime.InteropServices;
 
 namespace InputResender.GUIComponents {
-	public partial class WinLowLevelLibs : DLowLevelinput {
+	public partial class WinLowLevelLibs : DLowLevelInput {
 		private const int WH_KEYBOARD_LOW_LEVEL = 13;
 
 		/*public static void ProcessHook ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
@@ -14,9 +14,7 @@ namespace InputResender.GUIComponents {
 			}
 		}*/
 
-		public WinLowLevelLibs ( CoreBase owner ) : base ( owner ) {
-
-		}
+		public WinLowLevelLibs ( CoreBase owner ) : base ( owner ) { }
 
 		public override int ComponentVersion => 1;
 		public override int HookTypeCode => WH_KEYBOARD_LOW_LEVEL;
@@ -29,13 +27,26 @@ namespace InputResender.GUIComponents {
 			}
 			return -1;
 		}
+		public override VKChange GetChangeType ( int vkCode ) {
+			switch ( vkCode ) {
+			case 0x0100: return VKChange.KeyDown;
+			case 0x0101: return VKChange.KeyUp;
+			}
+			throw new InvalidCastException ( $"No key change action type corresponds to code {vkCode:X}" );
+		}
+		public override HInputEventDataHolder GetHighLevelData ( DInputReader requester, HInputData lowLevelData ) {
+			Input llData = (Input)lowLevelData.Data;
+			Input.KeyboardInput keyInfo = llData.Data.ki;
+			return new HKeyboardEventDataHolder ( requester, 0, keyInfo.vkCode, 1 );
+		}
 		public override HInputData GetLowLevelData ( HInputEventDataHolder highLevelData ) {
 			var keyboardData = new Input.KeyboardInput ();
 			var inputUnion = new Input.InputUnion ();
 			inputUnion.ki = keyboardData;
 			return new WinLLInputData ( highLevelData.Owner, new Input ( 1, inputUnion ) );
 		}
-		public override HInputEventDataHolder ParseHookData ( DInputReader caller, int nCode, nint vkChngCode, nint vkCode ) => new HKeyboardEventDataHolder ( caller, 1, Marshal.ReadInt32 ( vkCode ), 1 );
+		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => WinLLInputData.NewKeyboardData ( this, (ushort)vkCode, (ushort)(vkCode | vkChngCode), 0, 0, 0 );
+			//new HKeyboardEventDataHolder ( caller, 1, Marshal.ReadInt32 ( vkCode ), 1 );
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
 		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
 		public override nint SetHookEx ( int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId ) => SetWindowsHookEx ( idHook, lpfn.Invoke, hMod, dwThreadId );
@@ -78,6 +89,17 @@ namespace InputResender.GUIComponents {
 		Input data;
 
 		public WinLLInputData ( ComponentBase owner, Input newData ) : base ( owner ) { data = newData; }
+		public static WinLLInputData NewKeyboardData (ComponentBase owner, ushort vkCode, ushort scanCode, uint dwFlags, uint time, IntPtr dwExtraInfo ) {
+			Input.KeyboardInput data = new () {
+				vkCode = vkCode,
+				scanCode = scanCode,
+				dwFlags = dwFlags,
+				time = time,
+				dwExtraInfo = dwExtraInfo
+			};
+			Input.InputUnion dataUnion = new Input.InputUnion () { ki = data } ;
+			return new WinLLInputData ( owner, new Input ( Input.TypeKEY, dataUnion ) );
+		}
 
 		public override IInputLLValues Data { get => data; protected set => data = (Input)value; }
 
@@ -96,6 +118,8 @@ namespace InputResender.GUIComponents {
 	public struct Input : IInputLLValues {
 		public int Type;
 		public InputUnion Data;
+
+		public const int TypeKEY = 1, TypeMOUSE = 0, TypeHARDWARE = 2;
 
 		public int SizeOf { get {
 				int si = sizeof ( int );

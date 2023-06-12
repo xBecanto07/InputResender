@@ -8,10 +8,19 @@ namespace Components.Library {
 		public const int M = K * K;
 		public const int G = M * K;
 		public static string ToShortString ( this int val ) {
-			if ( val > G ) return $"{val / G}G";
-			if ( val > M ) return $"{val / M}M";
-			if ( val > K ) return $"{val / K}K";
-			return val.ToString ();
+			switch ( val ) {
+			case 0: return "0";
+			case 1: return "1";
+			case int.MaxValue: return "2^32";
+			case int.MinValue: return "-2^32";
+			default:
+				string sgn = val < 0 ? "-" : "";
+				val = Math.Abs ( val );
+				if ( val > G ) return $"{sgn}{val / G}G";
+				if ( val > M ) return $"{sgn}{val / M}M";
+				if ( val > K ) return $"{sgn}{val / K}K";
+				return val.ToString ();
+			}
 		}
 		public static int CalcSetHash<T> (this ICollection<T> Set) {
 			int N = Set.Count;

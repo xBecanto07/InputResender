@@ -2,8 +2,8 @@
 using Components.Library;
 
 namespace Components.Implementations {
-	public abstract class DInputMainWorker : ComponentBase<MainAppCore> {
-		public DInputMainWorker ( MainAppCore owner ) : base ( owner ) { }
+	public abstract class DInputMainWorker : ComponentBase<DMainAppCore> {
+		public DInputMainWorker ( DMainAppCore owner ) : base ( owner ) { }
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () {
 			var ret = new List<(string opCode, Type opType)> () {
@@ -23,7 +23,7 @@ namespace Components.Implementations {
 	public class VInputMainWorker : DInputMainWorker {
 		readonly HHookInfo HookInfo;
 
-		public VInputMainWorker ( MainAppCore owner ) : base ( owner ) {
+		public VInputMainWorker ( DMainAppCore owner ) : base ( owner ) {
 			HookInfo = new HHookInfo ( this, 0, VKChange.KeyDown, VKChange.KeyUp );
 		}
 
