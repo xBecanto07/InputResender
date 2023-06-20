@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.0-preview.23280.1" />
+    <PackageReference Include="xunit" Version="2.5.0-pre.22" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.0-pre.15">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Components.Convertors\Components.Convertors.csproj" />
+    <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
+    <ProjectReference Include="..\Components.ImplementationTests\Components.ImplementationTests.csproj" />
+    <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
+    <ProjectReference Include="..\Components.InterfaceTests\Components.InterfaceTests.csproj" />
+    <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
+    <ProjectReference Include="..\InputReader.GUIComponents\InputResender.GUIComponents.csproj" />
+  </ItemGroup>
+
+</Project>

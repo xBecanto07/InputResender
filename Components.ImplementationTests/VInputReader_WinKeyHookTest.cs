@@ -17,4 +17,17 @@ namespace Components.ImplementationTests {
 		}
 		public override DInputReader GenerateTestObject () => new VInputReader_KeyboardHook ( Owner );
 	}
+
+	public class MInputReaderTest : DInputReaderTest {
+		MLowLevelInput LowLevelInput;
+
+		public MInputReaderTest () : base () { }
+
+		public override CoreBase CreateCoreBase () {
+			var ret = new CoreBaseMock ();
+			LowLevelInput = new MLowLevelInput ( ret );
+			return ret;
+		}
+		public override DInputReader GenerateTestObject () => new MInputReader ( Owner );
+	}
 }

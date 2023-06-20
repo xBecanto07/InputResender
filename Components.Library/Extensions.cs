@@ -44,5 +44,6 @@ namespace Components.Library {
 			Marshal.Copy ( bAr, 0, ptr, bAr.Length );
 			return ptr;
 		}
+		public static bool IsModifier (this KeyCode key) => (int)(key & KeyCode.Modifiers) > 1;
 	}
 }

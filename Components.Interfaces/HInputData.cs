@@ -41,6 +41,7 @@ namespace Components.Interfaces {
 
 		public abstract IInputLLValues Data { get; protected set; }
 		public abstract int SizeOf { get; }
+		public abstract void UpdateByHook (DLowLevelInput hookObj, nint hookID);
 	}
 
 	public interface IInputLLValues {
@@ -71,7 +72,9 @@ namespace Components.Interfaces {
 		}
 		public override int GetHashCode () => data.HookID.GetHashCode ();
 		public override string ToString () => $"#{data.HookID}:{data.KeyChange}@{data.VKCode}";
-
+		public override void UpdateByHook ( DLowLevelInput hookObj, nint hookID ) {
+			data.HookID = (int)hookID;
+		}
 
 		public struct IInputStruct_Mock : IInputLLValues {
 			public int HookID;

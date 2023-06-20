@@ -8,7 +8,16 @@ namespace Components.Interfaces {
 				(nameof(ProcessInput), typeof(void))
 			};
 
-		/// <summary>Combine relevant inputs into groups with nowest and most relevant input first followed by 'modifiers'.</summary>
+		/// <summary>Combine relevant inputs into groups with newest and most relevant input first followed by 'modifiers'.</summary>
 		public abstract HInputEventDataHolder[] ProcessInput ( HInputEventDataHolder inputData );
+	}
+
+	public class MInputParser : DInputParser {
+		public MInputParser ( CoreBase owner ) : base ( owner ) {
+		}
+
+		public override int ComponentVersion => 1;
+
+		public override HInputEventDataHolder[] ProcessInput ( HInputEventDataHolder inputData ) => new HInputEventDataHolder[1] { inputData };
 	}
 }

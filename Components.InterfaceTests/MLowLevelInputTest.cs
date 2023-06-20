@@ -8,50 +8,30 @@ using Xunit;
 using System.Runtime.InteropServices;
 
 namespace Components.InterfaceTests {
-	public class MLowLevelInputTest : ComponentTestBase<MLowLevelInput> {
-		protected AutoResetEvent onInputReceived;
-		protected List<HInputData> EventList;
-
-		public MLowLevelInputTest () : base () {
-			onInputReceived = new AutoResetEvent ( false );
-			EventList = new List<HInputData> ();
-		}
+	public class MLowLevelInputTest : DLowLevelInputTest<MLowLevelInput> {
+		public MLowLevelInputTest () : base ( KeyCode.E ) { }
 
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
-		public override MLowLevelInput GenerateTestObject () => new MLowLevelInput ( Owner );
-
-		[Fact]
-		public void SetupSimulateRelease_RaisesCallbackOnce () {
-			var HLData = GenerateKeyboardEvent ();
-
-			EventList.Clear ();
-			nint hookID = TestObject.SetHookEx ( 1, SimpleTestCallback, (IntPtr)null, 0 );
-			hookID.Should ().BeGreaterThan ( 0 );
-			TestObject.SimulateInput ( 1, new HInputData[1] { HLData }, HLData.SizeOf );
-			TestObject.UnhookHookEx ( hookID );
-			TestObject.SimulateInput ( 1, new HInputData[1] { HLData }, HLData.SizeOf );
-			onInputReceived.WaitOne ( 100 ).Should ().BeFalse ();
-			EventList.Should ().HaveCount ( 1 );
-			EventList[0].Should ().Be ( HLData ).And.NotBeSameAs ( HLData );
+		public override MLowLevelInput GenerateTestObject () {
+			var ret = new MLowLevelInput ( Owner );
+			ret.SetMockReturn ( MLowLevelInput.Part.Unhook, true );
+			ret.SetMockReturn ( MLowLevelInput.Part.SetHookEx, true );
+			ret.SetMockReturn ( MLowLevelInput.Part.GetModuleHandle, true );
+			ret.SetMockReturn ( MLowLevelInput.Part.CallNextHookEx, true );
+			return ret;
 		}
 
-		[Fact]
-		public void ReleaseNonexistingHookThrowsKeyNotFound () {
-			Action act = () => TestObject.UnhookHookEx ( 1 );
-			act.Should ().Throw<KeyNotFoundException> ();
-		}
-
-		protected HInputData GenerateKeyboardEvent ( MLowLevelInput owner = null ) {
+		protected override HInputData[] GenerateKeyboardEvent ( MLowLevelInput owner = null ) {
 			if ( owner == null ) owner = TestObject;
-			return new HInputData_Mock (TestObject, new HInputData_Mock.IInputStruct_Mock (1, VKChange.KeyDown, (nint)KeyCode.F));
+			return new HInputData[2] {
+			new HInputData_Mock ( owner, new HInputData_Mock.IInputStruct_Mock ( -1, VKChange.KeyDown, (nint)SimKey ) ),
+			new HInputData_Mock ( owner, new HInputData_Mock.IInputStruct_Mock ( -1, VKChange.KeyUp, (nint)SimKey ) )
+			};
 		}
 
-		protected IntPtr SimpleTestCallback ( int nCode, IntPtr wParam, IntPtr lParam ) {
-			if (nCode < 0) return TestObject.CallNextHook (0, nCode, wParam, lParam );
-			EventList.Add ( TestObject.ParseHookData ( nCode, wParam, Marshal.ReadInt32 ( lParam ) ) );
-			return 1;
+		protected override bool TryForceCallbackSkip ( bool shouldProcess ) {
+			TestObject.SetMockReturn ( MLowLevelInput.Part.NCode, shouldProcess );
+			return true;
 		}
-
-		HHookInfo GenerateHookInfo ( VKChange keyEvent = VKChange.KeyDown, int DeviceID = 1 ) => new HHookInfo ( TestObject, DeviceID, keyEvent );
 	}
 }

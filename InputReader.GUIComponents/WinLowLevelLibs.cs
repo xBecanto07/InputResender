@@ -5,14 +5,16 @@ using System.Runtime.InteropServices;
 namespace InputResender.GUIComponents {
 	public partial class WinLowLevelLibs : DLowLevelInput {
 		private const int WH_KEYBOARD_LOW_LEVEL = 13;
+		private LowLevelKeyboardProc Callback;
 
-		/*public static void ProcessHook ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
-			if ( nCode >= 0 && vkChngCode == WM_KEYDOWN ) {
-				int KeyCode = Marshal.ReadInt32 ( vkCode );
-				Callback ( (Keys)KeyCode, KeyCode );
-				//Console.WriteLine ( (Keys)vkCode );
+		private nint ProcessHook ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
+			//if ( nCode >= 0 ) Callback ( (Keys)KeyCode, KeyCode );
+			if ( nCode >= 0 ) {
+				return Callback ( nCode, vkChngCode, vkCode );
+			} else {
+				return CallNextHook ( 0, nCode, vkChngCode, vkCode );
 			}
-		}*/
+		}
 
 		public WinLowLevelLibs ( CoreBase owner ) : base ( owner ) { }
 
@@ -34,6 +36,7 @@ namespace InputResender.GUIComponents {
 			}
 			throw new InvalidCastException ( $"No key change action type corresponds to code {vkCode:X}" );
 		}
+
 		public override HInputEventDataHolder GetHighLevelData ( DInputReader requester, HInputData lowLevelData ) {
 			Input llData = (Input)lowLevelData.Data;
 			Input.KeyboardInput keyInfo = llData.Data.ki;
@@ -46,12 +49,15 @@ namespace InputResender.GUIComponents {
 			return new WinLLInputData ( highLevelData.Owner, new Input ( 1, inputUnion ) );
 		}
 		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => WinLLInputData.NewKeyboardData ( this, (ushort)vkCode, (ushort)(vkCode | vkChngCode), 0, 0, 0 );
-			//new HKeyboardEventDataHolder ( caller, 1, Marshal.ReadInt32 ( vkCode ), 1 );
+
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
 		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
-		public override nint SetHookEx ( int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId ) => SetWindowsHookEx ( idHook, lpfn.Invoke, hMod, dwThreadId );
+		public override nint SetHookEx ( int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId ) {
+			Callback = lpfn;
+			return SetWindowsHookEx ( idHook, ProcessHook, hMod, dwThreadId );
+		}
 		public override bool UnhookHookEx ( nint hhk ) => UnhookWindowsHookEx ( hhk );
-		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize ) {
+		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null ) {
 			var inputs = pInputs.Select ( ( input ) => (Input)input.Data ).ToArray ();
 			return SendInput ( nInputs, inputs, inputs.Length );
 		}
@@ -114,6 +120,7 @@ namespace InputResender.GUIComponents {
 		}
 		public override int GetHashCode () => data.GetHashCode ();
 		public override string ToString () => data.ToString ();
+		public override void UpdateByHook ( DLowLevelInput hookObj, nint hookID ) { }
 	}
 	public struct Input : IInputLLValues {
 		public int Type;

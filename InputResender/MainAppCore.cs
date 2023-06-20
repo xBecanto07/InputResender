@@ -6,9 +6,9 @@ namespace Components.Implementations {
 	public class MainAppCore : DMainAppCore {
 		public MainAppCore () : base (
 			null,
-			(core) => new WinLowLevelLibs (core),
+			( core ) => new WinLowLevelLibs ( core ),
 			( core ) => new VInputReader_KeyboardHook ( core ),
-			null,
+			( core ) => new InputParser ( core ),
 			null,
 			null,
 			null,

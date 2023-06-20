@@ -23,11 +23,16 @@ namespace Components.Interfaces {
 			CallbackList = new Dictionary<HHookInfo, Func<HInputEventDataHolder, bool>> ();
 		}
 
-		public override int ComponentVersion => 0;
+		public override int ComponentVersion => 1;
 
-		public override int ReleaseHook ( HHookInfo hookInfo ) { CallbackList.Remove ( hookInfo ); return 1; }
+		public override int ReleaseHook ( HHookInfo hookInfo ) { return CallbackList.Remove ( hookInfo ) ? 1 : 0; }
 		public override ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback ) { CallbackList.Add ( hookInfo, callback ); return new nint[]{ 1 }; }
-		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) { return 0; }
+		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) {
+			if ( CallbackList.TryGetValue ( input.HookInfo, out var fnc ) ) {
+				return fnc ( (HInputEventDataHolder)input.Clone () ) ? 0u : 1u;
+			}
+			return 0;
+		}
 
 		public void SimulateEvent ( HInputEventDataHolder eventData ) {
 			if ( CallbackList.TryGetValue ( eventData.HookInfo, out var action ) ) action ( eventData );
