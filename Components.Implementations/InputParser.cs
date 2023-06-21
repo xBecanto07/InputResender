@@ -11,11 +11,14 @@ namespace Components.Implementations {
 		}
 
 		public override int ComponentVersion => 1;
+		public override int MemoryCount => eventList.Count;
+
+		public override void ClearMemory () => eventList.Clear ();
 
 		public override DataHolder[] ProcessInput ( DataHolder inputData ) {
 			if ( inputData == null ) return new DataHolder[0];
 			KeyCode keyCode = (KeyCode)inputData.InputCode;
-			DataHolder[] ret = null;
+			List<DataHolder> ret = new List<DataHolder> { inputData };
 			if ( inputData.Pressed < 1 ) {
 				// If key is released
 				if (keyCode.IsModifier()) {
@@ -25,10 +28,11 @@ namespace Components.Implementations {
 						i--;
 					}
 				} else {
-					ret = eventList.ToArray ();
+					ret.AddRange ( eventList );
 					eventList.Clear ();
 				}
 			} else {
+				ret.AddRange ( eventList );
 				// If key is pressed
 				if ( keyCode.IsModifier () ) {
 					eventList.Add ( inputData );
@@ -36,7 +40,7 @@ namespace Components.Implementations {
 					eventList.Insert ( 0, inputData );
 				}
 			}
-			return ret == null ? eventList.ToArray () : ret;
+			return ret.ToArray ();
 		}
 	}
 }

@@ -1,11 +1,7 @@
 using Components.Interfaces;
 using Components.Library;
 using FluentAssertions;
-using System.Collections.Generic;
-using System.Threading;
-using System;
 using Xunit;
-using System.Runtime.InteropServices;
 
 namespace Components.InterfaceTests {
 	public class MLowLevelInputTest : DLowLevelInputTest<MLowLevelInput> {

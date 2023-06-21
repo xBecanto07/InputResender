@@ -45,5 +45,14 @@ namespace Components.Library {
 			return ptr;
 		}
 		public static bool IsModifier (this KeyCode key) => (int)(key & KeyCode.Modifiers) > 1;
+		public static bool TryGetValue<T,U> (this Dictionary<T, U> dict, Func<T, bool> predicate, out U val) {
+			foreach ( var item in dict ) {
+				if ( !predicate ( item.Key ) ) continue;
+				val = item.Value;
+				return true;
+			}
+			val = default;
+			return false;
+		}
 	}
 }

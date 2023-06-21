@@ -7,6 +7,7 @@
 			Owner = owner;
 			CreationTime = DateTime.Now;
 		}
+		public virtual bool FullEqCheck { get; protected set; } = true;
 		public abstract DataHolderBase Clone();
 		public abstract override bool Equals ( object obj );
 		public abstract override int GetHashCode ();

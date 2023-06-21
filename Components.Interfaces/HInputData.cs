@@ -28,7 +28,12 @@ namespace Components.Interfaces {
 			if ( obj == null ) return false;
 			if ( obj.GetType () != GetType () ) return false;
 			var item = (HInputEventDataHolder)obj;
-			return (InputCode.Equals ( item.InputCode )) & (HookInfo.Equals ( item.HookInfo )) & (ValueX.Equals ( item.ValueX )) & (ValueY.Equals ( item.ValueY )) & (ValueZ.Equals ( item.ValueZ ));
+			bool fullEqCheck = FullEqCheck & item.FullEqCheck;
+			bool ret = (InputCode.Equals ( item.InputCode )) &
+				(ValueX.Equals ( item.ValueX )) &
+				(ValueY.Equals ( item.ValueY )) &
+				(ValueZ.Equals ( item.ValueZ ));
+			return ret & (HookInfo.Equals ( item.HookInfo ));
 		}
 		public override int GetHashCode () => (HookInfo, InputCode, ValueX, ValueY, ValueZ).GetHashCode ();
 		public override string ToString () => $"{HookInfo.DeviceID}.{InputCode}:{HookInfo.LatestChangeType} [{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}]";

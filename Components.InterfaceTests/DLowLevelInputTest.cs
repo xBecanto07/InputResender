@@ -6,6 +6,7 @@ using System.Threading;
 using System;
 using Xunit;
 using System.Runtime.InteropServices;
+using System.Data;
 
 namespace Components.InterfaceTests {
 	public abstract class DLowLevelInputTest<T> : ComponentTestBase<T> where T : DLowLevelInput {
@@ -22,16 +23,7 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void SetupSimulateRelease_RaisesCallbackOnce () {
 			FetchHLData ( out var HLData, out uint dataCnt, out int dataSize );
-			EventList.Clear ();
-
-			nint hookID = TestObject.SetHookEx ( 1, SimpleTestCallback, (IntPtr)null, 0 );
-			hookID.Should ().BeGreaterThan ( 0 );
-			for ( int i = 0; i < dataCnt; i++ ) HLData[i].UpdateByHook ( TestObject, hookID );
-
-			TestObject.SimulateInput ( dataCnt, HLData, dataSize );
-			TestObject.UnhookHookEx ( hookID );
-			TestObject.SimulateInput ( dataCnt, HLData, dataSize );
-			onInputReceived.WaitOne ( 100 ).Should ().BeFalse ();
+			ExecOnHook ( HLData, () => TestObject.SimulateInput ( dataCnt, HLData, dataSize ), true, true );
 			EventList.Should ().HaveCount ( (int)dataCnt );
 			EventList.Should ().Equal ( HLData ).And.NotBeSameAs ( HLData );
 		}
@@ -39,17 +31,13 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void NegNCodeSkipsProcessing () {
 			FetchHLData ( out var HLData, out uint dataCnt, out int dataSize );
-			EventList.Clear ();
-			nint hookID = TestObject.SetHookEx ( 1, SimpleTestCallback, (IntPtr)null, 0 );
-			for ( int i = 0; i < dataCnt; i++ ) HLData[i].UpdateByHook ( TestObject, hookID );
-
-			TestObject.SimulateInput ( dataCnt, HLData, dataSize, false );
-			if ( !TryForceCallbackSkip ( false ) )
-				Assert.Fail ( "This function cannot be tested." );
-			TestObject.SimulateInput ( dataCnt, HLData, dataSize, true );
-			TestObject.SimulateInput ( dataCnt, HLData, dataSize, false );
-			TestObject.UnhookHookEx ( hookID );
-			EventList.Should ().HaveCount ( 0 );
+			ExecOnHook ( HLData, () => {
+				TestObject.SimulateInput ( dataCnt, HLData, dataSize, false );
+				if ( !TryForceCallbackSkip ( false ) )
+					Assert.Fail ( "This function cannot be tested." );
+				TestObject.SimulateInput ( dataCnt, HLData, dataSize, true );
+				TestObject.SimulateInput ( dataCnt, HLData, dataSize, false );
+			}, false, false );
 		}
 
 		[Fact]
@@ -63,9 +51,21 @@ namespace Components.InterfaceTests {
 		/// <returns>True if setup was succesful, false if this function is not supported.</returns>
 		protected abstract bool TryForceCallbackSkip ( bool shouldProcess );
 
+		protected void ExecOnHook ( HInputData[] HLData, Action act, bool shouldRetest, bool shouldReceiveEvent ) {
+			EventList.Clear ();
+			nint hookID = TestObject.SetHookEx ( 1, SimpleTestCallback, (IntPtr)null, 0 );
+			for ( int i = 0; i < HLData.Length; i++ ) HLData[i].UpdateByHook ( TestObject, hookID );
+			act ();
+			TestObject.UnhookHookEx ( hookID );
+			if ( shouldRetest ) act ();
+			onInputReceived.WaitOne ( 100 ).Should ().Be ( shouldReceiveEvent );
+			if ( !shouldReceiveEvent ) EventList.Should ().HaveCount ( 0 );
+		}
+
 		protected virtual IntPtr SimpleTestCallback ( int nCode, IntPtr wParam, IntPtr lParam ) {
 			if ( nCode < 0 ) return TestObject.CallNextHook ( 0, nCode, wParam, lParam );
 			EventList.Add ( TestObject.ParseHookData ( nCode, wParam, Marshal.ReadInt32 ( lParam ) ) );
+			onInputReceived.Set ();
 			return 1;
 		}
 

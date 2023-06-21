@@ -28,16 +28,13 @@ namespace Components.Interfaces {
 		public override int ReleaseHook ( HHookInfo hookInfo ) { return CallbackList.Remove ( hookInfo ) ? 1 : 0; }
 		public override ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback ) { CallbackList.Add ( hookInfo, callback ); return new nint[]{ 1 }; }
 		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) {
-			if ( CallbackList.TryGetValue ( input.HookInfo, out var fnc ) ) {
+			if ( CallbackList.TryGetValue ( (item) => input.HookInfo < item, out var fnc ) ) {
 				return fnc ( (HInputEventDataHolder)input.Clone () ) ? 0u : 1u;
 			}
 			return 0;
 		}
 
-		public void SimulateEvent ( HInputEventDataHolder eventData ) {
-			if ( CallbackList.TryGetValue ( eventData.HookInfo, out var action ) ) action ( eventData );
-		}
-		public void SimulateKeyPress ( int KeyCode, bool Pressed ) => SimulateEvent ( new HKeyboardEventDataHolder ( this, 0, KeyCode, Pressed ? 1f : 0f ) );
+		public uint SimulateKeyPress ( KeyCode keyCode, bool Pressed, int DeviceID = 1 ) => SimulateInput ( new HKeyboardEventDataHolder ( this, DeviceID, (int)keyCode, Pressed ? 1f : 0f ), false );
 	}
 	
 

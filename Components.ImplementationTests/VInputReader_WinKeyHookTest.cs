@@ -3,6 +3,7 @@ using Components.InterfaceTests;
 using Components.Interfaces;
 using Components.Library;
 using Xunit;
+using FluentAssertions;
 
 namespace Components.ImplementationTests {
 	public class VInputReader_WinKeyHookTest : DInputReaderTest {
@@ -29,5 +30,13 @@ namespace Components.ImplementationTests {
 			return ret;
 		}
 		public override DInputReader GenerateTestObject () => new MInputReader ( Owner );
+
+		[Fact]
+		public void SimKeyPressPasses () {
+			HInputEventDataHolder inputData = GenerateKeyboardEvent ();
+			ExecOnHook ( inputData, () => ((MInputReader)TestObject).SimulateKeyPress ( KeyCode.E, true, inputData.HookInfo.DeviceID )
+			, true, true );
+			EventList.Should ().HaveCount ( 1 );
+		}
 	}
 }

@@ -19,13 +19,7 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void SetupSimulateRelease_RaisesCallbackOnce () {
 			HInputEventDataHolder inputData = GenerateKeyboardEvent ();
-			EventList.Clear ();
-			var hooks = TestObject.SetupHook ( inputData.HookInfo, SimpleTestCallback );
-			inputData.AddHookIDs ( hooks );
-			TestObject.SimulateInput ( inputData, true );
-			TestObject.ReleaseHook ( inputData.HookInfo );
-			TestObject.SimulateInput ( inputData, true );
-			onInputReceived.WaitOne ( 100 ).Should ().BeTrue ();
+			ExecOnHook ( inputData, () => TestObject.SimulateInput ( inputData, true ), true, true );
 			EventList.Should ().HaveCount ( 1 );
 			// No other callback should processed (some key presses during the test could be an issue).
 			// Same input event as was simulated should be captured, but by value, not by reference (for hardware input the dataHolder will not be available and so it should be always recreated).
@@ -44,6 +38,16 @@ namespace Components.InterfaceTests {
 			hooks.Should ().Equal ( 1 );
 			inputData.AddHookIDs ( hooks );
 			TestObject.ReleaseHook ( inputData.HookInfo ).Should ().Be ( 1 );
+		}
+
+		protected void ExecOnHook (HInputEventDataHolder inputData, Action act, bool shouldRetest, bool shouldReceiveEvent) {
+			EventList.Clear ();
+			var hooks = TestObject.SetupHook ( inputData.HookInfo, SimpleTestCallback );
+			inputData.AddHookIDs ( hooks );
+			act ();
+			TestObject.ReleaseHook ( inputData.HookInfo );
+			if ( shouldRetest ) act ();
+			onInputReceived.WaitOne ( 100 ).Should ().Be ( shouldReceiveEvent );
 		}
 
 		protected HInputEventDataHolder GenerateKeyboardEvent ( HHookInfo hookInfo = null, DInputReader owner = null ) {
