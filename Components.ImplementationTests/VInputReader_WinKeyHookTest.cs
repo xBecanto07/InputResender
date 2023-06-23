@@ -16,7 +16,7 @@ namespace Components.ImplementationTests {
 			LowLevelInput = new MLowLevelInput ( ret );
 			return ret;
 		}
-		public override DInputReader GenerateTestObject () => new VInputReader_KeyboardHook ( Owner );
+		public override DInputReader GenerateTestObject () => new VInputReader_KeyboardHook ( OwnerCore );
 	}
 
 	public class MInputReaderTest : DInputReaderTest {
@@ -29,7 +29,7 @@ namespace Components.ImplementationTests {
 			LowLevelInput = new MLowLevelInput ( ret );
 			return ret;
 		}
-		public override DInputReader GenerateTestObject () => new MInputReader ( Owner );
+		public override DInputReader GenerateTestObject () => new MInputReader ( OwnerCore );
 
 		[Fact]
 		public void SimKeyPressPasses () {

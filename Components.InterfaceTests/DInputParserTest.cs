@@ -60,6 +60,6 @@ namespace Components.InterfaceTests {
 	}
 
 	public class MInputParserTest : DInputParserTest {
-		public override DInputParser GenerateTestObject () => new MInputParser ( Owner );
+		public override DInputParser GenerateTestObject () => new MInputParser ( OwnerCore );
 	}
 }

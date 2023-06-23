@@ -13,7 +13,7 @@ namespace Components.Interfaces {
 	public class InterfaceTemplateTest : ComponentTestBase<ComponentTemplate> {
 		public InterfaceTemplateTest () : base () { }
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
-		public override ComponentTemplate GenerateTestObject () => new ComponentTemplate ( Owner );
+		public override ComponentTemplate GenerateTestObject () => new ComponentTemplate ( OwnerCore );
 	}
 
 	public class InterfaceTemplateMock : ComponentTemplate {

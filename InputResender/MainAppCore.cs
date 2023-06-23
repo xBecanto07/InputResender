@@ -8,7 +8,7 @@ namespace Components.Implementations {
 			null,
 			( core ) => new WinLowLevelLibs ( core ),
 			( core ) => new VInputReader_KeyboardHook ( core ),
-			( core ) => new InputParser ( core ),
+			( core ) => new VInputParser ( core ),
 			null,
 			null,
 			null,

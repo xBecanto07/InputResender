@@ -9,7 +9,7 @@ namespace Components.InterfaceTests {
 
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
 		public override MLowLevelInput GenerateTestObject () {
-			var ret = new MLowLevelInput ( Owner );
+			var ret = new MLowLevelInput ( OwnerCore );
 			ret.SetMockReturn ( MLowLevelInput.Part.Unhook, true );
 			ret.SetMockReturn ( MLowLevelInput.Part.SetHookEx, true );
 			ret.SetMockReturn ( MLowLevelInput.Part.GetModuleHandle, true );

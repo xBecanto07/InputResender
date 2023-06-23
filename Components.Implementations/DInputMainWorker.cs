@@ -31,11 +31,11 @@ namespace Components.Implementations {
 
 		public override void Start () {
 			Owner.InputReader.SetupHook ( HookInfo, ProcessInput );
-			Owner.InputProcessor.SetupHook ( ExecuteAction );
+			//Owner.InputProcessor.SetupHook ( ExecuteAction );
 		}
 		public override void Stop () {
 			Owner.InputReader.ReleaseHook ( HookInfo );
-			Owner.InputProcessor.ReleaseHook ();
+			//Owner.InputProcessor.ReleaseHook ();
 		}
 		public override bool ProcessInput (HInputEventDataHolder inputData) {
 			var inputCombination = Owner.InputParser.ProcessInput ( inputData );

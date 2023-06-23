@@ -3,10 +3,10 @@ using Components.Library;
 using DataHolder = Components.Interfaces.HInputEventDataHolder;
 
 namespace Components.Implementations {
-	public class InputParser : DInputParser {
+	public class VInputParser : DInputParser {
 		protected List<DataHolder> eventList;
 
-		public InputParser ( CoreBase owner ) : base ( owner ) {
+		public VInputParser ( CoreBase owner ) : base ( owner ) {
 			eventList = new List<DataHolder> ();
 		}
 

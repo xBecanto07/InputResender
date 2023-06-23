@@ -6,8 +6,8 @@ using Xunit;
 using FluentAssertions;
 
 namespace Components.ImplementationTests {
-	public class InputParserTest : DInputParserTest {
-		public override DInputParser GenerateTestObject () => new InputParser ( Owner );
+	public class VInputParserTest : DInputParserTest {
+		public override DInputParser GenerateTestObject () => new VInputParser ( OwnerCore );
 
 		[Fact]
 		public void NullDataReturnsEmpty () {
@@ -55,7 +55,7 @@ namespace Components.ImplementationTests {
 			var pressAlt = GenerateInputData ( KeyCode.Alt, true );
 			var releaseAlt = GenerateInputData ( KeyCode.Alt, false );
 			TestObject.ClearMemory ();
-			// Press Q, Release Shift, Release Alt
+
 			Process ( pressShift, true, pressShift );
 			Process ( pressE, true, pressE, pressShift );
 			Process ( pressAlt, true, pressAlt, pressE, pressShift );

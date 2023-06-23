@@ -1,5 +1,7 @@
 ﻿using Xunit;
 using FluentAssertions;
+using System.Collections;
+using OutpuHelper = Xunit.Abstractions.ITestOutputHelper;
 
 namespace Components.Library {
 	public abstract class ComponentBase {
@@ -46,11 +48,11 @@ namespace Components.Library {
 		public virtual void MockMethod () { }
 	}
 	public abstract class ComponentTestBase<T> where T : ComponentBase<CoreBase> {
-		protected readonly CoreBase Owner;
+		protected readonly CoreBase OwnerCore;
 		protected readonly T TestObject;
 
 		public ComponentTestBase () {
-			Owner = CreateCoreBase ();
+			OwnerCore = CreateCoreBase ();
 			TestObject = GenerateTestObject ();
 			if ( TestObject == null ) throw new ArgumentNullException ( "Tested componant instance cannot be null! Please provide your tested component instance (try to use 'this')." );
 		}
@@ -89,6 +91,34 @@ namespace Components.Library {
 			TestObject.SupportedCommands.Should ().HaveCount ( DefinitionMethodCount - BaseMethodCount );
 
 			string[] GetMethods ( Type type ) => type.GetMethods ().Select ( x => $"{x.ReturnType.Name} {x.Name}" ).ToArray ();
+		}
+	}
+	public abstract class SerializableDataHolderTestBase<T> where T : SerializableDataHolderBase {
+		protected readonly CoreBase CoreBase;
+		protected readonly ComponentBase OwnerComp;
+		private readonly List<T> TestVariants;
+		protected readonly OutpuHelper Output;
+
+		public abstract T GenerateTestObject ( int variant );
+		public virtual CoreBase CreateCoreBase () => new CoreBaseMock ();
+		public virtual ComponentBase CreateTestObjOwnerComp () => new ComponentMock ( CoreBase );
+		public abstract List<T> GetTestData ();
+
+		public SerializableDataHolderTestBase ( OutpuHelper outputHelper ) {
+			Output = outputHelper;
+			CoreBase = CreateCoreBase ();
+			OwnerComp = CreateTestObjOwnerComp ();
+			TestVariants = GetTestData ();
+		}
+
+		[Fact]
+		public void SerializeDeserialzie () {
+			foreach (T TestObject in TestVariants) {
+				Output.WriteLine ( $"Testing data {TestObject} ..." );
+				byte[] data = TestObject.Serialize ();
+				var newObj = TestObject.Deserialize ( data );
+				newObj.Should ().NotBeNull ().And.NotBeSameAs ( TestObject ).And.Be ( TestObject );
+			}
 		}
 	}
 }
