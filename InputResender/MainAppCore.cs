@@ -11,7 +11,6 @@ namespace Components.Implementations {
 			( core ) => new VInputParser ( core ),
 			null,
 			null,
-			null,
 			null ) {
 		}
 

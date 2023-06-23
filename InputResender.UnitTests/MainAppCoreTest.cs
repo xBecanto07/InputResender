@@ -13,7 +13,6 @@ namespace Components.ImplementationTests {
 			Test_RegisterFetchUnregister_Base ( TestCore.InputReader );
 			Test_RegisterFetchUnregister_Base ( TestCore.InputParser );
 			Test_RegisterFetchUnregister_Base ( TestCore.InputProcessor );
-			Test_RegisterFetchUnregister_Base ( TestCore.DataSerializer );
 			Test_RegisterFetchUnregister_Base ( TestCore.DataSigner );
 			Test_RegisterFetchUnregister_Base ( TestCore.PacketSender );
 		}
@@ -24,7 +23,6 @@ namespace Components.ImplementationTests {
 			Test_Availability_Base ( TestCore.InputReader );
 			Test_Availability_Base ( TestCore.InputParser );
 			Test_Availability_Base ( TestCore.InputProcessor );
-			Test_Availability_Base ( TestCore.DataSerializer );
 			Test_Availability_Base ( TestCore.DataSigner );
 			Test_Availability_Base ( TestCore.PacketSender );
 		}

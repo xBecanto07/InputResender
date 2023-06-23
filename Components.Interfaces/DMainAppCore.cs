@@ -10,7 +10,6 @@ namespace Components.Interfaces
 		public DInputReader InputReader { get => Fetch<DInputReader> (); }
 		public DInputParser InputParser { get => Fetch<DInputParser> (); }
 		public DInputProcessor InputProcessor { get => Fetch<DInputProcessor> (); }
-		public DDataSerializer<int> DataSerializer { get => Fetch<DDataSerializer<int>> (); }
 		public DDataSigner DataSigner { get => Fetch<DDataSigner> (); }
 		public DPacketSender<IPEndPoint> PacketSender { get => Fetch<DPacketSender<IPEndPoint>> (); }
 
@@ -20,7 +19,6 @@ namespace Components.Interfaces
 			Func<DMainAppCore, DInputReader> CreateInputReader,
 			Func<DMainAppCore, DInputParser> CreateInputParser,
 			Func<DMainAppCore, DInputProcessor> CreateInputProcessor,
-			Func<DMainAppCore, DDataSerializer<int>> CreateDataSerializer,
 			Func<DMainAppCore, DDataSigner> CreateDataSigner,
 			Func<DMainAppCore, DPacketSender<IPEndPoint>> CreatePacketSender
 			) {
@@ -30,7 +28,6 @@ namespace Components.Interfaces
 			CreateComponent ( CreateInputReader, nameof ( DInputReader ) );
 			CreateComponent ( CreateInputParser, nameof ( DInputParser ) );
 			CreateComponent ( CreateInputProcessor, nameof ( DInputProcessor ) );
-			CreateComponent ( CreateDataSerializer, nameof ( DDataSerializer<int> ) );
 			CreateComponent ( CreateDataSigner, nameof ( DDataSigner ) );
 			CreateComponent ( CreatePacketSender, nameof ( DPacketSender<IPEndPoint> ) );
 
