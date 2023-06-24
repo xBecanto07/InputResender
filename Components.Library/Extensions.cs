@@ -54,5 +54,20 @@ namespace Components.Library {
 			val = default;
 			return false;
 		}
+		public static T[] Merge<T> (this T[] origAr, params T[][] otherArs) {
+			if ( origAr == null ) return null;
+			int totSize = origAr.Length;
+			int N = otherArs.Length;
+			for ( int i = 0; i < N; i++ ) totSize += otherArs[i] == null ? 0 : otherArs[i].Length;
+			T[] ret = new T[totSize];
+			int pos = 0;
+			for ( int i = 0; i < origAr.Length; i++ ) ret[pos++] = origAr[i];
+			for (int a = 0; a < N; a++) {
+				if ( otherArs[a] == null ) continue;
+				int S = otherArs[a].Length;
+				for ( int i = 0; i < S; i++ ) ret[pos++] = otherArs[a][i];
+			}
+			return ret;
+		}
 	}
 }

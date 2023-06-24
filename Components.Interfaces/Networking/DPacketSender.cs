@@ -1,6 +1,6 @@
 ﻿using Components.Library;
 
-namespace Components.Interfaces.Networking
+namespace Components.Interfaces
 {
     public abstract class DPacketSender<EP> : ComponentBase<CoreBase>
     {
