@@ -3,6 +3,7 @@ using Components.Library;
 using FluentAssertions;
 using System;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Components.InterfaceTests {
 	public abstract class DDataSignerTest : ComponentTestBase<DDataSigner> {
@@ -66,7 +67,7 @@ namespace Components.InterfaceTests {
 			byte[] IV = GenIV ( 1 );
 			byte[] data = GenData ( DefaultDataSize );
 
-			byte[] coded = TestObject.Encrypt ( data, IV );
+			byte[] coded = TestObject.Encrypt ( data, IV ); 
 			TestObject.TestPsswd ( coded, IV ).Should ().BeTrue ();
 			TestObject.TestPsswd ( coded, Key ).Should ().BeFalse ();
 			TestObject.Key = IV;
@@ -81,10 +82,12 @@ namespace Components.InterfaceTests {
 			return ret;
 		}
 
-		protected byte[] GenIV (int val) => TestObject.GenerateIV ( BitConverter.GetBytes ( val.GetHashCode () ) );
+		protected byte[] GenIV ( int val ) => TestObject.GenerateIV ( BitConverter.GetBytes ( val.CalcHash () ) );
 	}
 
 	public class MDataSignerTest : DDataSignerTest {
+		public MDataSignerTest () : base () {}
+
 		public override DDataSigner GenerateTestObject () => new MDataSigner ( OwnerCore );
 	}
 }

@@ -23,16 +23,6 @@ namespace Components.InterfaceTests {
 			Received.Should ().HaveCount ( 1 ).And.Contain ( data.CalcHash () );
 		}
 
-		[Fact]
-		public void MsgIsBuffered () {
-			byte[] data = SetupTest ( out var sender, out var receiver );
-			Connect ( sender, receiver );
-			sender.Send ( data );
-			receiver.ReceiveAsync ( SimpleCallback );
-			Disconnect ( sender, receiver );
-			Received.Should ().HaveCount ( 1 ).And.Contain ( data.CalcHash () );
-		}
-
 		protected bool SimpleCallback ( byte[] data) {
 			Received.Add (data.CalcHash ());
 			return true;

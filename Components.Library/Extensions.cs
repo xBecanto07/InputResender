@@ -56,6 +56,7 @@ namespace Components.Library {
 		}
 		public static T[] Merge<T> (this T[] origAr, params T[][] otherArs) {
 			if ( origAr == null ) return null;
+			if ( otherArs == null ) return (T[])origAr.Clone ();
 			int totSize = origAr.Length;
 			int N = otherArs.Length;
 			for ( int i = 0; i < N; i++ ) totSize += otherArs[i] == null ? 0 : otherArs[i].Length;
@@ -74,8 +75,21 @@ namespace Components.Library {
 			if ( data == null ) return -1;
 			if ( size < 0 ) size = data.Length - start;
 			long ret = 0;
-			for ( int i = start; i < start + size; i++ ) ret += data[i] ^ (i - start);
+			for ( int i = start; i < start + size; i++ ) ret += data[i] ^ i.CalcHash ();
 			return ret;
+		}
+
+		public static int CalcHash (this int num) {
+			uint seed = 0x57981A3D;
+			long ret = seed;
+			for ( int i = 0; i < 32; i++ ) {
+				seed = NextRng ();
+				ret += (num & 1) > 0 ? seed : -seed;
+				num >>= 1;
+			}
+			return (int)ret;
+
+			uint NextRng () { return (uint)(seed * 22695477ul + 1); }
 		}
 
 		public static IReadOnlyCollection<IReadOnlyCollection<T>> AsReadonly2D<T> ( this T[][] ar) {

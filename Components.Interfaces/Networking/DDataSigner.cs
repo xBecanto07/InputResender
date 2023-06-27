@@ -36,7 +36,13 @@ namespace Components.Interfaces
 		public override int ComponentVersion => 1;
 		public override int ChecksumSize { get => sizeof ( ushort ) * 2; }
 
-        public override byte[] GenerateIV ( byte[] data = null ) => BitConverter.GetBytes ( Random.Shared.Next () );
+		public override byte[] GenerateIV ( byte[] data = null ) {
+			if ( data == null ) return BitConverter.GetBytes ( Random.Shared.Next () );
+			if ( data.Length == KeySize ) return (byte[])data.Clone ();
+			int ret = data.Length.CalcHash ();
+			for ( int i = 0; i < data.Length; i++ ) ret ^= ((int)data[i]).CalcHash ();
+			return BitConverter.GetBytes ( ret );
+		}
 		public override byte[] Decrypt ( byte[] data, byte[] IV ) {
             // Data size should be checked in integrity test
             if ( !TestIntegrity ( data ) ) return null;
@@ -56,8 +62,8 @@ namespace Components.Interfaces
 			return ret;
         }
 		public override bool TestPsswd ( byte[] data, byte[] IV ) {
-			long calcHash = Key.Merge ( IV ).CalcHash ();
-			long locHash = ParseNum ( data, ChecksumSize / 2, ChecksumSize / 2 );
+			ushort calcHash = (ushort)Key.Merge ( IV ).CalcHash ();
+			ushort locHash = (ushort)ParseNum ( data, ChecksumSize / 2, ChecksumSize / 2 );
             return calcHash == locHash;
 		}
 		public override bool TestIntegrity ( byte[] data ) {
@@ -65,7 +71,7 @@ namespace Components.Interfaces
             int N = data.Length;
             int ChckN = ChecksumSize / 2;
             if (N < ChckN + 1 ) return false;
-            return ParseNum ( data, 0, ChckN ) - data.CalcHash ( ChckN ) == 0;
+            return (ushort)ParseNum ( data, 0, ChckN ) - (ushort)data.CalcHash ( ChckN ) == 0;
         }
 
         protected void CryptFunc ( byte[] data, byte[] IV, Action<byte, int> act, int dataStart = 0 ) {
@@ -74,7 +80,7 @@ namespace Components.Interfaces
             for ( int i = dataStart, j = 0; i < data.Length; i++, j++ ) act ( (byte)(data[i] ^ Key[j % pssN] ^ IV[j % pssN]), j );
 		}
 
-		private long ParseNum ( byte[] data, int start, int size = -1 ) {
+		public static long ParseNum ( byte[] data, int start, int size = -1 ) {
 			if ( size < 0 ) size = data.Length - start;
 			long ret = 0;
 			for ( int i = start; i < start + size; i++ ) ret += data[i] << (i - start) * 8;

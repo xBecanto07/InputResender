@@ -10,7 +10,7 @@ namespace Components.Library {
 		}
 
 		/// <summary>Register given component under name of Type that it is passed by i.e. using nameof(T)</summary>
-		public void Register<T> ( T component ) where T : ComponentBase => Register ( nameof ( T ), component );
+		public void Register<T> ( T component ) where T : ComponentBase => Register ( component.GetType().BaseType.Name, component );
 		/// <summary>Register component by name of the underlying type i.e. by specific variant.</summary>
 		public void Register ( ComponentBase component ) => Register ( component.GetType ().Name, component );
 		public void Register ( string key, ComponentBase component ) {
@@ -50,11 +50,11 @@ namespace Components.Library {
 		}
 
 		public void Test_RegisterFetchUnregister_Base<CompT> (CompT component) where CompT : ComponentBase<CoreBase> {
-			bool preregistered = TestCore.IsRegistered ( nameof ( CompT ) );
+			bool preregistered = TestCore.IsRegistered ( component.GetType ().BaseType.Name );
 			if ( preregistered ) TestCore.Unregister ( component );
 			else TestCore.Register ( component );
 			TestCore.Fetch<CompT> ().Should ().Be ( component );
-			TestCore.Fetch ( nameof ( CompT ) ).Should ().Be ( component );
+			TestCore.Fetch ( component.GetType ().BaseType.Name ).Should ().Be ( component );
 			if ( preregistered ) TestCore.Register ( component );
 			else TestCore.Unregister ( component );
 		}
