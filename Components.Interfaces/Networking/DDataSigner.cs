@@ -51,12 +51,12 @@ namespace Components.Interfaces
             byte[] ret = new byte[data.Length + ChecksumSize];
 			long hash = 0;
 			CryptFunc ( data, IV, ( val, i ) => { ret[i + ChecksumSize] = val; hash += val; } );
-			PushNumber ( ret, (ushort)CalcHash ( Key.Merge ( IV ), 0 ), 2 );
-            PushNumber ( ret, (ushort)CalcHash ( ret, 2 ), 0 );
+			PushNumber ( ret, (ushort)Key.Merge ( IV ).CalcHash (), 2 );
+            PushNumber ( ret, (ushort)ret.CalcHash ( 2 ), 0 );
 			return ret;
         }
 		public override bool TestPsswd ( byte[] data, byte[] IV ) {
-			long calcHash = CalcHash ( Key.Merge ( IV ), 0 );
+			long calcHash = Key.Merge ( IV ).CalcHash ();
 			long locHash = ParseNum ( data, ChecksumSize / 2, ChecksumSize / 2 );
             return calcHash == locHash;
 		}
@@ -65,7 +65,7 @@ namespace Components.Interfaces
             int N = data.Length;
             int ChckN = ChecksumSize / 2;
             if (N < ChckN + 1 ) return false;
-            return ParseNum ( data, 0, ChckN ) - CalcHash ( data, ChckN ) == 0;
+            return ParseNum ( data, 0, ChckN ) - data.CalcHash ( ChckN ) == 0;
         }
 
         protected void CryptFunc ( byte[] data, byte[] IV, Action<byte, int> act, int dataStart = 0 ) {
@@ -78,13 +78,6 @@ namespace Components.Interfaces
 			if ( size < 0 ) size = data.Length - start;
 			long ret = 0;
 			for ( int i = start; i < start + size; i++ ) ret += data[i] << (i - start) * 8;
-			return ret;
-		}
-
-		private long CalcHash ( byte[] data, int start, int size = -1 ) {
-			if ( size < 0 ) size = data.Length - start;
-			long ret = 0;
-			for ( int i = start; i < start + size; i++ ) ret += data[i] ^ (i - start);
 			return ret;
 		}
 

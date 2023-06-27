@@ -9,9 +9,9 @@ namespace Components.Implementations {
 			( core ) => new WinLowLevelLibs ( core ),
 			( core ) => new VInputReader_KeyboardHook ( core ),
 			( core ) => new VInputParser ( core ),
-			null,
-			null,
-			null ) {
+			( core ) => new VInputProcessor ( core ),
+			( core ) => new VDataSigner ( core ),
+			(core) => new VPacketSender(core) ) {
 		}
 
 		public override void Initialize () {

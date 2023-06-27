@@ -69,5 +69,28 @@ namespace Components.Library {
 			}
 			return ret;
 		}
+
+		public static long CalcHash ( this byte[] data, int start = 0, int size = -1 ) {
+			if ( data == null ) return -1;
+			if ( size < 0 ) size = data.Length - start;
+			long ret = 0;
+			for ( int i = start; i < start + size; i++ ) ret += data[i] ^ (i - start);
+			return ret;
+		}
+
+		public static IReadOnlyCollection<IReadOnlyCollection<T>> AsReadonly2D<T> ( this T[][] ar) {
+			int N = ar.Length;
+			IReadOnlyCollection<T>[] ret = new IReadOnlyCollection<T>[N];
+			for ( int i = 0; i < N; i++ ) ret[i] = Array.AsReadOnly ( ar[i] );
+			return Array.AsReadOnly ( ret );
+		}
+		public static IReadOnlyCollection<IReadOnlyCollection<T>> AsReadonly2D<T> ( this T[] ar ) => new IReadOnlyCollection<T>[1] { Array.AsReadOnly ( ar ) };
+
+		public static T[][] ToArray2D<T> (this List<List<T>> data) {
+			int N = data.Count;
+			T[][] ret = new T[N][];
+			for ( int i = 0; i < N; i++ ) ret[i] = data[i].ToArray ();
+			return ret;
+		}
 	}
 }
