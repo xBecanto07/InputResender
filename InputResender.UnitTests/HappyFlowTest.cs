@@ -1,0 +1,107 @@
+﻿using Components.Implementations;
+using Components.Interfaces;
+using Components.Library;
+using FluentAssertions;
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using Xunit;
+
+namespace InputResender.UnitTests {
+	public abstract class DHappyFlowTest<AppCore> where AppCore : DMainAppCore {
+		protected AppCore Sender, Receiver;
+		protected List<InputData> SentInput, ReceivedInput;
+		protected byte[] Key, IV;
+		protected AutoResetEvent receivedEvent;
+
+		public DHappyFlowTest() {
+			receivedEvent = new AutoResetEvent ( false );
+			SentInput = new List<InputData>();
+			ReceivedInput = new List<InputData>();
+			Sender = GenerateAppCore ();
+			Receiver = GenerateAppCore ();
+		}
+
+		protected abstract AppCore GenerateAppCore ();
+
+		protected void Init () {
+			Key = Sender.DataSigner.GenerateIV ( Encoding.UTF8.GetBytes ( "Password" ) );
+			IV = Sender.DataSigner.GenerateIV ( BitConverter.GetBytes ( 42 ) );
+			Sender.DataSigner.Key = Key;
+			Receiver.DataSigner.Key = Key;
+
+			HHookInfo hookInfo = new HHookInfo ( Sender.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
+			Sender.InputReader.SetupHook ( hookInfo, ProcessInput );
+
+			Receiver.Initialize ();
+
+			Sender.PacketSender.Connect ( Receiver.PacketSender.OwnEP ( 0, 0 ) );
+			Receiver.PacketSender.Connect ( Sender.PacketSender.OwnEP ( 0, 0 ) );
+			Receiver.PacketSender.ReceiveAsync ( RecvCB );
+		}
+
+		protected bool ProcessInput (HInputEventDataHolder inputData) {
+			var parsedInput = Sender.InputParser.ProcessInput ( inputData );
+			var processedInput = Sender.InputProcessor.ProcessInput ( parsedInput );
+			SentInput.Add ( processedInput );
+			var packet = Sender.DataSigner.Encrypt ( processedInput.Serialize (), IV );
+			Sender.PacketSender.Send ( packet );
+			return true;
+		}
+
+		protected bool RecvCB ( byte[] data) {
+			InputData recvData;
+			if (data == null) {
+				recvData = null;
+			} else {
+				byte[] decoded = Receiver.DataSigner.Decrypt ( data, IV );
+				recvData = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded );
+			}
+			lock (ReceivedInput) {
+				ReceivedInput.Add ( recvData );
+				receivedEvent.Set ();
+			}
+			return true;
+		}
+
+		protected void WaitForInput (int N) {
+			while ( true ) {
+				lock ( ReceivedInput ) {
+					if ( ReceivedInput.Count > 1 ) return;
+				}
+				receivedEvent.WaitOne ();
+			}
+		}
+
+		[Fact]
+		public void MainProcess () {
+			Init ();
+			var pressHolder = Sender.InputReader.SimulateKeyInput ( VKChange.KeyDown, KeyCode.E, false );
+			var releaseHolder = Sender.InputReader.SimulateKeyInput ( VKChange.KeyUp, KeyCode.E, false );
+			WaitForInput ( 2 );
+			SentInput.Should ().HaveCount ( 2 );
+			Receiver.PacketSender.Errors.Should ().BeEmpty ();
+			ReceivedInput.Should ().Equal ( SentInput );
+			ReceivedInput[0].Should ().NotBeNull ();
+			ReceivedInput[1].Should ().NotBeNull ();
+			ReceivedInput[0].DeviceID.Should ().Be ( pressHolder.HookInfo.DeviceID ).And.Be ( ReceivedInput[1].DeviceID );
+			ReceivedInput[1].Pressed.Should ().BeFalse ( "Second event will release up the key" );
+			ReceivedInput[0].Pressed.Should ().BeTrue ( "First event will press down the key" );
+			ReceivedInput[0].Cmnd.Should ().Be ( InputData.Command.KeyPress );
+			ReceivedInput[0].Key.Should ().Be ( KeyCode.E ).And.Be ( ReceivedInput[1].Key );
+		}
+	}
+
+	public class MHappyFlowTest : DHappyFlowTest<MMainAppCore> {
+		protected override MMainAppCore GenerateAppCore () => new MMainAppCore ();
+	}
+
+	public class VHappyFlowTest : DHappyFlowTest<VMainAppCore> {
+		protected override VMainAppCore GenerateAppCore () {
+			var ret = new VMainAppCore ( DMainAppCore.CompSelect.All & ~DMainAppCore.CompSelect.LLInput );
+			new MLowLevelInput ( ret );
+			return ret;
+		}
+	}
+}

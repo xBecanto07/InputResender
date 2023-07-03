@@ -24,6 +24,7 @@ namespace Components.Interfaces {
 			return new InputData ( this ) {
 				Cmnd = firstEvent.Pressed >= 1 ? Command.KeyPress : Command.KeyRelease,
 				X = firstEvent.Pressed,
+				Key = (KeyCode)firstEvent.InputCode,
 				DeviceID = firstEvent.HookInfo.DeviceID
 			};
 		}
@@ -48,7 +49,7 @@ namespace Components.Interfaces {
 		public int DeviceID = 0;
 		public Modifier Modifiers = Modifier.None;
 		public float X = 0, Y = 0, Z = 0;
-		public bool Pressed { get { return (X > 1) | (Y > 1) | (Z > 1); } }
+		public bool Pressed { get { return (X >= 1) | (Y >= 1) | (Z >= 1); } }
 
 		public static InputData Empty (ComponentBase owner) {
 			return new InputData ( owner ) {

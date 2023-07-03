@@ -5,13 +5,14 @@ using System.Collections.Generic;
 using System.Threading;
 using System;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Components.InterfaceTests {
 	public abstract class DInputReaderTest : ComponentTestBase<DInputReader> {
 		protected List<HInputEventDataHolder> EventList;
 		protected AutoResetEvent onInputReceived;
 
-		protected DInputReaderTest () : base () {
+		protected DInputReaderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) {
 			EventList = new List<HInputEventDataHolder> ();
 			onInputReceived = new AutoResetEvent ( false );
 		}

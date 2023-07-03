@@ -4,13 +4,16 @@ using System.Net;
 namespace Components.Interfaces
 {
     public abstract class DMainAppCore : CoreBase {
+		[Flags]
+		public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputParser = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, All = 255 }
+
 		public DEventVector EventVector { get => Fetch<DEventVector> (); }
 		public DLowLevelInput LowLevelInput { get => Fetch<DLowLevelInput> (); }
 		public DInputReader InputReader { get => Fetch<DInputReader> (); }
 		public DInputParser InputParser { get => Fetch<DInputParser> (); }
 		public DInputProcessor InputProcessor { get => Fetch<DInputProcessor> (); }
 		public DDataSigner DataSigner { get => Fetch<DDataSigner> (); }
-		public DPacketSender<IPEndPoint> PacketSender { get => Fetch<DPacketSender<IPEndPoint>> (); }
+		public DPacketSender PacketSender { get => Fetch<DPacketSender> (); }
 
 		public DMainAppCore (
 			Func<DMainAppCore, DEventVector> CreateEventVector,
@@ -19,8 +22,11 @@ namespace Components.Interfaces
 			Func<DMainAppCore, DInputParser> CreateInputParser,
 			Func<DMainAppCore, DInputProcessor> CreateInputProcessor,
 			Func<DMainAppCore, DDataSigner> CreateDataSigner,
-			Func<DMainAppCore, DPacketSender<IPEndPoint>> CreatePacketSender
+			Func<DMainAppCore, DPacketSender> CreatePacketSender,
+			CompSelect componentMask = CompSelect.All
 			) {
+
+			int compID = 1;
 			HashSet<string> missingComponents = new HashSet<string> ();
 			CreateComponent ( CreateEventVector, nameof ( DEventVector ) );
 			CreateComponent ( CreateLowLevelInput, nameof ( DLowLevelInput ) );
@@ -28,7 +34,7 @@ namespace Components.Interfaces
 			CreateComponent ( CreateInputParser, nameof ( DInputParser ) );
 			CreateComponent ( CreateInputProcessor, nameof ( DInputProcessor ) );
 			CreateComponent ( CreateDataSigner, nameof ( DDataSigner ) );
-			CreateComponent ( CreatePacketSender, nameof ( DPacketSender<IPEndPoint> ) );
+			CreateComponent ( CreatePacketSender, nameof ( DPacketSender ) );
 
 			if (missingComponents.Count > 0) {
 				var SB = new System.Text.StringBuilder ();
@@ -38,6 +44,10 @@ namespace Components.Interfaces
 			}
 
 			void CreateComponent<T> (Func<DMainAppCore, T> creator, string name) where T : ComponentBase {
+				int locCompID = compID;
+				compID <<= 1;
+				if ( ((int)componentMask & locCompID) == 0 ) return;
+
 				if ( creator == null ) missingComponents.Add ( name );
 				else {
 					var comp = creator ( this );

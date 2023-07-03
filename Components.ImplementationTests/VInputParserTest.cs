@@ -4,9 +4,11 @@ using Components.Interfaces;
 using Components.Library;
 using Xunit;
 using FluentAssertions;
+using Xunit.Abstractions;
 
 namespace Components.ImplementationTests {
 	public class VInputParserTest : DInputParserTest {
+		public VInputParserTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 		public override DInputParser GenerateTestObject () => new VInputParser ( OwnerCore );
 
 		[Fact]

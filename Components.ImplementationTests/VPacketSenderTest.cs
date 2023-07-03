@@ -2,10 +2,12 @@
 using Components.Interfaces;
 using Components.InterfaceTests;
 using System.Net;
+using Xunit.Abstractions;
 
 namespace Components.ImplementationTests {
 	public class VPacketSenderTest : DPacketSenderTest<IPEndPoint> {
 		private int Port = VPacketSender.DefPort;
-		public override DPacketSender<IPEndPoint> GenerateTestObject () => new VPacketSender ( OwnerCore, Port++ );
+		public VPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
+		public override DPacketSender GenerateTestObject () => new VPacketSender ( OwnerCore, Port++ );
 	}
 }

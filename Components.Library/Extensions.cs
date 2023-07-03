@@ -106,5 +106,15 @@ namespace Components.Library {
 			for ( int i = 0; i < N; i++ ) ret[i] = data[i].ToArray ();
 			return ret;
 		}
+		public static string ToShortCode (this ulong num ) {
+			const string chAr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/*@#$%&?€£¤";
+			ulong N = (ulong)chAr.Length;
+			string ret = "";
+			while (num > 0 ) {
+				ret += chAr[(int)(num % N)];
+				num /= N;
+			}
+			return ret == "" ? "0" : ret;
+		}
 	}
 }

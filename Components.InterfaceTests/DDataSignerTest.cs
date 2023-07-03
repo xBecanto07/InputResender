@@ -9,6 +9,7 @@ namespace Components.InterfaceTests {
 	public abstract class DDataSignerTest : ComponentTestBase<DDataSigner> {
 		protected const int DefaultDataSize = 64;
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
+		public DDataSignerTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
 		[Fact]
 		public void FullProcess () {
@@ -86,7 +87,7 @@ namespace Components.InterfaceTests {
 	}
 
 	public class MDataSignerTest : DDataSignerTest {
-		public MDataSignerTest () : base () {}
+		public MDataSignerTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
 		public override DDataSigner GenerateTestObject () => new MDataSigner ( OwnerCore );
 	}

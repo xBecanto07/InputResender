@@ -48,10 +48,12 @@ namespace Components.Library {
 		public virtual void MockMethod () { }
 	}
 	public abstract class ComponentTestBase<T> where T : ComponentBase<CoreBase> {
+		protected readonly OutpuHelper Output;
 		protected readonly CoreBase OwnerCore;
 		protected readonly T TestObject;
 
-		public ComponentTestBase () {
+		public ComponentTestBase ( OutpuHelper outputHelper ) {
+			Output = outputHelper;
 			OwnerCore = CreateCoreBase ();
 			TestObject = GenerateTestObject ();
 			if ( TestObject == null ) throw new ArgumentNullException ( "Tested componant instance cannot be null! Please provide your tested component instance (try to use 'this')." );

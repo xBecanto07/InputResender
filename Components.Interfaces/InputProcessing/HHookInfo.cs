@@ -1,6 +1,6 @@
 ﻿using Components.Library;
 using System.Collections.Immutable;
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
 
 namespace Components.Interfaces {
 	public class HHookInfo : DataHolderBase {

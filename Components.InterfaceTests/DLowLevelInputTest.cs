@@ -7,6 +7,7 @@ using System;
 using Xunit;
 using System.Runtime.InteropServices;
 using System.Data;
+using Xunit.Abstractions;
 
 namespace Components.InterfaceTests {
 	public abstract class DLowLevelInputTest<T> : ComponentTestBase<T> where T : DLowLevelInput {
@@ -14,7 +15,7 @@ namespace Components.InterfaceTests {
 		protected List<HInputData> EventList;
 		protected readonly KeyCode SimKey;
 
-		public DLowLevelInputTest ( KeyCode simKey ) : base () {
+		public DLowLevelInputTest ( ITestOutputHelper outputHelper, KeyCode simKey ) : base ( outputHelper ) {
 			onInputReceived = new AutoResetEvent ( false );
 			EventList = new List<HInputData> ();
 			SimKey = simKey;

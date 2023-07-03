@@ -4,12 +4,13 @@ using Components.Interfaces;
 using Components.Library;
 using Xunit;
 using FluentAssertions;
+using Xunit.Abstractions;
 
 namespace Components.ImplementationTests {
 	public class VInputReader_WinKeyHookTest : DInputReaderTest {
 		MLowLevelInput LowLevelInput;
 
-		public VInputReader_WinKeyHookTest () : base () { }
+		public VInputReader_WinKeyHookTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
 		public override CoreBase CreateCoreBase () {
 			var ret = new CoreBaseMock ();
@@ -22,7 +23,7 @@ namespace Components.ImplementationTests {
 	public class MInputReaderTest : DInputReaderTest {
 		MLowLevelInput LowLevelInput;
 
-		public MInputReaderTest () : base () { }
+		public MInputReaderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
 		public override CoreBase CreateCoreBase () {
 			var ret = new CoreBaseMock ();

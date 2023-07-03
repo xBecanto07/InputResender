@@ -7,7 +7,8 @@ namespace Components.Interfaces {
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(SetupHook), typeof(void)),
 				(nameof(ReleaseHook), typeof(void)),
-				(nameof(SimulateInput), typeof(uint))
+				(nameof(SimulateInput), typeof(uint)),
+				(nameof(SimulateInput), typeof(HInputEventDataHolder))
 			};
 
 		/// <summary>Prepare a hardware hook, that will on recieving an input event call a returned Action, providing input vektor ID and input data</summary>
@@ -15,6 +16,12 @@ namespace Components.Interfaces {
 		public abstract ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback );
 		public abstract int ReleaseHook ( HHookInfo hookInfo );
 		public abstract uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture );
+		public HInputEventDataHolder SimulateKeyInput ( VKChange action, KeyCode key, bool allowRecapture, int deviceID = 1 ) {
+			HHookInfo hookInfo = new HHookInfo ( this, deviceID, action );
+			HInputEventDataHolder ret = new HKeyboardEventDataHolder ( this, hookInfo, (int)key, action == VKChange.KeyDown ? 1 : 0 );
+			SimulateInput ( ret, allowRecapture );
+			return ret;
+		}
 	}
 
 	public class MInputReader : DInputReader {

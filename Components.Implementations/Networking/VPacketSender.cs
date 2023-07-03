@@ -8,18 +8,21 @@ using Components.Library;
 using NetClient = System.Net.Sockets.UdpClient;
 
 namespace Components.Implementations {
-	public class VPacketSender : DPacketSender<IPEndPoint> {
-		public const int DefPort = 45256;
+	public class VPacketSender : DPacketSender {
+		public static int DefPort = 45256;
 		public readonly int Port;
 		Dictionary<IPEndPoint, NetClient> TCPs;
 		readonly IPEndPoint[][] thisEPs;
 		readonly NetClient[][] thisClients;
-		RecvProcessor RecvHandler;
+		public RecvProcessor RecvHandler;
 		Func<byte[], bool> Callback;
 		public IPEndPoint[] Listenings { get { return TCPs.Keys.ToArray (); } }
+		List<(string msg, Exception e)> errors;
 
 		public VPacketSender ( CoreBase owner, int port = -1 ) : base ( owner ) {
-			Port = port < 0 ? DefPort : port;
+			if ( !Owner.IsRegistered ( nameof ( DLogger ) ) ) new VLogger ( Owner );
+			errors = new List<(string msg, Exception e)> ();
+			Port = port < 0 ? DefPort++ : port;
 			thisEPs = AddressesToEPs ( FindNetworks (), Port );
 			thisClients = new NetClient[thisEPs.Length][];
 			for ( int i = 0; i < thisEPs.Length; i++ ) thisClients[i] = new NetClient[thisEPs[i].Length];
@@ -29,7 +32,7 @@ namespace Components.Implementations {
 
 		public override int ComponentVersion => 1;
 		public override int Connections => TCPs.Count;
-
+		public override IReadOnlyCollection<(string msg, Exception e)> Errors => errors.AsReadOnly ();
 		public override IReadOnlyCollection<IReadOnlyCollection<IPEndPoint>> EPList => thisEPs.AsReadonly2D ();
 
 		public override IPEndPoint OwnEP ( int TTL, int network = 0 ) {
@@ -39,7 +42,9 @@ namespace Components.Implementations {
 			return thisEPs[network][TTL];
 		}
 
-		public override void Connect ( IPEndPoint ep ) {
+		public override void Connect ( object epObj ) {
+			Owner.Fetch<DLogger> ().Log ( $"Connecting {epObj}" );
+			IPEndPoint ep = (IPEndPoint)epObj;
 			var nt = FindNetwork ( ep.Address );
 			NetClient newTCP = thisClients[nt.network][nt.ttl];
 			if ( newTCP == null ) {
@@ -50,6 +55,7 @@ namespace Components.Implementations {
 		}
 		/// <summary>WARNING! Only very basic implementation!</summary>
 		private (int network, int ttl) FindNetwork ( IPAddress addr ) {
+			Owner.Fetch<DLogger> ().Log ( $"Finding network of {addr}" );
 			if ( IPAddress.IsLoopback ( addr ) ) return (0, 0);
 			byte[] abAr = addr.GetAddressBytes ();
 			if ( abAr[0] == 192 && abAr[1] == 168 ) {
@@ -59,7 +65,9 @@ namespace Components.Implementations {
 			}
 			return (0, 2);
 		}
-		public override void Disconnect ( IPEndPoint ep ) {
+		public override void Disconnect ( object epObj ) {
+			Owner.Fetch<DLogger> ().Log ( $"Disconnecting {epObj}" );
+			IPEndPoint ep = (IPEndPoint)epObj;
 			if ( TCPs.TryGetValue ( ep, out NetClient newTCP ) ) {
 				RecvHandler.RemoveConn ( newTCP );
 				TCPs.Remove ( ep );
@@ -68,16 +76,19 @@ namespace Components.Implementations {
 			}
 		}
 		public override void ReceiveAsync ( Func<byte[], bool> callback ) {
+			Owner.Fetch<DLogger> ().Log ( $"Starting async recv" );
 			Callback = callback;
 			foreach ( var conn in TCPs )
 				RecvHandler.AddConn ( conn.Value );
 		}
 		public override void Recv ( byte[] data ) {
+			Owner.Fetch<DLogger> ().Log ( $"Directly receiving {data.Length} bytes of data" );
 			if ( !Callback ( data ) ) {
 				RecvHandler.Pause ( false );
 			}
 		}
 		public override void Send ( byte[] data ) {
+			Owner.Fetch<DLogger> ().Log ( $"Sending {data.Length} bytes of data" );
 			foreach ( var conn in TCPs ) conn.Value.Send ( data, conn.Key );
 		}
 
@@ -97,7 +108,7 @@ namespace Components.Implementations {
 
 		public static IPAddress IPv4 ( byte A, byte B, byte C, byte D ) => new IPAddress ( new byte[] { A, B, C, D } );
 
-		public static IPEndPoint[][] AddressesToEPs ( IPAddress[][] addresses, int port = DefPort ) {
+		public static IPEndPoint[][] AddressesToEPs ( IPAddress[][] addresses, int port ) {
 			int N = addresses.Length;
 			IPEndPoint[][] ret = new IPEndPoint[N][];
 			for ( int i = 0; i < N; i++ ) {
@@ -131,6 +142,8 @@ namespace Components.Implementations {
 		}
 
 		public override void Destroy () {
+			Owner.Fetch<DLogger> ().Log ( $"Destroying" );
+			RecvHandler.Stop = true;
 			for (int net = 0; net < thisClients.Length; net ++ ) {
 				for (int ttl = 0; ttl < thisClients[net].Length;ttl++) {
 					thisClients[net][ttl].Close ();
@@ -180,6 +193,7 @@ namespace Components.Implementations {
 			}
 
 			public void Dispose () {
+				Owner.Owner.Fetch<DLogger> ().Log ( $"Disposing" );
 				Stop = true;
 				NewConnSignal.Set ();
 				Thread.MemoryBarrier ();
@@ -207,6 +221,7 @@ namespace Components.Implementations {
 
 			public void Wait () { OpFinished.WaitOne (); }
 			public void AddConn ( NetClient conn ) {
+				Owner.Owner.Fetch<DLogger> ().Log ( $"Adding new connection {conn}" );
 				if ( Receivers.ContainsKey ( conn ) ) return;
 				Task<UdpReceiveResult> task = Task.Run ( () => RecvAsync ( conn ) );
 				Receivers.Add ( conn, task );
@@ -216,6 +231,7 @@ namespace Components.Implementations {
 				Wait ();
 			}
 			public void RemoveConn ( NetClient conn ) {
+				Owner.Owner.Fetch<DLogger> ().Log ( $"Removing connection {conn}" );
 				if ( Receivers.Remove ( conn ) ) {
 					OpFinished.Reset ();
 					NewConnSignal.Set ();
@@ -230,9 +246,17 @@ namespace Components.Implementations {
 				return default;
 			}
 			private UdpReceiveResult RecvAsync (NetClient conn) {
-				IPEndPoint EP = new IPEndPoint ( IPAddress.Any, 0 );
-				byte[] data = conn.Receive ( ref EP );
-				return new UdpReceiveResult ( data, EP );
+				try {
+					IPEndPoint EP = new IPEndPoint ( IPAddress.Any, 0 );
+					byte[] data = conn.Receive ( ref EP );
+					Owner.Owner.Fetch<DLogger> ().Log ( $"Received {(data == null ? -1 : data.Length)} bytes of data" );
+					return new UdpReceiveResult ( data, EP );
+				} catch ( Exception e ) {
+					Owner.Owner.Fetch<DLogger> ().Log ( $"During recv got error of {e.Message}" );
+					if ( e.Message.Contains ( "WSACancelBlockingCall" ) & Stop == true ) return default;
+					Owner.errors.Add ( ($"Error during RecvAsync! ({e.Message})", e) );
+					return default;
+				}
 			}
 
 			private void Process () {
@@ -240,6 +264,7 @@ namespace Components.Implementations {
 					if ( !Cont ) PauseSignal.WaitOne ();
 					PauseSignal.Reset ();
 					int ID = Task.WaitAny ( Receivers.Values.ToArray () );
+					Owner.Owner.Fetch<DLogger> ().Log ( $"Processing" );
 					if (Stop) {
 						for ( int i = 0; i < Receivers.Count; i++ ) {
 							var client = Receivers.GetKey ( i );
@@ -257,6 +282,7 @@ namespace Components.Implementations {
 			}
 
 			private bool ProcessSingleData ( int ID ) {
+				Owner.Owner.Fetch<DLogger> ().Log ( $"Processing single data" );
 				OpFinished.Reset ();
 				bool ret;
 				if ( ID == 0 ) {
@@ -266,6 +292,9 @@ namespace Components.Implementations {
 					ret = true;
 				} else {
 					byte[] data = Receivers[ID].Result.Buffer;
+					if (data == null) {
+						ret = false;
+					}
 					ret = Owner.Callback ( data );
 					Receivers[ID] = Task.Run ( () => RecvAsync ( Receivers.GetKey ( ID ) ) );
 				}

@@ -3,9 +3,9 @@ using Components.Interfaces;
 using Components.Library;
 using Xunit;
 
-namespace Components.ImplementationTests {
-	public class MainAppCoreTest : CoreTestBase<DMainAppCore> {
-		public override DMainAppCore GenerateTestCore () => new MainAppCore ();
+namespace InputResender.UnitTests {
+	public class DMainAppCoreTest : CoreTestBase<DMainAppCore> {
+		public override DMainAppCore GenerateTestCore () => new VMainAppCore ();
 
 		[Fact]
 		public void Test_RegisterFetchUnregister () {

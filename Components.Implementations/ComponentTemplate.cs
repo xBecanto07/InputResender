@@ -1,5 +1,6 @@
 ﻿using Components.Library;
 using Components.Interfaces;
+using Xunit.Abstractions;
 
 namespace Components.Interfaces {
 	public class ComponentTemplate : DInterfaceTemplate {
@@ -11,7 +12,7 @@ namespace Components.Interfaces {
 	}
 
 	public class InterfaceTemplateTest : ComponentTestBase<ComponentTemplate> {
-		public InterfaceTemplateTest () : base () { }
+		public InterfaceTemplateTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
 		public override ComponentTemplate GenerateTestObject () => new ComponentTemplate ( OwnerCore );
 	}

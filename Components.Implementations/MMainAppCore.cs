@@ -1,17 +1,16 @@
 ﻿using Components.Interfaces;
-using InputResender.GUIComponents;
 using System.Net;
 
 namespace Components.Implementations {
-	public class MainAppCore : DMainAppCore {
-		public MainAppCore () : base (
+	public class MMainAppCore : DMainAppCore {
+		public MMainAppCore () : base (
 			( core ) => new MEventVector ( core ),
-			( core ) => new WinLowLevelLibs ( core ),
-			( core ) => new VInputReader_KeyboardHook ( core ),
-			( core ) => new VInputParser ( core ),
-			( core ) => new VInputProcessor ( core ),
-			( core ) => new VDataSigner ( core ),
-			( core ) => new VPacketSender ( core ) ) {
+			( core ) => new MLowLevelInput ( core ),
+			( core ) => new MInputReader ( core ),
+			( core ) => new MInputParser ( core ),
+			( core ) => new MInputProcessor ( core ),
+			( core ) => new MDataSigner ( core ),
+			( core ) => new MPacketSender ( core ) ) {
 		}
 
 		public override void Initialize () {

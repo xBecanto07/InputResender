@@ -2,7 +2,7 @@
 using System.Collections.ObjectModel;
 
 namespace Components.Interfaces {
-	public abstract class DPacketSender<EP> : ComponentBase<CoreBase> {
+	public abstract class DPacketSender : ComponentBase<CoreBase> {
 		public DPacketSender ( CoreBase owner ) : base ( owner ) { }
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
@@ -11,17 +11,19 @@ namespace Components.Interfaces {
 				(nameof(Send), typeof(void)),
 				(nameof(Recv), typeof(void)),
 				(nameof(ReceiveAsync), typeof(void)),
-				(nameof(EPList), typeof(IReadOnlyCollection<IReadOnlyCollection<EP>>)),
+				(nameof(EPList), typeof(IReadOnlyCollection<IReadOnlyCollection<object>>)),
 				(nameof(Connections), typeof(int)),
-				(nameof(OwnEP), typeof(EP)),
+				(nameof(Errors), typeof(IReadOnlyCollection<(string msg, Exception e)>)),
+				(nameof(OwnEP), typeof(object)),
 				(nameof(Destroy), typeof(void))
 			};
 
-		public abstract IReadOnlyCollection<IReadOnlyCollection<EP>> EPList { get; }
+		public abstract IReadOnlyCollection<IReadOnlyCollection<object>> EPList { get; }
+		public abstract IReadOnlyCollection<(string msg, Exception e)> Errors { get; }
 		public abstract int Connections { get; }
-		public abstract EP OwnEP ( int TTL, int network );
-		public abstract void Connect ( EP ep );
-		public abstract void Disconnect ( EP ep );
+		public abstract object OwnEP ( int TTL, int network );
+		public abstract void Connect ( object ep );
+		public abstract void Disconnect ( object ep );
 		public abstract void Send ( byte[] data );
 		public abstract void Recv ( byte[] data );
 		public abstract void ReceiveAsync ( Func<byte[], bool> callback );
@@ -29,7 +31,7 @@ namespace Components.Interfaces {
 	}
 
 	/// <summary>Thread unsafe!</summary>
-	public class MPacketSender : DPacketSender<MPacketSender> {
+	public class MPacketSender : DPacketSender {
 		List<MPacketSender> ConnList = new List<MPacketSender> ();
 		Queue<byte[]> MsgQueue = new Queue<byte[]> ();
 		Func<byte[], bool> Callback = null;
@@ -40,9 +42,10 @@ namespace Components.Interfaces {
 		public override MPacketSender OwnEP ( int TTL, int network ) => this;
 		public override int Connections => ConnList.Count;
 		public override IReadOnlyCollection<IReadOnlyCollection<MPacketSender>> EPList { get => new []{ this }.AsReadonly2D (); }
+		public override IReadOnlyCollection<(string msg, Exception e)> Errors { get => new List<(string msg, Exception e)> ().AsReadOnly (); }
 
-		public override void Connect ( MPacketSender ep ) => ConnList.Add ( ep );
-		public override void Disconnect ( MPacketSender ep ) => ConnList.Remove ( ep );
+		public override void Connect ( object ep ) => ConnList.Add ( (MPacketSender)ep );
+		public override void Disconnect ( object ep ) => ConnList.Remove ( (MPacketSender)ep );
 		public override void ReceiveAsync ( Func<byte[], bool> callback ) {
 			Callback = callback;
 			while ( MsgQueue.Count > 0 ) {

@@ -2,10 +2,11 @@ using Components.Interfaces;
 using Components.Library;
 using FluentAssertions;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Components.InterfaceTests {
 	public class MLowLevelInputTest : DLowLevelInputTest<MLowLevelInput> {
-		public MLowLevelInputTest () : base ( KeyCode.E ) { }
+		public MLowLevelInputTest (ITestOutputHelper outputHelper) : base ( outputHelper, KeyCode.E ) { }
 
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
 		public override MLowLevelInput GenerateTestObject () {

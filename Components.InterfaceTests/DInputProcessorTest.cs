@@ -6,11 +6,11 @@ using Xunit.Abstractions;
 
 namespace Components.InterfaceTests {
 	public abstract class DInputProcessorTest : ComponentTestBase<DInputProcessor> {
-		DInputParser InputParser;
+		public DInputProcessorTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
 		public override CoreBase CreateCoreBase () {
 			var ret = new CoreBaseMock ();
-			InputParser = new MInputParser ( ret );
+			new MInputParser ( ret );
 			return ret;
 		}
 
@@ -21,6 +21,7 @@ namespace Components.InterfaceTests {
 	}
 
 	public class MInputProcessorTest : DInputProcessorTest {
+		public MInputProcessorTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 		public override MInputProcessor GenerateTestObject () => new MInputProcessor ( OwnerCore );
 
 
