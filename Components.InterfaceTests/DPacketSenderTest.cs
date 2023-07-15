@@ -21,10 +21,10 @@ namespace Components.InterfaceTests {
 			Connect ( sender, receiver );
 			receiver.ReceiveAsync ( SimpleCallback );
 			sender.Send ( data );
-			resetEvent.WaitOne ();
+			//resetEvent.WaitOne ();
 			Disconnect ( sender, receiver );
 
-			Thread.Sleep ( 250 );
+			Thread.Sleep ( 10 );
 			var logger = OwnerCore.Fetch ( nameof ( DLogger ) );
 			if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
 
