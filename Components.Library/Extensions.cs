@@ -116,5 +116,6 @@ namespace Components.Library {
 			}
 			return ret == "" ? "0" : ret;
 		}
+		public static int Crop ( this int x, int min, int max ) => x < min ? min : x > max ? max : x;
 	}
 }

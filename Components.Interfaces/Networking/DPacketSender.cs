@@ -25,6 +25,7 @@ namespace Components.Interfaces {
 		public abstract void Connect ( object ep );
 		public abstract void Disconnect ( object ep );
 		public abstract void Send ( byte[] data );
+		/// <summary>Direct receive</summary>
 		public abstract void Recv ( byte[] data );
 		public abstract void ReceiveAsync ( Func<byte[], bool> callback );
 		public abstract void Destroy ();

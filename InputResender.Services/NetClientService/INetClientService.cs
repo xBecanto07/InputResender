@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using SBld = System.Text.StringBuilder;
+using ClientType = InputResender.Services.INetClientService.ClientType;
 
 namespace InputResender.Services {
 	public abstract class INetClientService : IDisposable {
@@ -184,43 +185,80 @@ namespace InputResender.Services {
 
 	public class NetClientList : IDisposable {
 		private readonly List<INetClientService> ClientList;
+		private readonly List<Task<byte[]>> RecvList;
 		public int Count { get => ClientList.Count; }
 		public bool Active { get; private set; }
+		private AutoResetEvent Signal;
+		private INetClientService.Result DirectMessage;
 
-		public NetClientList () { }
+		public NetClientList () {
+			Active = false;
+			Signal = new AutoResetEvent ( false );
+			ClientList = new List<INetClientService> ();
+			RecvList = new List<Task<byte[]>> ();
+		}
 
-		public void AddClient ( IPEndPoint ep, INetClientService.ClientType type = INetClientService.ClientType.Unknown ) {
-			if ( type == INetClientService.ClientType.Unknown ) type = INetClientService.ClientType.UDP;
+		public INetClientService Add ( IPEndPoint ep, ClientType type = ClientType.Unknown ) {
+			if ( type == ClientType.Unknown ) type = ClientType.UDP;
 			var client = INetClientService.Create ( type, ep );
 			if ( client == null ) throw new NotSupportedException ( $"Client type {type} seems to not be supported by the service factory!" );
 			ClientList.Add ( client );
+			RecvList.Add ( null );
 			if ( Active ) client.Start ();
+			Direct ( new INetClientService.Result () { ResultType = INetClientService.Result.Type.Interrupted } );
+			return client;
 		}
-		public bool RemoveClient ( IPEndPoint ep, INetClientService.ClientType type = INetClientService.ClientType.Unknown ) {
-			if ( type == INetClientService.ClientType.Unknown ) type = INetClientService.ClientType.UDP;
+		public bool Remove ( IPEndPoint ep, ClientType type = ClientType.Unknown ) {
+			if ( type == ClientType.Unknown ) type = ClientType.UDP;
 			int N = ClientList.Count;
 			for ( int i = 0; i < N; i++ ) {
 				if ( ClientList[i].EP != ep ) continue;
 				if ( ClientList[i].ServiceType != type ) continue;
 				ClientList[i].Dispose ();
 				ClientList.RemoveAt ( i );
+				RecvList[i].Dispose ();
+				RecvList.RemoveAt ( i );
+				Direct ( new INetClientService.Result () { ResultType = INetClientService.Result.Type.Interrupted } );
 				return true;
 			}
 			return false;
 		}
-		public INetClientService WaitAny () {
+		public (Task<byte[]> task, INetClientService client) WaitAny () {
 			int N = ClientList.Count;
-			Task[] tasks = new Task[N];
-			for ( int i = 0; i < N; i++ ) tasks[i] = ClientList[i].ActTask;
-			int ID = Task.WaitAny ( tasks );
-			return ClientList[ID];
+			for (int i = 0; i < N; i++ ) {
+				if ( RecvList[i] == null ) RecvList[i] = ClientList[i].RecvAsync ();
+			}
+
+
+
+			List<Task<byte[]>> tasks = new( RecvList ) {
+				Task.Run ( () => {
+					while ( true ) {
+						Signal.WaitOne ();
+						if ( DirectMessage.ResultType == INetClientService.Result.Type.Direct )
+							return DirectMessage.Data;
+					}
+				} )
+			};
+			int ID = Task.WaitAny ( tasks.ToArray () );
+			if ( ID == N ) return (tasks[ID], null);
+			RecvList[ID] = null;
+			return (tasks[ID], ClientList[ID]);
 		}
 		public void Interrupt () { foreach ( var client in ClientList ) client.Stop (); Active = false; }
 		public void Start () { foreach ( var client in ClientList ) client.Start (); Active = true; }
+		public void Direct ( byte[] data ) => Direct ( new INetClientService.Result () { Data = data, ResultType = INetClientService.Result.Type.Direct } );
+		public void Direct ( INetClientService.Result data) {
+			DirectMessage = data;
+			Thread.MemoryBarrier ();
+			Signal.Set ();
+		}
 		public void Dispose () {
 			Active = false;
 			foreach ( var client in ClientList ) client.Dispose ();
+			foreach ( var task in RecvList ) task.Dispose ();
 			ClientList.Clear ();
+			RecvList.Clear ();
 		}
 		public override string ToString () {
 			SBld SB = new SBld ();
@@ -229,5 +267,6 @@ namespace InputResender.Services {
 				SB.AppendLine ( $"  {i} : {ClientList[i]}" );
 			return SB.ToString ();
 		}
+		public void Foreach (Action<INetClientService> act) => ClientList.ForEach ( act );
 	}
 }
