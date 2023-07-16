@@ -24,15 +24,15 @@ namespace InputResender.Services {
 
 		public Task<byte[]> RecvAsync () => Task.Run ( WaitForRecv );
 		public byte[] WaitForRecv () {
-			while ( true ) {
-				ReceiveWaiter.WaitOne ();
+			do {
 				lock ( PacketBuffer ) {
 					if ( PacketBuffer.Count < 1 ) continue;
 					if ( ShouldStop ) return null;
 					ReceiveWaiter.Reset ();
 					return PacketBuffer.Dequeue ();
 				}
-			}
+			} while ( ReceiveWaiter.WaitOne () );
+			return null;
 		}
 		/// <summary>Send data to a given EP</summary>
 		/// <param name="data">Binary data to be sent</param>
@@ -85,6 +85,8 @@ namespace InputResender.Services {
 					ActInternTask = InnerRecv ( prepared );
 				}
 				var ret = ActInternTask.Result;
+				ActInternTask = null;
+				ActTask = RecvTask ( null );
 				switch ( ret.ResultType ) {
 				case Result.Type.Received:
 				case Result.Type.Direct:
@@ -104,9 +106,13 @@ namespace InputResender.Services {
 		}
 
 		public struct Result {
+			public static int MsgCnt = 0;
+			public int MsgID;
 			public enum Type { Received, Interrupted, Closed, Direct, Error }
 			public Type ResultType;
 			public byte[] Data;
+			public Result ( byte[] data, bool isDirect = false ) { Data = data; ResultType = isDirect ? Type.Direct : Type.Received; MsgID = MsgCnt++; }
+			public Result (Type errType) { Data = null; ResultType = errType; MsgID = MsgCnt++; }
 		}
 
 		public enum ClientType { Unknown, UDP }
@@ -137,6 +143,7 @@ namespace InputResender.Services {
 			if ( ActInternTask == null || ActInternTask.IsCompleted ) return;
 			cts.Cancel ();
 			ActInternTask?.Wait ();
+			ActInternTask?.Dispose ();
 			cts.TryReset ();
 		}
 		protected override void InnerDispose () {
@@ -149,20 +156,18 @@ namespace InputResender.Services {
 		protected override Task<Result> InnerRecv ( ManualResetEvent prepared ) {
 			if ( ActInternTask != null && !ActInternTask.IsCompleted ) return ActInternTask;
 			return Task.Run ( async () => {
-				Result ret = new Result ();
 				try {
 					prepared?.Set ();
 					var recvResult = await UdpClient.ReceiveAsync ( cts.Token );
 					if ( recvResult.Buffer != null ) {
-						ret.Data = recvResult.Buffer;
-						ret.ResultType = Result.Type.Received;
+						return new Result ( recvResult.Buffer );
 					}
 				} catch ( Exception e ) {
-					if ( cts.IsCancellationRequested ) ret.ResultType = Result.Type.Closed;
-					else if ( e.Message.Contains ( "WSACancelBlockingCall" ) ) ret.ResultType = Result.Type.Interrupted;
-					else ret.ResultType = Result.Type.Error;
+					if ( cts.IsCancellationRequested ) return new Result ( Result.Type.Closed );
+					else if ( e.Message.Contains ( "WSACancelBlockingCall" ) ) return new Result ( Result.Type.Interrupted );
+					else return new Result ( Result.Type.Error );
 				}
-				return ret;
+				return new Result ( Result.Type.Error );
 			} );
 		}
 
@@ -247,7 +252,7 @@ namespace InputResender.Services {
 		}
 		public void Interrupt () { foreach ( var client in ClientList ) client.Stop (); Active = false; }
 		public void Start () { foreach ( var client in ClientList ) client.Start (); Active = true; }
-		public void Direct ( byte[] data ) => Direct ( new INetClientService.Result () { Data = data, ResultType = INetClientService.Result.Type.Direct } );
+		public void Direct ( byte[] data ) => Direct ( new INetClientService.Result ( data, true ) );
 		public void Direct ( INetClientService.Result data) {
 			DirectMessage = data;
 			Thread.MemoryBarrier ();

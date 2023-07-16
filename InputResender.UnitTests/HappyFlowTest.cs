@@ -31,9 +31,6 @@ namespace InputResender.UnitTests {
 			Sender.DataSigner.Key = Key;
 			Receiver.DataSigner.Key = Key;
 
-			HHookInfo hookInfo = new HHookInfo ( Sender.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
-			Sender.InputReader.SetupHook ( hookInfo, ProcessInput );
-
 			Receiver.Initialize ();
 
 			Sender.PacketSender.Connect ( Receiver.PacketSender.OwnEP ( 0, 0 ) );
@@ -75,10 +72,26 @@ namespace InputResender.UnitTests {
 		}
 
 		[Fact]
+		public void SendRecv () {
+			Init ();
+			var data = new InputData ( Receiver.Fetch<DPacketSender> () ) { Cmnd = InputData.Command.KeyPress, DeviceID = 1, Key = KeyCode.E, X = 1 };
+			var packet = Sender.DataSigner.Encrypt ( data.Serialize (), IV );
+			Sender.PacketSender.Send ( packet );
+			receivedEvent.WaitOne ();
+			ReceivedInput.Should ().HaveCount ( 1 );
+			ReceivedInput[0].Should ().Be ( data );
+		}
+
+		[Fact]
 		public void MainProcess () {
 			Init ();
-			var pressHolder = Sender.InputReader.SimulateKeyInput ( VKChange.KeyDown, KeyCode.E, false );
-			var releaseHolder = Sender.InputReader.SimulateKeyInput ( VKChange.KeyUp, KeyCode.E, false );
+
+			HHookInfo hookInfo = new HHookInfo ( Sender.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
+			var hookIDs = Sender.InputReader.SetupHook ( hookInfo, ProcessInput );
+			foreach (var hookID in hookIDs ) hookInfo.AddHookID ( hookID );
+
+			var pressHolder = Sender.InputReader.SimulateKeyInput ( hookInfo, VKChange.KeyDown, KeyCode.E );
+			var releaseHolder = Sender.InputReader.SimulateKeyInput ( hookInfo, VKChange.KeyUp, KeyCode.E );
 			WaitForInput ( 2 );
 			SentInput.Should ().HaveCount ( 2 );
 			Receiver.PacketSender.Errors.Should ().BeEmpty ();

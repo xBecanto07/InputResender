@@ -31,6 +31,27 @@ namespace Components.InterfaceTests {
 			receiver.Errors.Should ().BeEmpty ();
 		}
 
+		[Fact]
+		public void SendMultiple () {
+			byte[] data = SetupTest ( out var sender, out var receiver );
+			Connect ( sender, receiver );
+			receiver.ReceiveAsync ( SimpleCallback );
+			sender.Send ( data );
+			resetEvent.WaitOne ();
+			sender.Send ( data );
+			resetEvent.WaitOne ();
+			sender.Send ( data );
+			resetEvent.WaitOne ();
+			Disconnect ( sender, receiver );
+
+			var logger = OwnerCore.Fetch ( nameof ( DLogger ) );
+			if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
+
+			long hash = data.CalcHash ();
+			Received.Should ().HaveCount ( 3 ).And.Equal ( hash, hash, hash );
+			receiver.Errors.Should ().BeEmpty ();
+		}
+
 		protected bool SimpleCallback ( byte[] data) {
 			Received.Add (data.CalcHash ());
 			resetEvent.Set ();

@@ -30,6 +30,7 @@ namespace InputResender.ServiceTests {
 			Thread.Sleep ( 10 );
 			recvTask.Status.Should ().Be ( System.Threading.Tasks.TaskStatus.RanToCompletion );
 			recvTask.Result.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
+			testObj.RecvAsync ().Wait ( 25 ).Should ().BeFalse ();
 			testObj.Stop ();
 		}
 		[Fact]
@@ -43,7 +44,39 @@ namespace InputResender.ServiceTests {
 			Thread.Sleep ( 10 );
 			recvTask.Status.Should ().Be ( System.Threading.Tasks.TaskStatus.RanToCompletion );
 			recvTask.Result.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
+			receiver.RecvAsync ().Wait ( 25 ).Should ().BeFalse ();
 			receiver.Stop ();
+		}
+		[Fact]
+		public void SendMultipleDirect () {
+			var packet = PacketData ( PacketSize );
+			var sender = GetTestObject ();
+			var receiver = GetTestObject ();
+			receiver.Start ();
+			for ( int i = 0; i < 6; i++ ) {
+				var recvTask = receiver.RecvAsync ();
+				sender.Send ( packet, receiver.EP );
+				Thread.Sleep ( 10 );
+				recvTask.Status.Should ().Be ( System.Threading.Tasks.TaskStatus.RanToCompletion );
+				recvTask.Result.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
+			}
+			receiver.RecvAsync ().Wait ( 25 ).Should ().BeFalse ();
+			receiver.Stop ();
+		}
+		[Fact]
+		public void SendMultipleViaSocket () {
+			var packet = PacketData ( PacketSize );
+			var testObj = GetTestObject ();
+			testObj.Start ();
+			for (int i = 0; i < 6; i++ ) {
+				var recvTask = testObj.RecvAsync ();
+				testObj.Send ( packet );
+				Thread.Sleep ( 10 );
+				recvTask.Status.Should ().Be ( System.Threading.Tasks.TaskStatus.RanToCompletion );
+				recvTask.Result.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
+			}
+			testObj.RecvAsync ().Wait ( 25 ).Should ().BeFalse ();
+			testObj.Stop ();
 		}
 
 		public byte[] PacketData ( int size ) {

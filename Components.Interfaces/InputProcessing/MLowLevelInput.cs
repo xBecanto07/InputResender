@@ -90,9 +90,9 @@ namespace Components.Interfaces {
 			VKChange pressedState = highLevelData.Pressed >= 1 ? VKChange.KeyDown : VKChange.KeyUp;
 
 			var hooks = highLevelData.HookInfo.HookIDs;
-			if ( hooks.Count < 1 ) throw new KeyNotFoundException ( "No hookID was found, that could fit given high-level data!" );
+			if ( hooks.Count < 1 ) throw new KeyNotFoundException ( "No hookID was found, and so cannot find any context for given high-level data!" );
 
-			var innerData = new HInputData_Mock.IInputStruct_Mock ( (int)highLevelData.HookInfo.HookIDs[0], pressedState, highLevelData.InputCode );
+			var innerData = new HInputData_Mock.IInputStruct_Mock ( (int)hooks[0], pressedState, highLevelData.InputCode );
 			return new HInputData_Mock ( highLevelData.Owner, innerData );
 		}
 

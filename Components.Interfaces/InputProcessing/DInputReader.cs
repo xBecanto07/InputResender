@@ -16,10 +16,9 @@ namespace Components.Interfaces {
 		public abstract ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback );
 		public abstract int ReleaseHook ( HHookInfo hookInfo );
 		public abstract uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture );
-		public HInputEventDataHolder SimulateKeyInput ( VKChange action, KeyCode key, bool allowRecapture, int deviceID = 1 ) {
-			HHookInfo hookInfo = new HHookInfo ( this, deviceID, action );
+		public HInputEventDataHolder SimulateKeyInput ( HHookInfo hookInfo, VKChange action, KeyCode key ) {
 			HInputEventDataHolder ret = new HKeyboardEventDataHolder ( this, hookInfo, (int)key, action == VKChange.KeyDown ? 1 : 0 );
-			SimulateInput ( ret, allowRecapture );
+			SimulateInput ( ret, true );
 			return ret;
 		}
 	}

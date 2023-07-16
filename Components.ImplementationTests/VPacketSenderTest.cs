@@ -6,7 +6,7 @@ using Xunit.Abstractions;
 
 namespace Components.ImplementationTests {
 	public class VPacketSenderTest : DPacketSenderTest<IPEndPoint> {
-		private int Port = VPacketSender.DefPort;
+		static int Port = VPacketSender.DefPort;
 		public VPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 		public override DPacketSender GenerateTestObject () => new VPacketSender ( OwnerCore, Port++ );
 	}
