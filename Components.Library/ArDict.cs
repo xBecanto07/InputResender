@@ -28,7 +28,7 @@ namespace Components.Library {
 		public void Add ( Key key, Val value ) { keys.Add ( key ); vals.Add ( value ); }
 		public void Add ( KeyValuePair<Key, Val> item ) => Add ( item.Key, item.Value );
 		public void Clear () { keys.Clear (); vals.Clear (); }
-		public bool Contains ( KeyValuePair<Key, Val> item ) { int keyID = keys.IndexOf ( item.Key ); return keyID < 0 ? false : vals.Contains ( item.Value ); }
+		public bool Contains ( KeyValuePair<Key, Val> item ) { int keyID = keys.IndexOf ( item.Key ); return keyID < 0 ? false : vals[keyID].Equals ( item.Value ); }
 		public bool ContainsKey ( Key key ) => keys.Contains ( key );
 		public void CopyTo ( KeyValuePair<Key, Val>[] array, int arrayIndex ) {
 			int N = keys.Count;

@@ -1,4 +1,5 @@
 ﻿using Components.Library;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 namespace Components.Interfaces {
@@ -99,7 +100,8 @@ namespace Components.Interfaces {
 		public override HInputEventDataHolder GetHighLevelData ( DInputReader requester, HInputData highLevelData ) {
 			var data = (HInputData_Mock.IInputStruct_Mock)((HInputData_Mock)highLevelData).Data;
 			return new HKeyboardEventDataHolder ( requester, 1, (int)Marshal.ReadIntPtr ( data.VKCode ), data.KeyChange == VKChange.KeyDown ? 1 : 0 );
-
 		}
+
+		public override nint GetMessageExtraInfoPtr () => nint.Zero;
 	}
 }

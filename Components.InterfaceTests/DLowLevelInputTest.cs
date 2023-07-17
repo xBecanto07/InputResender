@@ -5,9 +5,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System;
 using Xunit;
-using System.Runtime.InteropServices;
-using System.Data;
 using Xunit.Abstractions;
+using System.Runtime.InteropServices;
 
 namespace Components.InterfaceTests {
 	public abstract class DLowLevelInputTest<T> : ComponentTestBase<T> where T : DLowLevelInput {

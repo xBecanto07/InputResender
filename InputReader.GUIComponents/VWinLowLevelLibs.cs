@@ -1,9 +1,13 @@
 ﻿using Components.Interfaces;
 using Components.Library;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace InputResender.GUIComponents {
-	public partial class WinLowLevelLibs : DLowLevelInput {
+	public partial class VWinLowLevelLibs : DLowLevelInput {
 		private const int WH_KEYBOARD_LOW_LEVEL = 13;
 		private LowLevelKeyboardProc Callback;
 
@@ -16,11 +20,10 @@ namespace InputResender.GUIComponents {
 			}
 		}
 
-		public WinLowLevelLibs ( CoreBase owner ) : base ( owner ) { }
+		public VWinLowLevelLibs ( CoreBase owner ) : base ( owner ) { }
 
 		public override int ComponentVersion => 1;
 		public override int HookTypeCode => WH_KEYBOARD_LOW_LEVEL;
-
 		public override int GetChangeCode ( VKChange vKChange ) {
 			// Source: https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
 			switch ( vKChange ) {
@@ -44,6 +47,10 @@ namespace InputResender.GUIComponents {
 		}
 		public override HInputData GetLowLevelData ( HInputEventDataHolder highLevelData ) {
 			var keyboardData = new Input.KeyboardInput ();
+			keyboardData.time = (uint)new TimeSpan ( highLevelData.CreationTime.Ticks ).TotalMilliseconds;
+			keyboardData.vkCode = (ushort)highLevelData.InputCode;
+			keyboardData.scanCode = (ushort)highLevelData.InputCode;
+			keyboardData.dwFlags = highLevelData.Pressed >= 1 ? 0u : 0x8u;
 			var inputUnion = new Input.InputUnion ();
 			inputUnion.ki = keyboardData;
 			return new WinLLInputData ( highLevelData.Owner, new Input ( 1, inputUnion ) );
@@ -51,29 +58,41 @@ namespace InputResender.GUIComponents {
 		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => WinLLInputData.NewKeyboardData ( this, (ushort)vkCode, (ushort)(vkCode | vkChngCode), 0, 0, 0 );
 
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
-		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
+		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandleA ( lpModuleName );
 		public override nint SetHookEx ( int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId ) {
 			Callback = lpfn;
-			return SetWindowsHookEx ( idHook, ProcessHook, hMod, dwThreadId );
+			var ret = SetWindowsHookExA ( idHook, ProcessHook, hMod, dwThreadId );
+			if ( ret == (IntPtr)null ) ErrorList.Add ( (nameof ( SetHookEx ), new Win32Exception ()) );
+			return ret;
 		}
-		public override bool UnhookHookEx ( nint hhk ) => UnhookWindowsHookEx ( hhk );
+		public override bool UnhookHookEx ( nint hhk ) {
+			bool ret;
+			if (!(ret = UnhookWindowsHookEx ( hhk ))) ErrorList.Add ( (nameof ( UnhookHookEx ), new Win32Exception ()) );
+			return ret;
+		}
 		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null ) {
 			var inputs = pInputs.Select ( ( input ) => (Input)input.Data ).ToArray ();
-			return SendInput ( nInputs, inputs, inputs.Length );
+			var ret = SendInput ( nInputs, inputs, cbSize );
+			if (ret < nInputs) ErrorList.Add ( (nameof ( SimulateInput ), new Win32Exception ()) );
+			return ret;
 		}
+		public override nint GetMessageExtraInfoPtr () => GetMessageExtraInfo ();
 
-		[LibraryImport ( "user32.dll", SetLastError = true )]
-		public static partial IntPtr SetWindowsHookEx ( int idHook, Func<int, IntPtr, IntPtr, IntPtr> lpfn, IntPtr hMod, uint dwThreadId );
+		[LibraryImport ( "User32.dll", SetLastError = true )]
+		protected static partial IntPtr SetWindowsHookExA ( int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId );
 
-		[LibraryImport ( "user32.dll", SetLastError = true )]
+		[LibraryImport ( "User32.dll", SetLastError = true )]
 		[return: MarshalAs ( UnmanagedType.Bool )]
-		public static partial bool UnhookWindowsHookEx ( IntPtr hhk );
+		protected static partial bool UnhookWindowsHookEx ( IntPtr hhk );
 
-		[LibraryImport ( "user32.dll", SetLastError = true )]
-		public static partial IntPtr CallNextHookEx ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
+		[LibraryImport ( "User32.dll", SetLastError = true )]
+		protected static partial IntPtr CallNextHookEx ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
 
 		[LibraryImport ( "kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16 )]
-		public static partial IntPtr GetModuleHandle ( string lpModuleName );
+		protected static partial IntPtr GetModuleHandleA ( string lpModuleName );
+
+		[DllImport ( "user32.dll" )]
+		private static extern IntPtr GetMessageExtraInfo ();
 
 		[DllImport ( "user32.dll", SetLastError = true )]
 		protected static extern uint SendInput ( uint nInputs, Input[] pInputs, int cbSize );
@@ -82,7 +101,7 @@ namespace InputResender.GUIComponents {
 
 
 	[Flags]
-	public enum KeyEventF {
+	public enum KeyEventF : uint {
 		KeyDown = 0x0000,
 		ExtendedKey = 0x0001,
 		KeyUp = 0x0002,
@@ -95,6 +114,14 @@ namespace InputResender.GUIComponents {
 		Input data;
 
 		public WinLLInputData ( ComponentBase owner, Input newData ) : base ( owner ) { data = newData; }
+		/// <summary>Create new LLInputData for key press</summary>
+		/// <param name="owner">A component that should be set as owner of this dataHolder</param>
+		/// <param name="vkCode">Virtual Key Code<para>Must be 0 when dwFlags = KEYEVENTF_UNICODE</para><seealso href="https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes"/></param>
+		/// <param name="scanCode">Hardware scan code of the key<para>When dwFlags = KEYEVENTF_UNICODE, it is the Unicode value of given character</para></param>
+		/// <param name="dwFlags">Flags of given keystroke.<seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput#members"/></param>
+		/// <param name="time">Timestamp of keystroke. When 0, it is set by system.</param>
+		/// <param name="dwExtraInfo">Some extra info</param>
+		/// <returns></returns>
 		public static WinLLInputData NewKeyboardData (ComponentBase owner, ushort vkCode, ushort scanCode, uint dwFlags, uint time, IntPtr dwExtraInfo ) {
 			Input.KeyboardInput data = new () {
 				vkCode = vkCode,
@@ -126,16 +153,38 @@ namespace InputResender.GUIComponents {
 		public int Type;
 		public InputUnion Data;
 
+		public override string ToString () {
+			switch( Type ) {
+			case 0: return $"Mouse input ({Data.mi})";
+			case 1: return $"Keyboard input ({Data.ki})";
+			case 2: return $"Hardware input ({Data.hi})";
+			default: return "Unknown input type";
+			}
+		}
+		public override bool Equals ( [NotNullWhen ( true )] object obj ) {
+			if ( obj == null ) return false;
+			if ( obj.GetType () != GetType () ) return false;
+			var item = (Input)obj;
+			if ( item.Type != Type ) return false;
+			switch( Type ) {
+			case 0: return item.Data.mi.Equals ( Data.mi );
+			case 1: return item.Data.ki.Equals ( Data.ki );
+			case 2: return item.Data.hi.Equals ( Data.hi );
+			default: return false;
+			}
+		}
+
 		public const int TypeKEY = 1, TypeMOUSE = 0, TypeHARDWARE = 2;
 
 		public int SizeOf { get {
+				return Marshal.SizeOf ( typeof ( Input ) );/*
 				int si = sizeof ( int );
 				switch ( Type ) {
 				case 0: return si + Marshal.SizeOf ( Data.mi );
 				case 1: return si + Marshal.SizeOf ( Data.ki );
 				case 2: return si + Marshal.SizeOf ( Data.hi );
 				}
-				return 0;
+				return 0;*/
 			} }
 
 		public Input (int type, InputUnion data) { Type = type; Data = data; }
@@ -159,6 +208,21 @@ namespace InputResender.GUIComponents {
 
 			const uint keyDownID = (uint)(KeyEventF.KeyDown | KeyEventF.Scancode);
 			const uint keyUpID = (uint)(KeyEventF.KeyUp | KeyEventF.Scancode);
+
+			public KeyboardInput (nint ptr ) {
+				vkCode = (ushort)Marshal.ReadInt32 ( ptr );
+				scanCode = (ushort)Marshal.ReadInt32 ( ptr, 4 );
+				dwFlags = (uint)Marshal.ReadInt32 ( ptr, 8 );
+				time = (uint)Marshal.ReadInt32 ( ptr, 12 );
+				dwExtraInfo = Marshal.ReadIntPtr ( ptr, 16 );
+			}
+			public override string ToString () => $"wVK:{(KeyCode)vkCode}, wScan:{(KeyCode)scanCode}, dwFlags:{dwFlags}, time:{time}, dwEI *{dwExtraInfo}";
+			public override bool Equals ( [NotNullWhen ( true )] object obj ) {
+				if ( obj == null ) return false;
+				if (!(obj is  KeyboardInput )) return false;
+				var ki = (KeyboardInput)obj;
+				return (ki.vkCode == vkCode) & (ki.scanCode == scanCode) & (ki.dwFlags == dwFlags);
+			}
 		}
 
 		[Flags] // Copied from: http://pinvoke.net/default.aspx/Structures/KBDLLHOOKSTRUCT.html
@@ -178,15 +242,19 @@ namespace InputResender.GUIComponents {
 			public uint dwFlags;
 			public uint time;
 			public IntPtr dwExtraInfo;
+
+			public override string ToString () => $"d:{dx}:{dy}, mD:{mouseData}, dwFlags:{dwFlags}, time:{time}, dwEI *{dwExtraInfo}";
 		}
 		/// <summary>Obtained info about keyboard event during a hook.</summary>
 		[StructLayout ( LayoutKind.Sequential )]
 		public class KeyboardInfo {
 			public uint vkCode;
 			public uint scanCode;
-			public KeyHookFlags flags;
+			public uint flags;
 			public uint time;
 			public IntPtr dwExtraInfo;
+
+			public override string ToString () => $"wVK:{(KeyCode)vkCode}, wScan:{(KeyCode)scanCode}, dwFlags:{flags}, time:{time}, dwEI *{dwExtraInfo}";
 		}
 
 		/// <summary>Event info, is part of the 'InputUnion', used when simulating keypress.</summary>
@@ -195,6 +263,8 @@ namespace InputResender.GUIComponents {
 			public uint uMsg;
 			public ushort wParamL;
 			public ushort wParamH;
+
+			public override string ToString () => $"msg:{uMsg}, L:{wParamL}, H:{wParamH}";
 		}
 
 		public IInputLLValues Clone () => new Input ( Type, Data );

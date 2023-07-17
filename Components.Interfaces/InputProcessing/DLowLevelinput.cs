@@ -1,4 +1,5 @@
 ﻿using Components.Library;
+using System.ComponentModel;
 
 namespace Components.Interfaces {
 	public abstract class DLowLevelInput : ComponentBase<CoreBase> {
@@ -22,7 +23,10 @@ namespace Components.Interfaces {
 				(nameof(GetHighLevelData), typeof(HInputEventDataHolder)),
 				(nameof(GetChangeCode), typeof(int)),
 				(nameof(GetChangeType), typeof(VKChange)),
-				(nameof(HookTypeCode), typeof(int))
+				(nameof(HookTypeCode), typeof(int)),
+				(nameof(ErrorList), typeof(Win32Exception)),
+				(nameof(PrintErrors), typeof(void)),
+				(nameof(GetMessageExtraInfoPtr), typeof(nint))
 			};
 
 		/// <summary></summary>
@@ -54,5 +58,14 @@ namespace Components.Interfaces {
 		public abstract int GetChangeCode ( VKChange vkChange );
 		public abstract VKChange GetChangeType ( int vkCode );
 		public abstract int HookTypeCode { get; }
+		public List<(string, Win32Exception)> ErrorList { get; } = new List<(string, Win32Exception)> ();
+		public void PrintErrors (Action<string> outAct) {
+			foreach ( var error in ErrorList ) {
+				outAct ( $"Error during {error.Item1}: {error.Item2.ErrorCode}" );
+				outAct ( error.ToString () );
+			}
+			ErrorList.Clear ();
+		}
+		public abstract nint GetMessageExtraInfoPtr ();
 	}
 }

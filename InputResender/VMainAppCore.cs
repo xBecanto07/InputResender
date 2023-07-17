@@ -6,7 +6,7 @@ namespace Components.Implementations {
 	public class VMainAppCore : DMainAppCore {
 		public VMainAppCore ( CompSelect componentSelector = CompSelect.All ) : base (
 			( core ) => new MEventVector ( core ),
-			( core ) => new WinLowLevelLibs ( core ),
+			( core ) => new VWinLowLevelLibs ( core ),
 			( core ) => new VInputReader_KeyboardHook ( core ),
 			( core ) => new VInputParser ( core ),
 			( core ) => new VInputProcessor ( core ),

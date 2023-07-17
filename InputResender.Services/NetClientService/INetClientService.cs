@@ -158,7 +158,8 @@ namespace InputResender.Services {
 			return Task.Run ( async () => {
 				try {
 					prepared?.Set ();
-					var recvResult = await UdpClient.ReceiveAsync ( cts.Token );
+					var recvResult = UdpClient.ReceiveAsync ( cts.Token ).GetAwaiter ().GetResult ();
+					
 					if ( recvResult.Buffer != null ) {
 						return new Result ( recvResult.Buffer );
 					}
