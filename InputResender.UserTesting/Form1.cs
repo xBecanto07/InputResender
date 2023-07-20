@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using SBld = System.Text.StringBuilder;
 
@@ -17,7 +16,6 @@ namespace InputResender.UserTesting {
 			inputLines = new Queue<string> ();
 			inputWaiter = new AutoResetEvent ( false );
 			InitializeComponent ();
-			ConsoleIN.Text = "";
 		}
 
 
@@ -30,22 +28,26 @@ namespace InputResender.UserTesting {
 		public void Backspace ( int N = 1 ) { lines[0] = lines[0].Substring ( 0, lines[0].Length - N ); UpdateText (); }
 		public void DeleteLine () { lines.RemoveAt ( 0 ); UpdateText (); }
 		public void ClearInput () { inputLines.Clear (); newText = ""; Invoke ( () => ConsoleIN.Text = "" ); }
-		public string ReadLine () => inputLines.Count == 0 ? inputLines.Dequeue () : null;
-		public char? Read () {
-			if ( ConsoleIN.Text.Length == 0 ) return null;
+		public string ReadLine () {
+			while ( inputLines.Count == 0 ) inputWaiter.WaitOne ();
+			return inputLines.Dequeue ();
+		}
+		public char Read () {
+			while ( ConsoleIN.Text.Length == 0 ) inputWaiter.WaitOne ();
 			string text = ConsoleIN.Text;
 			char c = text[0];
-			ConsoleIN.Text = text[1..];
+			Invoke ( () => ConsoleIN.Text = text[1..] );
 			return c;
 		}
 
 		public void UpdateText () {
+			if ( !Program.Initialized ) return;
 			SBld SB = new SBld ();
 			for ( int i = lines.Count - 1; i >= 0; i-- ) {
 				SB.AppendLine ( lines[i] );
 			}
 
-			ConsoleOUT.Text = SB.ToString ();
+			Invoke ( () => ConsoleOUT.Text = SB.ToString () );
 		}
 
 		private void ConsoleOK_Click ( object sender, System.EventArgs e ) {
@@ -69,7 +71,17 @@ namespace InputResender.UserTesting {
 
 		private void timer1_Tick ( object sender, System.EventArgs e ) {
 			UserTestApp.Continue ();
-			timer1.Stop ();
+		}
+
+		private void ActiveTask_CheckedChanged ( object sender, System.EventArgs e ) {
+			UserTestApp.Continue ();
+		}
+
+		private void Form1_Activated ( object sender, System.EventArgs e ) {
+			ConsoleIN.Text = "";
+			Program.Initialized = true;
+			Thread.MemoryBarrier ();
+			UserTestApp.TaskSignaler.Set ();
 		}
 	}
 }

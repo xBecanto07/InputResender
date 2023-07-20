@@ -2,66 +2,93 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using TestInfo = System.ValueTuple<string, bool, string>;
 using SBld = System.Text.StringBuilder;
 
 namespace InputResender.UserTesting {
 	public abstract class UserTestBase : IDisposable {
 		[Flags]
 		public enum ClientState { Unknown = 0, Master = 1, Slave = 2 }
+		public struct ResultInfo {
+			public string Name;
+			public bool Passed;
+			public string Msg;
+
+			public ResultInfo ( string name, bool pass, string msg ) { Name = name; Passed = pass; Msg = msg; }
+		}
 
 		protected SBld SB;
+		public ResultInfo Result;
+		public static ResultInfo[] TestResults { get; private set; } = null;
 
 		public UserTestBase (SBld sb) {
 			SB = sb ?? new SBld ();
 		}
 
-		public static IEnumerable<TestInfo[]> RunAll () {
+		public static IEnumerable<Action> RunAll () {
+			TestResults = null;
 			Type[] childs = FindTestClasses ();
-			List<TestInfo> ret = new List<TestInfo> ();
+			List<ResultInfo> ret = new List<ResultInfo> ();
 
 			foreach ( var classInfo in childs ) {
-				var supportedStates = classInfo.GetProperty ( "SupportedState", BindingFlags.Static | BindingFlags.Public );
-				if ( supportedStates != null && supportedStates.CanRead && supportedStates.PropertyType == typeof ( ClientState ) )
-					if ( ((ClientState)supportedStates.GetValue ( null, null ) & UserTestApp.ClientState) == 0 ) continue;
+				if ( !IsUsableTestClass ( classInfo ) ) continue;
 
 				var constructor = classInfo.GetConstructor ( new[] { typeof ( SBld ) } );
 				if ( constructor == null ) {
-					ret.Add ( (classInfo.Name, false, $"No parameter-less constructor found for type {classInfo.Name}!") );
+					ret.Add ( new ResultInfo (classInfo.Name, false, $"No parameter-less constructor found for type {classInfo.Name}!") );
 					continue;
 				}
 
 				var testMethods = classInfo.GetMethods ();
 
 				foreach ( var testMethod in testMethods ) {
-					if ( testMethod.GetParameters ().Length != 0 ) continue;
-					if ( testMethod.ReturnParameter.ParameterType != typeof ( IEnumerable<bool?> ) ) continue;
+					string testName = IsUsableTestMethod ( testMethod );
+					if ( testName == null ) continue;
 
-					SBld SB = new SBld ();
-					bool res = false;
-					UserTestBase testClass = null;
+					var testClass = SetupTestEnv ( constructor, testName, out SBld SB );
 
-					Program.ClearInput ();
-					if ( UserTestApp.LogLevel >= 2 ) Program.WriteLine ( $"Starting test '{classInfo.Name}.{testMethod.Name}' ..." );
-					testClass = (UserTestBase)constructor.Invoke ( new[] { SB } );
-					if ( UserTestApp.LogLevel >= 3 ) Program.WriteLine ( $"Test initialized, starting execution." );
-					var resEnu = ((IEnumerable<bool?>)testMethod.Invoke ( testClass, null ));
-					foreach ( var resSub in resEnu ) {
-						if ( resSub == null ) yield return null;
-						else { res = resSub.Value; break; }
-					}
-					testClass.Dispose ();
-					testClass = null;
-					if ( UserTestApp.LogLevel >= 4 ) Program.WriteLine ( $"Test execution finished" );
+					var resEnu = (IEnumerable<Action>)testMethod.Invoke ( testClass, null );
+					foreach ( var testSubTask in resEnu ) yield return testSubTask;
+					
+					var result = testClass.Result;
+					CleanTestEnv ( testClass );
 
-					if ( testClass != null ) testClass.Dispose ();
-					Program.ClearInput ();
-
-					ret.Add ( ($"{classInfo.Name}.{testMethod.Name}", res, SB.ToString ()) );
+					result.Msg = SB.ToString ();
+					ret.Add ( result );
 				}
 			}
-			yield return ret.ToArray ();
+			TestResults = ret.ToArray ();
 			yield break;
+		}
+
+		private static bool IsUsableTestClass (Type classInfo ) {
+			var supportedStates = classInfo.GetProperty ( "SupportedState", BindingFlags.Static | BindingFlags.Public );
+			if ( supportedStates != null && supportedStates.CanRead && supportedStates.PropertyType == typeof ( ClientState ) )
+				if ( ((ClientState)supportedStates.GetValue ( null, null ) & UserTestApp.ClientState) == 0 ) return false;
+			return true;
+		}
+		private static string IsUsableTestMethod (MethodInfo method) {
+			if ( method.GetParameters ().Length != 0 ) return null;
+			if ( method.ReturnParameter.ParameterType != typeof ( IEnumerable<Action> ) ) return null;
+
+			return $"{method.DeclaringType.Name}.{method.Name}";
+		}
+
+		private static UserTestBase SetupTestEnv (ConstructorInfo constructor, string testName, out SBld SB) {
+			SB = new SBld ();
+			Program.ClearInput ();
+			UserTestApp.Log ( 2, $"Starting test '{testName}' ..." );
+			var ret = (UserTestBase)constructor.Invoke ( new[] { SB } );
+			UserTestApp.Log ( 3, $"Test initialized, starting execution." );
+			ret.Result.Name = testName;
+			return ret;
+		}
+		private static void CleanTestEnv (UserTestBase testClass) {
+			testClass.Dispose ();
+			testClass = null;
+			UserTestApp.Log ( 4, $"Test execution finished" );
+
+			if ( testClass != null ) testClass.Dispose ();
+			Program.ClearInput ();
 		}
 
 		// Dispose pattern

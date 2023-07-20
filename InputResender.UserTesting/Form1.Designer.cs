@@ -28,6 +28,7 @@
 			ConsoleIN = new System.Windows.Forms.TextBox ();
 			ConsoleOK = new System.Windows.Forms.Button ();
 			timer1 = new System.Windows.Forms.Timer ( components );
+			ActiveTask = new System.Windows.Forms.CheckBox ();
 			SuspendLayout ();
 			// 
 			// ConsoleOUT
@@ -51,14 +52,14 @@
 			ConsoleIN.ForeColor = System.Drawing.Color.Snow;
 			ConsoleIN.Location = new System.Drawing.Point ( 12, 444 );
 			ConsoleIN.Name = "ConsoleIN";
-			ConsoleIN.Size = new System.Drawing.Size ( 695, 22 );
+			ConsoleIN.Size = new System.Drawing.Size ( 530, 22 );
 			ConsoleIN.TabIndex = 1;
 			ConsoleIN.Text = "Input test";
 			ConsoleIN.TextChanged += ConsoleIN_TextChanged;
 			// 
 			// ConsoleOK
 			// 
-			ConsoleOK.Location = new System.Drawing.Point ( 713, 444 );
+			ConsoleOK.Location = new System.Drawing.Point ( 548, 443 );
 			ConsoleOK.Name = "ConsoleOK";
 			ConsoleOK.Size = new System.Drawing.Size ( 75, 23 );
 			ConsoleOK.TabIndex = 2;
@@ -69,18 +70,32 @@
 			// 
 			// timer1
 			// 
+			timer1.Enabled = true;
 			timer1.Tick += timer1_Tick;
+			// 
+			// ActiveTask
+			// 
+			ActiveTask.AutoSize = true;
+			ActiveTask.Location = new System.Drawing.Point ( 695, 447 );
+			ActiveTask.Name = "ActiveTask";
+			ActiveTask.Size = new System.Drawing.Size ( 84, 19 );
+			ActiveTask.TabIndex = 3;
+			ActiveTask.Text = "Active Task";
+			ActiveTask.UseVisualStyleBackColor = true;
+			ActiveTask.CheckedChanged += ActiveTask_CheckedChanged;
 			// 
 			// Form1
 			// 
 			AutoScaleDimensions = new System.Drawing.SizeF ( 7F, 15F );
 			AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			ClientSize = new System.Drawing.Size ( 800, 477 );
+			ClientSize = new System.Drawing.Size ( 800, 475 );
+			Controls.Add ( ActiveTask );
 			Controls.Add ( ConsoleOK );
 			Controls.Add ( ConsoleIN );
 			Controls.Add ( ConsoleOUT );
 			Name = "Form1";
 			Text = "Form1";
+			Activated += Form1_Activated;
 			Load += Form1_Load;
 			ResumeLayout ( false );
 			PerformLayout ();
@@ -91,5 +106,6 @@
 		private System.Windows.Forms.Button ConsoleOK;
 		private System.Windows.Forms.TextBox ConsoleOUT;
 		public System.Windows.Forms.Timer timer1;
+		public System.Windows.Forms.CheckBox ActiveTask;
 	}
 }

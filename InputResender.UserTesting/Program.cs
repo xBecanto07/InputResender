@@ -1,11 +1,13 @@
 using System.Windows.Forms;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace InputResender.UserTesting {
 	public static class Program {
 		public static Form1 MainForm;
 		public static List<string> Inputs = new List<string> ();
+		public static bool Initialized = false;
 
 		/// <summary></summary>
 		[STAThread]
@@ -23,11 +25,18 @@ namespace InputResender.UserTesting {
 		public static void DeleteLine () => MainForm.DeleteLine ();
 		public static void ClearInput () => MainForm.ClearInput ();
 		public static string ReadLine () => MainForm.ReadLine ();
-		public static char? Read () => MainForm.Read ();
+		public static char Read () => MainForm.Read ();
 		public static void UpdateText () => MainForm.UpdateText ();
-		public static void WaitTime (int ms) {
+		public static void WaitTime ( int ms ) {
 			MainForm.timer1.Interval = ms;
 			MainForm.timer1.Start ();
+		}
+
+		public static void SendSignal ( bool? state = null ) {
+			if ( !Initialized ) return;
+			MainForm.Invoke ( () => {
+				MainForm.ActiveTask.Checked = state ?? !MainForm.ActiveTask.Checked;
+			} );
 		}
 	}
 }

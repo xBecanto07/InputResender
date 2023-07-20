@@ -23,15 +23,16 @@ namespace InputResender.UserTesting {
 			StartHook ( Callback );
 		}
 
-		public IEnumerable<bool?> MainTest () {
+		public IEnumerable<Action> MainTest () {
 			Program.WriteLine ( "Press k ..." );
-			for ( float i = 0; i < 10; i += 0.1f ) {
-				Program.WaitTime ( 100 );
-				while ( Program.MainForm.timer1.Enabled ) yield return null;
-				var ret = waiter.WaitOne ( 1 );
-				if ( ret ) yield return true;
-			}
-			yield return false;
+			yield return () => {
+				var ret = waiter.WaitOne ( 10000 );
+				if ( ret ) {
+					SB.AppendLine ( $"Correct press detecting after {messages.Count} messages" );
+					Result.Passed = true;
+				}
+			};
+			yield break;
 		}
 
 		protected override void Dispose ( bool disposing ) {

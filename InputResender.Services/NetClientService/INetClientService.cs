@@ -155,7 +155,7 @@ namespace InputResender.Services {
 		}
 		protected override Task<Result> InnerRecv ( ManualResetEvent prepared ) {
 			if ( ActInternTask != null && !ActInternTask.IsCompleted ) return ActInternTask;
-			return Task.Run ( async () => {
+			return Task.Run ( () => {
 				try {
 					prepared?.Set ();
 					var recvResult = UdpClient.ReceiveAsync ( cts.Token ).GetAwaiter ().GetResult ();
