@@ -1,26 +1,31 @@
 ﻿using Components.Interfaces;
 using Components.Library;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace InputResender.GUIComponents {
-	public partial class VWinLowLevelLibs : DLowLevelInput {
+	public class VWinLowLevelLibs : DLowLevelInput {
 		private const int WH_KEYBOARD_LOW_LEVEL = 13;
 		private LowLevelKeyboardProc Callback;
+		private static VWinLowLevelLibs mainInstance;
+		public static List<(int, VKChange, KeyCode, Input.KeyboardInput)> EventList = new List<(int, VKChange, KeyCode, Input.KeyboardInput)> ();
+		public static LowLevelKeyboardProc internalCallback = ProcessHook;
 
-		private nint ProcessHook ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
+		private static nint ProcessHook ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
+			Debugger.Launch ();
+			Debugger.Break ();
+			EventList.Add ( ( nCode, (VKChange)vkChngCode, (KeyCode)vkCode, new Input.KeyboardInput ( vkCode )) );
 			//if ( nCode >= 0 ) Callback ( (Keys)KeyCode, KeyCode );
 			if ( nCode >= 0 ) {
-				return Callback ( nCode, vkChngCode, vkCode );
+				return mainInstance.Callback ( nCode, vkChngCode, vkCode );
 			} else {
-				return CallNextHook ( 0, nCode, vkChngCode, vkCode );
+				return mainInstance.CallNextHook ( 0, nCode, vkChngCode, vkCode );
 			}
 		}
 
-		public VWinLowLevelLibs ( CoreBase owner ) : base ( owner ) { }
+		public VWinLowLevelLibs ( CoreBase owner ) : base ( owner ) { mainInstance = this; }
 
 		public override int ComponentVersion => 1;
 		public override int HookTypeCode => WH_KEYBOARD_LOW_LEVEL;
@@ -58,10 +63,10 @@ namespace InputResender.GUIComponents {
 		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => WinLLInputData.NewKeyboardData ( this, (ushort)vkCode, (ushort)(vkCode | vkChngCode), 0, 0, 0 );
 
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
-		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandleA ( lpModuleName );
+		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
 		public override nint SetHookEx ( int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId ) {
 			Callback = lpfn;
-			var ret = SetWindowsHookExA ( idHook, ProcessHook, hMod, dwThreadId );
+			var ret = SetWindowsHookEx ( idHook, internalCallback, hMod, dwThreadId );
 			if ( ret == (IntPtr)null ) ErrorList.Add ( (nameof ( SetHookEx ), new Win32Exception ()) );
 			return ret;
 		}
@@ -78,23 +83,23 @@ namespace InputResender.GUIComponents {
 		}
 		public override nint GetMessageExtraInfoPtr () => GetMessageExtraInfo ();
 
-		[LibraryImport ( "User32.dll", SetLastError = true )]
-		protected static partial IntPtr SetWindowsHookExA ( int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId );
+		[DllImport ( "User32.dll", CharSet = CharSet.Auto, SetLastError = true )]
+		protected static extern IntPtr SetWindowsHookEx ( int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId );
 
-		[LibraryImport ( "User32.dll", SetLastError = true )]
+		[DllImport ( "User32.dll", CharSet = CharSet.Auto, SetLastError = true )]
 		[return: MarshalAs ( UnmanagedType.Bool )]
-		protected static partial bool UnhookWindowsHookEx ( IntPtr hhk );
+		protected static extern bool UnhookWindowsHookEx ( IntPtr hhk );
 
-		[LibraryImport ( "User32.dll", SetLastError = true )]
-		protected static partial IntPtr CallNextHookEx ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
+		[DllImport ( "User32.dll", CharSet = CharSet.Auto, SetLastError = true )]
+		protected static extern IntPtr CallNextHookEx ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
 
-		[LibraryImport ( "kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16 )]
-		protected static partial IntPtr GetModuleHandleA ( string lpModuleName );
+		[DllImport ( "kernel32.dll", CharSet = CharSet.Auto, SetLastError = true )]
+		protected static extern IntPtr GetModuleHandle ( string lpModuleName );
 
 		[DllImport ( "user32.dll" )]
 		private static extern IntPtr GetMessageExtraInfo ();
 
-		[DllImport ( "user32.dll", SetLastError = true )]
+		[DllImport ( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
 		protected static extern uint SendInput ( uint nInputs, Input[] pInputs, int cbSize );
 	}
 

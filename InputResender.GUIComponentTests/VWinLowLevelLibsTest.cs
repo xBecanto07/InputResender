@@ -94,7 +94,7 @@ namespace InputResender.GUIComponentTests {
 
 		public nint SetupHook () {
 			for ( int i = 0; i < 3; i++ ) {
-				nint hookID = -1;
+				nint hookID = 0;
 				using ( Process curProcess = Process.GetCurrentProcess () )
 				using ( ProcessModule curModule = curProcess.MainModule ) {
 
@@ -107,7 +107,7 @@ namespace InputResender.GUIComponentTests {
 				if ( hookID != (IntPtr)null ) return hookID;
 			}
 			Assert.Fail ( "SetHookEx should not fail" );
-			return -1;
+			return 0;
 		}
 
 		public WinLLInputData GenerateInputData () => WinLLInputData.NewKeyboardData ( TestObject, (ushort)KeyCode.E, (ushort)KeyCode.E, 0, 123456, TestObject.GetMessageExtraInfoPtr () );
