@@ -51,8 +51,9 @@
 			ConsoleIN.Font = new System.Drawing.Font ( "Lucida Console", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
 			ConsoleIN.ForeColor = System.Drawing.Color.Snow;
 			ConsoleIN.Location = new System.Drawing.Point ( 12, 444 );
+			ConsoleIN.Multiline = true;
 			ConsoleIN.Name = "ConsoleIN";
-			ConsoleIN.Size = new System.Drawing.Size ( 530, 22 );
+			ConsoleIN.Size = new System.Drawing.Size ( 530, 23 );
 			ConsoleIN.TabIndex = 1;
 			ConsoleIN.Text = "Input test";
 			ConsoleIN.TextChanged += ConsoleIN_TextChanged;

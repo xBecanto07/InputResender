@@ -58,8 +58,8 @@ public static class UserTestApp {
 
 	private static void FinishTest () {
 		Program.WriteLine ();
-		Program.WriteLine ( "To close this window, press any key ..." );
-		Program.Read ();
+		Program.WriteLine ( "To close this window, press Enter ..." );
+		Program.ReadLine ();
 		Program.Initialized = false;
 		Application.Exit ();
 	}

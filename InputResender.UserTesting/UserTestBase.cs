@@ -19,6 +19,7 @@ namespace InputResender.UserTesting {
 		protected SBld SB;
 		public ResultInfo Result;
 		public static ResultInfo[] TestResults { get; private set; } = null;
+		protected char? ReservedChar;
 
 		public UserTestBase (SBld sb) {
 			SB = sb ?? new SBld ();
@@ -80,6 +81,7 @@ namespace InputResender.UserTesting {
 			var ret = (UserTestBase)constructor.Invoke ( new[] { SB } );
 			UserTestApp.Log ( 3, $"Test initialized, starting execution." );
 			ret.Result.Name = testName;
+			ret.Result.Passed = false;
 			return ret;
 		}
 		private static void CleanTestEnv (UserTestBase testClass) {
@@ -89,12 +91,32 @@ namespace InputResender.UserTesting {
 
 			if ( testClass != null ) testClass.Dispose ();
 			Program.ClearInput ();
+			Program.WriteLine ();
 		}
 
 		// Dispose pattern
 		~UserTestBase () => Dispose ( false );
 		public void Dispose () => Dispose ( true );
 		protected abstract void Dispose ( bool disposing );
+
+		protected void ReserveChar ( string accepted ) {
+			char C = '\0';
+			while (!accepted.Contains(C))
+				C = Program.Read ();
+			ReservedChar = C;
+		}
+		protected bool ShouldCancel () {
+			char C;
+			if ( ReservedChar == null ) {
+				C = Program.Read ( false );
+				if ( C != '\0' ) throw new DataMisalignedException ( "Cannot access character before it's registration!" );
+				else ReservedChar = C;
+			}
+			C = ReservedChar.Value;
+			if ( C != 'e' ) return false;
+			SB.AppendLine ( "Canceling the test." );
+			return true;
+		}
 
 		private static Type[] FindTestClasses () {
 			List<Type> objects = new List<Type> ();

@@ -14,8 +14,6 @@ namespace InputResender.GUIComponents {
 		public static LowLevelKeyboardProc internalCallback = ProcessHook;
 
 		private static nint ProcessHook ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
-			Debugger.Launch ();
-			Debugger.Break ();
 			EventList.Add ( ( nCode, (VKChange)vkChngCode, (KeyCode)vkCode, new Input.KeyboardInput ( vkCode )) );
 			//if ( nCode >= 0 ) Callback ( (Keys)KeyCode, KeyCode );
 			if ( nCode >= 0 ) {

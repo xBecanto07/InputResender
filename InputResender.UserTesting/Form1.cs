@@ -28,12 +28,14 @@ namespace InputResender.UserTesting {
 		public void Backspace ( int N = 1 ) { lines[0] = lines[0].Substring ( 0, lines[0].Length - N ); UpdateText (); }
 		public void DeleteLine () { lines.RemoveAt ( 0 ); UpdateText (); }
 		public void ClearInput () { inputLines.Clear (); newText = ""; Invoke ( () => ConsoleIN.Text = "" ); }
-		public string ReadLine () {
+		public string ReadLine (bool blocking = true ) {
+			if ( !blocking ) return inputLines.Count > 0 ? inputLines.Dequeue () : null;
 			while ( inputLines.Count == 0 ) inputWaiter.WaitOne ();
 			return inputLines.Dequeue ();
 		}
-		public char Read () {
-			while ( ConsoleIN.Text.Length == 0 ) inputWaiter.WaitOne ();
+		public char Read (bool blocking = true ) {
+			if ( blocking ) while ( ConsoleIN.Text.Length == 0 ) inputWaiter.WaitOne ();
+			else if ( ConsoleIN.Text.Length == 0 ) return '\0';
 			string text = ConsoleIN.Text;
 			char c = text[0];
 			Invoke ( () => ConsoleIN.Text = text[1..] );

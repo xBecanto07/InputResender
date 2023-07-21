@@ -1,7 +1,6 @@
 using System.Windows.Forms;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace InputResender.UserTesting {
 	public static class Program {
@@ -24,8 +23,8 @@ namespace InputResender.UserTesting {
 		public static void Backspace ( int N = 1 ) => MainForm.Backspace ( N );
 		public static void DeleteLine () => MainForm.DeleteLine ();
 		public static void ClearInput () => MainForm.ClearInput ();
-		public static string ReadLine () => MainForm.ReadLine ();
-		public static char Read () => MainForm.Read ();
+		public static string ReadLine ( bool blocking = true ) => MainForm.ReadLine ( blocking );
+		public static char Read ( bool blocking = true ) => MainForm.Read ( blocking );
 		public static void UpdateText () => MainForm.UpdateText ();
 		public static void WaitTime ( int ms ) {
 			MainForm.timer1.Interval = ms;
