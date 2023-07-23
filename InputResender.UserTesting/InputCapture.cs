@@ -16,11 +16,10 @@ namespace InputResender.UserTesting {
 		readonly DLowLevelInput LLInput;
 		nint hookID;
 
-		public InputCapture ( DLowLevelInput llInput, nint _hookID ) {
+		public InputCapture ( DLowLevelInput llInput ) {
 			waiter = new AutoResetEvent ( false );
 			messages = new List<InputInfo> ();
 			LLInput = llInput;
-			hookID = _hookID;
 		}
 
 		public struct InputInfo {
@@ -87,13 +86,14 @@ namespace InputResender.UserTesting {
 
 		public void StartHook (Action<string> errLog) {
 			var moduleHandle = LLInput.GetModuleHandleID ( "user32.dll" );
-			hookID = LLInput.SetHookEx ( LLInput.HookTypeCode, Callback, moduleHandle, 0 );
+			hookID = LLInput.SetHookEx ( Callback );
 			if ( hookID == 0 ) {
 				LLInput.PrintErrors ( ( ss ) => errLog ( ss ) );
 				throw new ApplicationException ( $"Error while setting up a hook!" );
 			}
 		}
 		public void ReleaseHook () {
+			if ( hookID == 0 ) return;
 			LLInput.UnhookHookEx ( hookID );
 			hookID = 0;
 		}

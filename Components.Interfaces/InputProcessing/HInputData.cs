@@ -1,5 +1,6 @@
 ﻿using Components.Library;
 using System.Runtime.InteropServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Components.Interfaces {
 	public abstract class HInputEventDataHolder : DataHolderBase {
@@ -44,9 +45,19 @@ namespace Components.Interfaces {
 		protected HInputData ( ComponentBase owner ) : base ( owner ) {
 		}
 
+		public abstract int DeviceID { get; protected set; }
+		public bool IsPressed { get => Pressed == VKChange.KeyDown; }
+		public abstract VKChange Pressed { get; protected set; }
 		public abstract IInputLLValues Data { get; protected set; }
 		public abstract int SizeOf { get; }
 		public abstract void UpdateByHook (DLowLevelInput hookObj, nint hookID);
+
+		public override bool Equals ( object obj ) {
+			if ( obj == null ) return false;
+			if ( obj.GetType () != GetType () ) return false;
+			var item = (HInputData)obj;
+			return (Pressed == item.Pressed) & (SizeOf == item.SizeOf) & (DeviceID == item.DeviceID) & (DeviceID == item.DeviceID);
+		}
 	}
 
 	public interface IInputLLValues {
@@ -57,6 +68,7 @@ namespace Components.Interfaces {
 
 	public class HInputData_Mock : HInputData {
 		IInputStruct_Mock data;
+		int deviceID = 1;
 
 		public HInputData_Mock ( ComponentBase owner, IInputStruct_Mock values ) : base ( owner ) => data = values;
 		public HInputData_Mock ( ComponentBase owner, int hookID, VKChange keyChange, IntPtr vkCode ) : base ( owner ) => data = new IInputStruct_Mock ( hookID, keyChange, vkCode );
@@ -67,6 +79,8 @@ namespace Components.Interfaces {
 		}
 
 		public override int SizeOf => data.SizeOf;
+		public override int DeviceID { get => deviceID; protected set => deviceID = value; }
+		public override VKChange Pressed { get => data.KeyChange; protected set => data.KeyChange = value; }
 
 		public override DataHolderBase Clone () => new HInputData_Mock ( Owner, (IInputStruct_Mock)data.Clone () );
 		public override bool Equals ( object obj ) {

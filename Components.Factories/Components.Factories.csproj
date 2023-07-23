@@ -1,15 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net7.0-windows8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
     <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
-    <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
-    <ProjectReference Include="..\InputResender.Services\InputResender.Services.csproj" />
+    <ProjectReference Include="..\InputReader.GUIComponents\InputResender.GUIComponents.csproj" />
   </ItemGroup>
 
 </Project>

@@ -70,6 +70,16 @@ namespace Components.Library {
 			}
 			return ret;
 		}
+		public static T[] SubArray<T> (this T[] origAr, int start, int size) {
+			if (origAr == null ) return null;
+			int N = origAr.Length;
+			if ( start < 0 ) start = N + start;
+			if ( N < start + size ) return Array.Empty<T> ();
+
+			T[] ret = new T[size];
+			Array.Copy ( origAr, start, ret, 0, size );
+			return ret;
+		}
 
 		public static long CalcHash ( this byte[] data, int start = 0, int size = -1 ) {
 			if ( data == null ) return -1;

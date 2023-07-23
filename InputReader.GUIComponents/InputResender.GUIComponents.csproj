@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <TargetFramework>net7.0-windows8.0</TargetFramework>
     <Nullable>disable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Components.Convertors\Components.Convertors.csproj" />
     <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
     <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
     <ProjectReference Include="..\Components.Library\Components.Library.csproj" />

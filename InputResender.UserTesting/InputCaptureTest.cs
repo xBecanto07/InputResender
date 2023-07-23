@@ -3,30 +3,24 @@ using Components.Library;
 using InputResender.GUIComponents;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using SBld = System.Text.StringBuilder;
-using System.Threading;
-using System.Runtime.InteropServices;
 
 namespace InputResender.UserTesting {
 	public class ClientSideHookUserTest : UserTestBase {
-		public static ClientState SupportedState;
+		public static ClientState SupportedState = ClientState.Master;
 
 		CoreBase Core;
 		DLowLevelInput LLInput;
-		nint hookID;
 		InputCapture inputCapture;
 
 
 		public ClientSideHookUserTest ( SBld sb ) : base ( sb ) {
 			Core = new CoreBaseMock ();
 			LLInput = new VWinLowLevelLibs ( Core );
-			hookID = 0;
-			inputCapture = new InputCapture ( LLInput, hookID );
-
+			inputCapture = new InputCapture ( LLInput );
 		}
 		protected override void Dispose ( bool disposing ) {
-			if ( hookID != 0 ) LLInput.UnhookHookEx ( hookID );
+			inputCapture.ReleaseHook ();
 			Core.Unregister ( LLInput );
 		}
 

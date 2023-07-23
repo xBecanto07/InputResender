@@ -1,11 +1,17 @@
-﻿using Components.Implementations;
+﻿using Components.Factories;
+using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
 using Xunit;
 
 namespace InputResender.UnitTests {
 	public class DMainAppCoreTest : CoreTestBase<DMainAppCore> {
-		public override DMainAppCore GenerateTestCore () => new VMainAppCore ();
+		DMainAppCoreFactory CoreFactory;
+
+		public override DMainAppCore GenerateTestCore () {
+			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
+			return CoreFactory.CreateVMainAppCore ();
+		}
 
 		[Fact]
 		public void Test_RegisterFetchUnregister () {

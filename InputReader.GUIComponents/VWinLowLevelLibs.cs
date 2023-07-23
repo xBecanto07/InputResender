@@ -3,18 +3,23 @@ using Components.Library;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace InputResender.GUIComponents {
 	public class VWinLowLevelLibs : DLowLevelInput {
 		private const int WH_KEYBOARD_LOW_LEVEL = 13;
 		private LowLevelKeyboardProc Callback;
 		private static VWinLowLevelLibs mainInstance;
-		public static List<(int, VKChange, KeyCode, Input.KeyboardInput)> EventList = new List<(int, VKChange, KeyCode, Input.KeyboardInput)> ();
+		public static List<(int, VKChange, Input.KeyboardInput)> EventList = new List<(int, VKChange, Input.KeyboardInput)> ();
 		public static LowLevelKeyboardProc internalCallback = ProcessHook;
 
 		private static nint ProcessHook ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
-			EventList.Add ( ( nCode, (VKChange)vkChngCode, (KeyCode)vkCode, new Input.KeyboardInput ( vkCode )) );
+			var change = (VKChange)vkChngCode;
+			var input = new Input.KeyboardInput ( vkCode );
+			// if ( EventList.Count > 0 && EventList[0].Item3.Equals ( input ) && EventList[0].Item2 == change ) vkChngCode ^= 0x1;
+			EventList.Insert ( 0, (nCode, change, input) );
 			//if ( nCode >= 0 ) Callback ( (Keys)KeyCode, KeyCode );
 			if ( nCode >= 0 ) {
 				return mainInstance.Callback ( nCode, vkChngCode, vkCode );
@@ -46,7 +51,7 @@ namespace InputResender.GUIComponents {
 		public override HInputEventDataHolder GetHighLevelData ( DInputReader requester, HInputData lowLevelData ) {
 			Input llData = (Input)lowLevelData.Data;
 			Input.KeyboardInput keyInfo = llData.Data.ki;
-			return new HKeyboardEventDataHolder ( requester, 0, keyInfo.vkCode, 1 );
+			return new HKeyboardEventDataHolder ( requester, 0, keyInfo.vkCode, lowLevelData.IsPressed ? 1 : 0 );
 		}
 		public override HInputData GetLowLevelData ( HInputEventDataHolder highLevelData ) {
 			var keyboardData = new Input.KeyboardInput ();
@@ -58,13 +63,14 @@ namespace InputResender.GUIComponents {
 			inputUnion.ki = keyboardData;
 			return new WinLLInputData ( highLevelData.Owner, new Input ( 1, inputUnion ) );
 		}
-		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => WinLLInputData.NewKeyboardData ( this, (ushort)vkCode, (ushort)(vkCode | vkChngCode), 0, 0, 0 );
+		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => WinLLInputData.NewKeyboardData ( this, vkChngCode, vkCode );
 
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
 		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
-		public override nint SetHookEx ( int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId ) {
+		public override nint SetHookEx ( LowLevelKeyboardProc lpfn ) {
 			Callback = lpfn;
-			var ret = SetWindowsHookEx ( idHook, internalCallback, hMod, dwThreadId );
+			var moduleHandle = GetModuleHandleID ( "user32.dll" );
+			var ret = SetWindowsHookEx ( HookTypeCode, internalCallback, moduleHandle, 0 );
 			if ( ret == (IntPtr)null ) ErrorList.Add ( (nameof ( SetHookEx ), new Win32Exception ()) );
 			return ret;
 		}
@@ -136,15 +142,26 @@ namespace InputResender.GUIComponents {
 			Input.InputUnion dataUnion = new Input.InputUnion () { ki = data } ;
 			return new WinLLInputData ( owner, new Input ( Input.TypeKEY, dataUnion ) );
 		}
+		public static WinLLInputData NewKeyboardData ( ComponentBase owner, nint vkChngCode, IntPtr dataPtr ) {
+			var data = new Input.KeyboardInput ( dataPtr );
+			Input.InputUnion dataUnion = new Input.InputUnion () { ki = data };
+			var ret = new WinLLInputData ( owner, new Input ( Input.TypeKEY, dataUnion ) );
+			ret.Pressed = (VKChange)vkChngCode;
+			return ret;
+		}
 
 		public override IInputLLValues Data { get => data; protected set => data = (Input)value; }
 
 		public override int SizeOf => data.SizeOf;
 
+		public override int DeviceID { get ; protected set; }
+		public override VKChange Pressed { get; protected set; }
+
 		public override DataHolderBase Clone () => new WinLLInputData ( Owner, data );
 		public override bool Equals ( object obj ) {
 			if ( obj == null ) return false;
 			if ( obj.GetType () != GetType () ) return false;
+			if ( !base.Equals ( (HInputData)obj ) ) return false;
 			var item = (WinLLInputData)obj;
 			return data.Equals ( item.data );
 		}
@@ -224,7 +241,7 @@ namespace InputResender.GUIComponents {
 				if ( obj == null ) return false;
 				if (!(obj is  KeyboardInput )) return false;
 				var ki = (KeyboardInput)obj;
-				return (ki.vkCode == vkCode) & (ki.scanCode == scanCode) & (ki.dwFlags == dwFlags);
+				return (ki.vkCode == vkCode) & (ki.scanCode == scanCode);
 			}
 		}
 

@@ -53,7 +53,7 @@ namespace Components.InterfaceTests {
 
 		protected void ExecOnHook ( HInputData[] HLData, Action act, bool shouldRetest, bool shouldReceiveEvent ) {
 			EventList.Clear ();
-			nint hookID = TestObject.SetHookEx ( 1, SimpleTestCallback, (IntPtr)null, 0 );
+			nint hookID = TestObject.SetHookEx ( SimpleTestCallback );
 			for ( int i = 0; i < HLData.Length; i++ ) HLData[i].UpdateByHook ( TestObject, hookID );
 			act ();
 			TestObject.UnhookHookEx ( hookID );

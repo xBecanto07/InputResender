@@ -35,7 +35,7 @@ namespace Components.Interfaces {
 		/// <param name="hMod">Hook of DLL containing callback. Must be <see langword="null"/> if in same thread, otherwise following is recommended: <code>LoadLibrary(TEXT("c:\\myapp\\sysmsg.dll"))</code></param>
 		/// <param name="dwThreadId">Process ID on which the hook should operate</param>
 		/// <returns>Hook handle number, ID to this specific hook</returns>
-		public abstract IntPtr SetHookEx ( int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId );
+		public abstract IntPtr SetHookEx ( LowLevelKeyboardProc lpfn );
 		/// <summary>Stop hook specified by its ID of <paramref name="hhk"/></summary>
 		public abstract bool UnhookHookEx ( IntPtr hhk );
 		/// <summary>Pass processing to another hook in system queue</summary>

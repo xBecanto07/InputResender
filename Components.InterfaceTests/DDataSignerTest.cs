@@ -28,6 +28,16 @@ namespace Components.InterfaceTests {
 		}
 
 		[Fact]
+		public void IVProvidedInMessage () {
+			TestObject.Key = GenIV ( 42 );
+			byte[] IV = GenIV ( 1 );
+			byte[] data = GenData ( DefaultDataSize );
+
+			byte[] coded = TestObject.Encrypt ( data, IV );
+			TestObject.Decrypt ( coded ).Should ().Equal ( data );
+		}
+
+		[Fact]
 		public void IVChangesCipher () {
 			const int reps = 4;
 			TestObject.Key = GenIV ( 42 );

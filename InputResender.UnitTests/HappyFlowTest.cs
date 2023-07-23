@@ -1,11 +1,9 @@
-﻿using Components.Implementations;
+﻿using Components.Factories;
+using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
 using FluentAssertions;
-using System;
-using System.Collections.Generic;
 using System.Text;
-using System.Threading;
 using Xunit;
 
 namespace InputResender.UnitTests {
@@ -111,8 +109,11 @@ namespace InputResender.UnitTests {
 	}
 
 	public class VHappyFlowTest : DHappyFlowTest<VMainAppCore> {
+		DMainAppCoreFactory CoreFactory;
+
 		protected override VMainAppCore GenerateAppCore () {
-			var ret = new VMainAppCore ( DMainAppCore.CompSelect.All & ~DMainAppCore.CompSelect.LLInput );
+			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
+			var ret = CoreFactory.CreateVMainAppCore ( DMainAppCore.CompSelect.All & ~DMainAppCore.CompSelect.LLInput );
 			new MLowLevelInput ( ret );
 			return ret;
 		}

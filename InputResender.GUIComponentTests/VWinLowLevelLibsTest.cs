@@ -99,7 +99,7 @@ namespace InputResender.GUIComponentTests {
 				using ( ProcessModule curModule = curProcess.MainModule ) {
 
 					var moduleHandle = TestObject.GetModuleHandleID ( curModule.ModuleName );
-					hookID = TestObject.SetHookEx ( TestObject.HookTypeCode, Callback, moduleHandle, 0 );
+					hookID = TestObject.SetHookEx ( Callback );
 				}
 
 				TestObject.PrintErrors ( Output.WriteLine );

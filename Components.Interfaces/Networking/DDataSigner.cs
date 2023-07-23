@@ -1,4 +1,5 @@
 ﻿using Components.Library;
+using System.Security.Cryptography;
 
 namespace Components.Interfaces
 {
@@ -21,7 +22,7 @@ namespace Components.Interfaces
         public abstract int ChecksumSize { get; }
         public abstract byte[] Key { get; set; }
         public abstract byte[] Encrypt ( byte[] data, byte[] IV );
-        public abstract byte[] Decrypt ( byte[] data, byte[] IV );
+        public abstract byte[] Decrypt ( byte[] data, byte[] IV = null );
         public abstract bool TestPsswd ( byte[] data, byte[] IV );
         public abstract bool TestIntegrity ( byte[] data );
         /// <summary>Passing <see langword="null"/> generates IV by random. Generated IV should also be usable as a key.</summary>
@@ -34,7 +35,7 @@ namespace Components.Interfaces
 		public override int KeySize { get => sizeof ( int ); }
 		public override byte[] Key { get; set; }
 		public override int ComponentVersion => 1;
-		public override int ChecksumSize { get => sizeof ( ushort ) * 2; }
+		public override int ChecksumSize { get => sizeof ( ushort ) * 2 + sizeof ( int ); }
 
 		public override byte[] GenerateIV ( byte[] data = null ) {
 			if ( data == null ) return BitConverter.GetBytes ( Random.Shared.Next () );
@@ -43,35 +44,40 @@ namespace Components.Interfaces
 			for ( int i = 0; i < data.Length; i++ ) ret ^= ((int)data[i]).CalcHash ();
 			return BitConverter.GetBytes ( ret );
 		}
-		public override byte[] Decrypt ( byte[] data, byte[] IV ) {
+		public override byte[] Decrypt ( byte[] data, byte[] IV = null ) {
             // Data size should be checked in integrity test
             if ( !TestIntegrity ( data ) ) return null;
+			if ( IV == null ) IV = data.SubArray ( ChecksumSize - KeySize, KeySize );
             if ( !TestPsswd ( data, IV ) ) return null;
 			byte[] ret = new byte[data.Length - ChecksumSize];
             CryptFunc ( data, IV, ( val, i ) => ret[i] = val, ChecksumSize );
             return ret;
 
 		}
+		// Msg hash (2) | Key hash (2) | IV (4)
 		public override byte[] Encrypt ( byte[] data, byte[] IV ) {
             if ( data == null ) return null;
             byte[] ret = new byte[data.Length + ChecksumSize];
 			long hash = 0;
 			CryptFunc ( data, IV, ( val, i ) => { ret[i + ChecksumSize] = val; hash += val; } );
+			ret[4] = IV[0]; ret[5] = IV[1]; ret[6] = IV[2]; ret[7] = IV[3];
 			PushNumber ( ret, (ushort)Key.Merge ( IV ).CalcHash (), 2 );
-            PushNumber ( ret, (ushort)ret.CalcHash ( 2 ), 0 );
+			PushNumber ( ret, (ushort)ret.CalcHash ( 2 ), 0 );
 			return ret;
         }
 		public override bool TestPsswd ( byte[] data, byte[] IV ) {
 			ushort calcHash = (ushort)Key.Merge ( IV ).CalcHash ();
-			ushort locHash = (ushort)ParseNum ( data, ChecksumSize / 2, ChecksumSize / 2 );
+			ushort locHash = (ushort)ParseNum ( data, 2, 2 );
             return calcHash == locHash;
 		}
 		public override bool TestIntegrity ( byte[] data ) {
             if ( data == null ) return false;
             int N = data.Length;
-            int ChckN = ChecksumSize / 2;
+            int ChckN = 2;
             if (N < ChckN + 1 ) return false;
-            return (ushort)ParseNum ( data, 0, ChckN ) - (ushort)data.CalcHash ( ChckN ) == 0;
+			ushort sentHash = (ushort)ParseNum ( data, 0, ChckN );
+			ushort realHash = (ushort)data.CalcHash ( ChckN );
+			return sentHash == realHash;
         }
 
         protected void CryptFunc ( byte[] data, byte[] IV, Action<byte, int> act, int dataStart = 0 ) {

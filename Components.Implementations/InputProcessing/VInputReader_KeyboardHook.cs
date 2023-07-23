@@ -27,15 +27,12 @@ namespace Components.Implementations {
 		public override ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback ) {
 			var lowLevelComponent = LowLevelComponent;
 			var ret = new HashSet<nint> ();
-			using ( Process curProcess = Process.GetCurrentProcess () )
-			using ( ProcessModule curModule = curProcess.MainModule )
-				foreach ( var changeType in hookInfo.ChangeMask ) {
-					nint moduleHandle = LowLevelComponent.GetModuleHandleID ( curModule.ModuleName );
-					var newHook = new LLHook ( this, lowLevelComponent, callback, hookInfo, changeType );
-					newHook.RegisterLL ( moduleHandle );
-					HookSet.Add(newHook.HookID, newHook );
-					ret.Add ( newHook.HookID );
-				}
+			foreach ( var changeType in hookInfo.ChangeMask ) {
+				var newHook = new LLHook ( this, lowLevelComponent, callback, hookInfo, changeType );
+				newHook.RegisterLL ();
+				HookSet.Add ( newHook.HookID, newHook );
+				ret.Add ( newHook.HookID );
+			}
 			return ret;
 		}
 
@@ -61,10 +58,17 @@ namespace Components.Implementations {
 				HookID = 0;
 			}
 
-			public nint RegisterLL ( nint moduleHandle ) {
+			public nint RegisterLL () {
 				if ( HookID != 0 ) throw new AccessViolationException ( $"Hook was already registered as {HookID}!" );
-				int changeCode = LowLevelComponent.GetChangeCode ( KeyChange );
-				return HookID = LowLevelComponent.SetHookEx ( changeCode, LowLevelKeyboardProc, moduleHandle, 0 );
+				//int changeCode = LowLevelComponent.GetChangeCode ( KeyChange );
+				HookID = LowLevelComponent.SetHookEx ( LowLevelKeyboardProc );
+				if (HookID == 0) {
+					System.Text.StringBuilder SB = new System.Text.StringBuilder ();
+					SB.AppendLine ( $"Error when creating hook for {HookInfo.DeviceID}:{KeyChange}!{Environment.NewLine}" );
+					LowLevelComponent.PrintErrors ( ( ss ) => SB.AppendLine ( ss ) );
+					throw new InvalidOperationException ( SB.ToString () );
+				}
+				return HookID;
 			}
 
 			public IntPtr LowLevelKeyboardProc ( int nCode, IntPtr wParam, IntPtr lParam ) {

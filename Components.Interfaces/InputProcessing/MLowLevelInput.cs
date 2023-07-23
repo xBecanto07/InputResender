@@ -57,7 +57,7 @@ namespace Components.Interfaces {
 		public override nint GetModuleHandleID ( string lpModuleName ) => moduleHandleResult;
 		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => new HInputData_Mock ( this, nCode, GetChangeType ( (int)vkChngCode ), vkCode );
 		/// <inheritdoc />
-		public override nint SetHookEx ( int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId ) {
+		public override nint SetHookEx ( LowLevelKeyboardProc lpfn ) {
 			if ( SetHookResult < 0 ) return SetHookResult;
 			HookList.Add ( LastID, lpfn );
 			return LastID++;

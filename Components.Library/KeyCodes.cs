@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Components.Library {
-	public enum VKChange { KeyDown, KeyUp }
+	public enum VKChange { KeyDown = 0x100, KeyUp = 0x101 }
 
 	public enum KeyCode {
 		/// <summary>The A key.</summary>

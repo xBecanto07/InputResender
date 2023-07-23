@@ -18,9 +18,10 @@ namespace Components.Implementations {
 		public override int ComponentVersion => 1;
 		public override int ChecksumSize => HashSize * 2 + KeySize;
 
-		public override byte[] Decrypt ( byte[] data, byte[] IV ) {
+		public override byte[] Decrypt ( byte[] data, byte[] IV = null ) {
 			// Data size should be checked in integrity test
 			if ( !TestIntegrity ( data ) ) return null;
+			if ( IV == null ) IV = data.SubArray ( ChecksumSize - KeySize, KeySize );
 			if ( !TestPsswd ( data, IV ) ) return null;
 
 			using ( Aes aes = Aes.Create () ) {
@@ -34,15 +35,6 @@ namespace Components.Implementations {
 			using ( Aes aes = Aes.Create () ) {
 				aes.Key = Key;
 				aes.IV = IV;
-
-				/*if ( data.Length % aes.BlockSize != 0 ) Array.Resize ( ref data, data.Length / aes.BlockSize + 1 );
-				int blockCnt = data.Length / aes.BlockSize;
-				byte[] buff = new byte[blockCnt * aes.BlockSize];
-				var encryptor = aes.CreateEncryptor ();
-				for ( int i = 0; i < blockCnt - aes.BlockSize; i += aes.BlockSize ) {
-					encryptor.TransformBlock ( data, i, (blockCnt - 1) * aes.BlockSize, buff, i );
-				}
-				byte[] final = encryptor.TransformFinalBlock ( data, data.Length - aes.BlockSize, aes.BlockSize );*/
 
 				List<byte> ret = new List<byte> ();
 				ret.AddRange ( MD5.HashData ( Key.Merge ( IV ) ) );
