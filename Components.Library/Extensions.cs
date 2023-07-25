@@ -102,6 +102,10 @@ namespace Components.Library {
 			uint NextRng () { return (uint)(seed * 22695477ul + 1); }
 		}
 
+		public static bool ContainsPair<T,U> (this IDictionary<T,U> dict, T key, U val) {
+			if ( dict.TryGetValue ( key, out U ret ) ) return ret.Equals ( val );
+			return false;
+		}
 		public static IReadOnlyCollection<IReadOnlyCollection<T>> AsReadonly2D<T> ( this T[][] ar) {
 			int N = ar.Length;
 			IReadOnlyCollection<T>[] ret = new IReadOnlyCollection<T>[N];
@@ -116,6 +120,7 @@ namespace Components.Library {
 			for ( int i = 0; i < N; i++ ) ret[i] = data[i].ToArray ();
 			return ret;
 		}
+		public static string ToShortCode ( this int num ) => $"{(num < 0 ? "-" : "")}{((ulong)(num < 0 ? -num : num)).ToShortCode ()}";
 		public static string ToShortCode (this ulong num ) {
 			const string chAr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/*@#$%&?€£¤";
 			ulong N = (ulong)chAr.Length;

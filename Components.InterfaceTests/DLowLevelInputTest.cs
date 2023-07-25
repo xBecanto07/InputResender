@@ -22,14 +22,18 @@ namespace Components.InterfaceTests {
 
 		[Fact]
 		public void SetupSimulateRelease_RaisesCallbackOnce () {
+			Output.WriteLine ( $"TestObject: {TestObject.Name} created on {TestObject.CreationTime:hh:mm:ss:fffffff}" );
 			FetchHLData ( out var HLData, out uint dataCnt, out int dataSize );
-			ExecOnHook ( HLData, () => TestObject.SimulateInput ( dataCnt, HLData, dataSize ), true, true );
+			ExecOnHook ( HLData, () =>
+				TestObject.SimulateInput ( dataCnt, HLData, dataSize ),
+				true, true );
 			EventList.Should ().HaveCount ( (int)dataCnt );
 			EventList.Should ().Equal ( HLData ).And.NotBeSameAs ( HLData );
 		}
 
 		[Fact]
 		public void NegNCodeSkipsProcessing () {
+			Output.WriteLine ( $"TestObject: {TestObject.Name} created on {TestObject.CreationTime:hh:mm:ss:fffffff}" );
 			FetchHLData ( out var HLData, out uint dataCnt, out int dataSize );
 			ExecOnHook ( HLData, () => {
 				TestObject.SimulateInput ( dataCnt, HLData, dataSize, false );
@@ -42,7 +46,9 @@ namespace Components.InterfaceTests {
 
 		[Fact]
 		public void ReleaseNonexistingHookThrowsKeyNotFound () {
-			Action act = () => TestObject.UnhookHookEx ( 1 );
+			Hook nonexistingHook = new Hook ( TestObject, new DictionaryKey ( 1234 ), SimpleTestCallback );
+			nonexistingHook.UpdateHookID ( 4321 );
+			Action act = () => TestObject.UnhookHookEx ( nonexistingHook );
 			act.Should ().Throw<KeyNotFoundException> ();
 		}
 
@@ -53,8 +59,8 @@ namespace Components.InterfaceTests {
 
 		protected void ExecOnHook ( HInputData[] HLData, Action act, bool shouldRetest, bool shouldReceiveEvent ) {
 			EventList.Clear ();
-			nint hookID = TestObject.SetHookEx ( SimpleTestCallback );
-			for ( int i = 0; i < HLData.Length; i++ ) HLData[i].UpdateByHook ( TestObject, hookID );
+			Hook hookID = TestObject.SetHookEx ( SimpleTestCallback );
+			for ( int i = 0; i < HLData.Length; i++ ) HLData[i].UpdateByHook ( TestObject, hookID.Key );
 			act ();
 			TestObject.UnhookHookEx ( hookID );
 			if ( shouldRetest ) act ();
@@ -62,11 +68,10 @@ namespace Components.InterfaceTests {
 			if ( !shouldReceiveEvent ) EventList.Should ().HaveCount ( 0 );
 		}
 
-		protected virtual IntPtr SimpleTestCallback ( int nCode, IntPtr wParam, IntPtr lParam ) {
-			if ( nCode < 0 ) return TestObject.CallNextHook ( 0, nCode, wParam, lParam );
-			EventList.Add ( TestObject.ParseHookData ( nCode, wParam, Marshal.ReadInt32 ( lParam ) ) );
+		protected virtual bool SimpleTestCallback ( DictionaryKey hookKey, HInputData inputData ) {
+			EventList.Add ( inputData );
 			onInputReceived.Set ();
-			return 1;
+			return false;
 		}
 
 		private void FetchHLData ( out HInputData[] HLData, out uint dataCnt, out int dataSize ) {

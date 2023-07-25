@@ -21,8 +21,8 @@ namespace Components.InterfaceTests {
 		protected override HInputData[] GenerateKeyboardEvent ( MLowLevelInput owner = null ) {
 			if ( owner == null ) owner = TestObject;
 			return new HInputData[2] {
-			new HInputData_Mock ( owner, new HInputData_Mock.IInputStruct_Mock ( -1, VKChange.KeyDown, (nint)SimKey ) ),
-			new HInputData_Mock ( owner, new HInputData_Mock.IInputStruct_Mock ( -1, VKChange.KeyUp, (nint)SimKey ) )
+			new HInputData_Mock ( owner, new HInputData_Mock.IInputStruct_Mock ( DictionaryKey.Empty, VKChange.KeyDown, (nint)SimKey ) ),
+			new HInputData_Mock ( owner, new HInputData_Mock.IInputStruct_Mock ( DictionaryKey.Empty, VKChange.KeyUp, (nint)SimKey ) )
 			};
 		}
 

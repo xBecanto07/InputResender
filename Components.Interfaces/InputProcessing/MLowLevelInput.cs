@@ -1,4 +1,5 @@
 ﻿using Components.Library;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
@@ -9,11 +10,11 @@ namespace Components.Interfaces {
 		private nint CallNextResult = 1;
 		private nint moduleHandleResult = 1;
 		private bool ProcessCallbacks = true;
-		Dictionary<nint, LowLevelKeyboardProc> HookList;
+		Dictionary<DictionaryKey, Hook> HookList;
 		int LastID = 1;
 
 		public MLowLevelInput ( CoreBase owner ) : base ( owner ) {
-			HookList = new Dictionary<nint, LowLevelKeyboardProc> ();
+			HookList = new Dictionary<DictionaryKey, Hook> ();
 		}
 
 		public override int ComponentVersion => 1;
@@ -50,31 +51,37 @@ namespace Components.Interfaces {
 			if ( data == null || data.Data == null ) return false;
 			var innerData = data.Data;
 			var values = (HInputData_Mock.IInputStruct_Mock)innerData;
-			RaiseEvent ( values.HookID, nCode, GetChangeCode ( values.KeyChange ), values.VKCode.ToUnmanaged () );
+			var changeCode = GetChangeCode ( values.KeyChange );
+			var vkRef = values.VKCode.ToUnmanaged ();
+			RaiseEvent ( values.HookID, nCode, changeCode, vkRef );
 			return true;
 		}
 
 		public override nint GetModuleHandleID ( string lpModuleName ) => moduleHandleResult;
-		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => new HInputData_Mock ( this, nCode, GetChangeType ( (int)vkChngCode ), vkCode );
+		public override HInputData ParseHookData ( DictionaryKey hookID, nint vkChngCode, nint vkCode ) => new HInputData_Mock ( this, hookID, GetChangeType ( (int)vkChngCode ), Marshal.ReadIntPtr ( vkCode ) );
 		/// <inheritdoc />
-		public override nint SetHookEx ( LowLevelKeyboardProc lpfn ) {
-			if ( SetHookResult < 0 ) return SetHookResult;
-			HookList.Add ( LastID, lpfn );
-			return LastID++;
+		public override Hook SetHookEx ( Func<DictionaryKey, HInputData, bool> callback ) {
+			if ( SetHookResult < 0 ) return null;
+			var hookKey = HookKeyFactory.NewKey ();
+			var hookID = LastID++;
+			HookIDDict.Add ( hookKey, hookID );
+			var hook = new Hook ( this, hookKey, callback );
+			hook.UpdateHookID ( hookID );
+			HookList.Add ( hookKey, hook );
+			return hook;
 		}
 		/// <inheritdoc />
-		public override bool UnhookHookEx ( nint hhk ) {
-			if ( !HookList.ContainsKey ( hhk ) ) throw new KeyNotFoundException ( $"Hook with ID #{hhk} was not found!" );
-			if ( !HookList.Remove ( hhk ) ) throw new InvalidOperationException ( $"Unknown issue during unhooking #{hhk}" );
+		public override bool UnhookHookEx ( Hook hookID ) {
+			if ( !HookIDDict.ContainsPair (hookID.Key, hookID.HookID) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
+			HookList.Remove ( hookID.Key );
 			return UnhookResult;
 		}
 
 		public enum Part { CallNextHookEx, GetModuleHandle, SetHookEx, Unhook, NCode }
-		public void RaiseEvent ( nint hookID, int nCode, IntPtr wParam, IntPtr lParam ) {
-			if ( HookList.ContainsKey ( hookID ) ) {
+		public void RaiseEvent ( DictionaryKey hookID, int nCode, IntPtr wParam, IntPtr lParam ) {
+			if ( HookList.TryGetValue ( hookID, out var hook ) ) {
 				int nnCode = nCode < 0 ? -1 : 1;
-				nnCode *= (int)hookID;
-				HookList[hookID].Invoke ( nnCode, wParam, lParam );
+				hook.LLCallback ( nnCode, wParam, lParam );
 			}
 		}
 		public void SetMockReturn ( Part part, bool validReturn ) {
@@ -93,13 +100,13 @@ namespace Components.Interfaces {
 			var hooks = highLevelData.HookInfo.HookIDs;
 			if ( hooks.Count < 1 ) throw new KeyNotFoundException ( "No hookID was found, and so cannot find any context for given high-level data!" );
 
-			var innerData = new HInputData_Mock.IInputStruct_Mock ( (int)hooks[0], pressedState, highLevelData.InputCode );
+			var innerData = new HInputData_Mock.IInputStruct_Mock ( hooks[0], pressedState, highLevelData.InputCode );
 			return new HInputData_Mock ( highLevelData.Owner, innerData );
 		}
 
 		public override HInputEventDataHolder GetHighLevelData ( DInputReader requester, HInputData highLevelData ) {
 			var data = (HInputData_Mock.IInputStruct_Mock)((HInputData_Mock)highLevelData).Data;
-			return new HKeyboardEventDataHolder ( requester, 1, (int)Marshal.ReadIntPtr ( data.VKCode ), data.KeyChange == VKChange.KeyDown ? 1 : 0 );
+			return new HKeyboardEventDataHolder ( requester, 1, (int)data.VKCode, data.KeyChange == VKChange.KeyDown ? 1 : 0 );
 		}
 
 		public override nint GetMessageExtraInfoPtr () => nint.Zero;

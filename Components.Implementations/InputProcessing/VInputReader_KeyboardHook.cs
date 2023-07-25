@@ -1,39 +1,69 @@
 ﻿using Components.Interfaces;
 using Components.Library;
-using System;
-using System.Diagnostics;
+using System.Threading;
 
 namespace Components.Implementations {
 	public class VInputReader_KeyboardHook : DInputReader {
-		Dictionary<nint, LLHook> HookSet;
+		private Task inputHandler;
+		readonly AutoResetEvent waiter;
+		bool Continue = true;
+		Dictionary<DictionaryKey, HLHookInfo> HookSet;
 
 		public VInputReader_KeyboardHook ( CoreBase owner ) : base ( owner ) {
-			HookSet = new Dictionary<nint, LLHook> ();
+			HookSet = new Dictionary<DictionaryKey, HLHookInfo> ();
+			waiter = new AutoResetEvent ( false );
+		}
+
+		struct HLHookInfo {
+			public Hook hook;
+			public Func<DictionaryKey, HInputEventDataHolder, bool> MainCallback;
+			public Action<DictionaryKey, HInputEventDataHolder> DelayedCB;
+			public Queue<(DictionaryKey, HInputEventDataHolder)> MessageQueue;
+
+			public HLHookInfo ( Hook nHook, Func<DictionaryKey, HInputEventDataHolder, bool> mainCallback, Action<DictionaryKey, HInputEventDataHolder> delayedCB ) {
+				hook = nHook;
+				MainCallback = mainCallback;
+				DelayedCB = delayedCB;
+				MessageQueue = new Queue<(DictionaryKey, HInputEventDataHolder)> ();
+			}
 		}
 
 		public override int ComponentVersion => 1;
 		protected DLowLevelInput LowLevelComponent { get { return Owner.Fetch<DLowLevelInput> (); } }
 
-		public override int ReleaseHook ( HHookInfo hookInfo ) {
-			int released = 0;
-			foreach( nint hookID in hookInfo.HookIDs ) {
-				if ( !HookSet.ContainsKey ( hookID ) ) throw new KeyNotFoundException ( $"Couldn't find a hook ID for Hook Definition: {hookInfo}" );
-				if ( HookSet.Remove ( hookID ) )
-					released += LowLevelComponent.UnhookHookEx ( hookID ) ? 1 : 0;
-			}
-			return released;
-		}
-
-		public override ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback ) {
+		public override ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
 			var lowLevelComponent = LowLevelComponent;
-			var ret = new HashSet<nint> ();
+			var ret = new HashSet<DictionaryKey> ();
 			foreach ( var changeType in hookInfo.ChangeMask ) {
-				var newHook = new LLHook ( this, lowLevelComponent, callback, hookInfo, changeType );
-				newHook.RegisterLL ();
-				HookSet.Add ( newHook.HookID, newHook );
-				ret.Add ( newHook.HookID );
+				var hook = LowLevelComponent.SetHookEx ( LocalCallback );
+				if ( hook == null ) {
+					System.Text.StringBuilder SB = new System.Text.StringBuilder ();
+					SB.AppendLine ( $"Error when creating hook for {hookInfo.DeviceID}:{changeType}!{Environment.NewLine}" );
+					LowLevelComponent.PrintErrors ( ( ss ) => SB.AppendLine ( ss ) );
+					throw new InvalidOperationException ( SB.ToString () );
+				}
+
+				HookSet.Add ( hook.Key, new ( hook, mainCB, delayedCB ) );
+				ret.Add ( hook.Key );
+				inputHandler ??= Task.Run ( CallbackParaTask );
 			}
 			return ret;
+		}
+		public override int ReleaseHook ( HHookInfo hookInfo ) {
+			int released = 0;
+			foreach ( var hookID in hookInfo.HookIDs ) {
+				if ( !HookSet.TryGetValue ( hookID, out var hookRef ) ) throw new KeyNotFoundException ( $"Couldn't find a hook ID for Hook Definition: {hookInfo}" );
+				if ( HookSet.Remove ( hookID ) )
+					released += LowLevelComponent.UnhookHookEx ( hookRef.hook ) ? 1 : 0;
+			}
+			if ( inputHandler != null && HookSet.Count == 0 ) {
+				Continue = false;
+				waiter.Set ();
+				inputHandler.Wait ();
+				inputHandler.Dispose ();
+				inputHandler = null;
+			}
+			return released;
 		}
 
 		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) {
@@ -41,43 +71,26 @@ namespace Components.Implementations {
 			return LowLevelComponent.SimulateInput ( 1, new HInputData[1] { LLData }, LLData.SizeOf );
 		}
 
-		protected class LLHook {
-			public nint HookID { get; private set; }
-			public readonly Func<HInputEventDataHolder, bool> Callback;
-			public readonly HHookInfo HookInfo;
-			public readonly DLowLevelInput LowLevelComponent;
-			public readonly VKChange KeyChange;
-			public readonly VInputReader_KeyboardHook Caller;
-
-			public LLHook ( VInputReader_KeyboardHook caller, DLowLevelInput lowLevelComponent, Func<HInputEventDataHolder, bool> callback, HHookInfo hookInfo, VKChange keyChange ) {
-				LowLevelComponent = lowLevelComponent;
-				Callback = callback;
-				HookInfo = hookInfo;
-				KeyChange = keyChange;
-				Caller = caller;
-				HookID = 0;
+		private bool LocalCallback ( DictionaryKey hookKey, HInputData inputData ) {
+			var inputEventDataHolder = LowLevelComponent.GetHighLevelData ( this, inputData );
+			bool willResend = true;
+			if ( HookSet.TryGetValue ( hookKey, out var hookRef ) ) {
+				if ( hookRef.MainCallback != null ) willResend = hookRef.MainCallback ( hookKey, inputEventDataHolder );
+				hookRef.MessageQueue.Enqueue ( (hookKey, inputEventDataHolder) );
+				waiter.Set ();
 			}
-
-			public nint RegisterLL () {
-				if ( HookID != 0 ) throw new AccessViolationException ( $"Hook was already registered as {HookID}!" );
-				//int changeCode = LowLevelComponent.GetChangeCode ( KeyChange );
-				HookID = LowLevelComponent.SetHookEx ( LowLevelKeyboardProc );
-				if (HookID == 0) {
-					System.Text.StringBuilder SB = new System.Text.StringBuilder ();
-					SB.AppendLine ( $"Error when creating hook for {HookInfo.DeviceID}:{KeyChange}!{Environment.NewLine}" );
-					LowLevelComponent.PrintErrors ( ( ss ) => SB.AppendLine ( ss ) );
-					throw new InvalidOperationException ( SB.ToString () );
+			return willResend;
+		}
+		private void CallbackParaTask () {
+			while ( waiter == null ) Thread.Sleep ( 1 );
+			while ( true ) {
+				waiter.WaitOne ();
+				if ( !Continue ) break;
+				foreach ( var hook in HookSet.Values ) {
+					if ( hook.MessageQueue.Count < 1 ) continue;
+					var msg = hook.MessageQueue.Dequeue ();
+					if ( hook.DelayedCB != null ) hook.DelayedCB ( msg.Item1, msg.Item2 );
 				}
-				return HookID;
-			}
-
-			public IntPtr LowLevelKeyboardProc ( int nCode, IntPtr wParam, IntPtr lParam ) {
-				bool Resend = false;
-				if ( nCode >= 0 ) {
-					HInputData hookEventInfo = LowLevelComponent.ParseHookData ( nCode, wParam, lParam );
-					Resend = Callback ( LowLevelComponent.GetHighLevelData ( Caller, hookEventInfo ) );
-				}
-				return Resend ? LowLevelComponent.CallNextHook ( HookID, nCode, wParam, lParam ) : 1;
 			}
 		}
 	}

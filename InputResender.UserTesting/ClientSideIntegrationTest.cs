@@ -38,7 +38,7 @@ namespace InputResender.UserTesting {
 
 			var LLInput = Core.Fetch<DInputReader> ();
 			HHookInfo hookInfo = new HHookInfo ( LLInput, 1, VKChange.KeyDown, VKChange.KeyUp );
-			var hookIDs = LLInput.SetupHook ( hookInfo, Callback );
+			var hookIDs = LLInput.SetupHook ( hookInfo, Callback, null );
 			foreach ( var ID in hookIDs ) hookInfo.AddHookID ( ID );
 
 			var expMod = InputData.Modifier.Ctrl | InputData.Modifier.Shift;
@@ -85,7 +85,7 @@ namespace InputResender.UserTesting {
 			yield break;
 		}
 
-		public bool Callback ( HInputEventDataHolder inputData ) {
+		public bool Callback ( DictionaryKey key, HInputEventDataHolder inputData ) {
 			if ( InputQueue == null ) return true;
 			InputQueue.Enqueue ( inputData );
 			InputSignaler.Set ();

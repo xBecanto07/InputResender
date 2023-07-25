@@ -13,7 +13,7 @@ namespace Components.Interfaces {
 
 		/// <summary>Prepare a hardware hook, that will on recieving an input event call a returned Action, providing input vektor ID and input data</summary>
 		/// <param name="hookInfo">Use given info to initialize hook(s). Fills back info about created hooks (e.g. hookIDs).</param>
-		public abstract ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback );
+		public abstract ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB );
 		public abstract int ReleaseHook ( HHookInfo hookInfo );
 		public abstract uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture );
 		public HInputEventDataHolder SimulateKeyInput ( HHookInfo hookInfo, VKChange action, KeyCode key ) {
@@ -24,18 +24,36 @@ namespace Components.Interfaces {
 	}
 
 	public class MInputReader : DInputReader {
-		Dictionary<HHookInfo, Func<HInputEventDataHolder, bool>> CallbackList;
+		Dictionary<HHookInfo, LocHookInfo> CallbackList;
+		DictionaryKeyFactory keyFactory;
+
+		struct LocHookInfo {
+			public DictionaryKey Key;
+			public Func<DictionaryKey, HInputEventDataHolder, bool> MainCB;
+			public Action<DictionaryKey, HInputEventDataHolder> DelayedCB;
+
+			public LocHookInfo ( DictionaryKey key, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB ) { Key = key; MainCB = mainCB; DelayedCB = delayedCB; }
+		}
+
 		public MInputReader ( CoreBase owner ) : base ( owner ) {
-			CallbackList = new Dictionary<HHookInfo, Func<HInputEventDataHolder, bool>> ();
+			keyFactory = new DictionaryKeyFactory ();
+			CallbackList = new Dictionary<HHookInfo, LocHookInfo> ();
 		}
 
 		public override int ComponentVersion => 1;
 
 		public override int ReleaseHook ( HHookInfo hookInfo ) { return CallbackList.Remove ( hookInfo ) ? 1 : 0; }
-		public override ICollection<nint> SetupHook ( HHookInfo hookInfo, Func<HInputEventDataHolder, bool> callback ) { CallbackList.Add ( hookInfo, callback ); return new nint[]{ 1 }; }
+		public override ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
+			var key = keyFactory.NewKey ();
+			CallbackList.Add ( hookInfo, new ( key, mainCB, delayedCB ) );
+			return new DictionaryKey[]{ key };
+		}
 		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) {
-			if ( CallbackList.TryGetValue ( (item) => input.HookInfo < item, out var fnc ) ) {
-				return fnc ( (HInputEventDataHolder)input.Clone () ) ? 0u : 1u;
+			if ( CallbackList.TryGetValue ( (item) => input.HookInfo < item, out var info ) ) {
+				var data = (HInputEventDataHolder)input.Clone ();
+				var ret = info.MainCB ( info.Key, data ) ? 0u : 1u;
+				if ( info.DelayedCB != null ) info.DelayedCB ( info.Key, data );
+				return ret;
 			}
 			return 0;
 		}

@@ -16,8 +16,8 @@ namespace Components.InterfaceTests {
 			coreHelpObj = new CoreBaseMock ();
 			compHelpObj = new ComponentMock ( coreHelpObj );
 			testObj = new HHookInfo ( compHelpObj, 0, VKChange.KeyDown, VKChange.KeyDown );
-			testObj.AddHookID ( 0 );
-			testObj.AddHookID ( 1 );
+			testObj.AddHookID ( new DictionaryKey ( 0 ) );
+			testObj.AddHookID ( new DictionaryKey ( 1 ) );
 		}
 
 		[Fact]
@@ -31,7 +31,7 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void ContainsSubset () {
 			HHookInfo smaller = new HHookInfo ( compHelpObj, 0, VKChange.KeyDown );
-			testObj.AddHookID ( 0 );
+			testObj.AddHookID ( new DictionaryKey ( 0 ) );
 			(smaller < testObj).Should ().BeTrue ();
 			(testObj > smaller).Should ().BeTrue ();
 		}
@@ -39,11 +39,11 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void ContainsSubsetSelective () {
 			HHookInfo smaller = new HHookInfo ( compHelpObj, 0, VKChange.KeyDown );
-			testObj.AddHookID ( 0 );
-			testObj.AddHookID ( 1 );
-			testObj.AddHookID ( 2 );
-			((smaller, 1) < testObj).Should ().BeTrue ();
-			((testObj, 1) > smaller).Should ().BeTrue ();
+			testObj.AddHookID ( new DictionaryKey ( 0 ) );
+			testObj.AddHookID ( new DictionaryKey ( 1 ) );
+			testObj.AddHookID ( new DictionaryKey ( 2 ) );
+			((smaller, new DictionaryKey ( 1 )) < testObj).Should ().BeTrue ();
+			((testObj, new DictionaryKey ( 1 )) > smaller).Should ().BeTrue ();
 		}
 	}
 }

@@ -6,6 +6,7 @@ using System.Threading;
 using System;
 using Xunit;
 using Xunit.Abstractions;
+using System.Linq;
 
 namespace Components.InterfaceTests {
 	public abstract class DInputReaderTest : ComponentTestBase<DInputReader> {
@@ -20,7 +21,9 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void SetupSimulateRelease_RaisesCallbackOnce () {
 			HInputEventDataHolder inputData = GenerateKeyboardEvent ();
-			ExecOnHook ( inputData, () => TestObject.SimulateInput ( inputData, true ), true, true );
+			ExecOnHook ( inputData, () =>
+			TestObject.SimulateInput ( inputData, true ),
+			true, true );
 			EventList.Should ().HaveCount ( 1 );
 			// No other callback should processed (some key presses during the test could be an issue).
 			// Same input event as was simulated should be captured, but by value, not by reference (for hardware input the dataHolder will not be available and so it should be always recreated).
@@ -35,15 +38,17 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void SetupReleaseHook () {
 			HInputEventDataHolder inputData = GenerateKeyboardEvent ();
-			var hooks = TestObject.SetupHook ( inputData.HookInfo, SimpleTestCallback );
-			hooks.Should ().Equal ( 1 );
+			var hooks = TestObject.SetupHook ( inputData.HookInfo, SimpleTestCallback, null );
+			hooks.Should ().HaveCount ( 1 );
+			var theHook = hooks.First ();
+			theHook.Should ().NotBe ( 0 );
 			inputData.AddHookIDs ( hooks );
 			TestObject.ReleaseHook ( inputData.HookInfo ).Should ().Be ( 1 );
 		}
 
 		protected void ExecOnHook (HInputEventDataHolder inputData, Action act, bool shouldRetest, bool shouldReceiveEvent) {
 			EventList.Clear ();
-			var hooks = TestObject.SetupHook ( inputData.HookInfo, SimpleTestCallback );
+			var hooks = TestObject.SetupHook ( inputData.HookInfo, SimpleTestCallback, null );
 			inputData.AddHookIDs ( hooks );
 			act ();
 			TestObject.ReleaseHook ( inputData.HookInfo );
@@ -57,7 +62,7 @@ namespace Components.InterfaceTests {
 			return new HKeyboardEventDataHolder ( owner, hookInfo, 1, 1 );
 		}
 
-		protected bool SimpleTestCallback ( HInputEventDataHolder inpudData ) {
+		protected bool SimpleTestCallback ( DictionaryKey key, HInputEventDataHolder inpudData ) {
 			EventList.Add ( inpudData );
 			onInputReceived.Set ();
 			return false;

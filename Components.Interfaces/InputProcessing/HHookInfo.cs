@@ -6,7 +6,7 @@ namespace Components.Interfaces {
 	public class HHookInfo : DataHolderBase {
 		/// <summary>Internaly modifiable list of possible input event types.<para>Keep in mind, that hookIDs doesn't need to fit 1to1 with changeMask. That is dependent on low-level specs.</para></summary>
 		protected virtual HashSet<VKChange> changeMask {  get; set; }
-		protected virtual HashSet<nint> hookIDs { get; set; }
+		protected virtual HashSet<DictionaryKey> hookIDs { get; set; }
 		public virtual int DeviceID { get; protected set; }
 		/// <summary>Latest change event type (e.g. KeyDown)</summary>
 		public virtual VKChange LatestChangeType { get; protected set; }
@@ -15,20 +15,20 @@ namespace Components.Interfaces {
 		public virtual DLowLevelInput HookLLCallback { get; protected set; }
 		public virtual ImmutableList<VKChange> ChangeMask { get => changeMask.ToImmutableList (); }
 		/// <summary>List of all assigned hookIDs.<para>Low-Level parser is needed to bind hookID to corresponding ChangeMask(s), since it's dependent on low-level implementation.</para></summary>
-		public virtual ImmutableList<nint> HookIDs { get => hookIDs.ToImmutableList (); }
+		public virtual ImmutableList<DictionaryKey> HookIDs { get => hookIDs.ToImmutableList (); }
 
 		public HHookInfo ( ComponentBase owner, int deviceID, VKChange firstAcceptedChange, params VKChange[] acceptedChanges ) : base ( owner ) {
 			DeviceID = deviceID;
 			LatestChangeType = firstAcceptedChange;
 			changeMask = new HashSet<VKChange> () { firstAcceptedChange };
-			hookIDs = new HashSet<nint> ();
+			hookIDs = new HashSet<DictionaryKey> ();
 			for (int i = 0; i < acceptedChanges.Length; i++) changeMask.Add ( acceptedChanges[i] );
 		}
 
 		public virtual void AssignEventData (VKChange latechChange) { LatestChangeType = latechChange; }
 		public virtual void AssignHookCallback (DLowLevelInput hookCallback) { HookLLCallback = hookCallback; }
-		public virtual void AddHookID ( nint hookID ) => hookIDs.Add ( hookID );
-		public virtual void RemoveHookID ( nint hookID ) => hookIDs.Remove ( hookID );
+		public virtual void AddHookID ( DictionaryKey hookID ) => hookIDs.Add ( hookID );
+		public virtual void RemoveHookID ( DictionaryKey hookID ) => hookIDs.Remove ( hookID );
 
 		public override DataHolderBase Clone () {
 			var ret = new HHookInfo ( Owner, DeviceID, LatestChangeType );
@@ -52,10 +52,10 @@ namespace Components.Interfaces {
 		/// <summary>RHS ∈ LHS, or that LHS isn't missing any data provided by RHS</summary>
 		public static bool operator > ( HHookInfo lhs, HHookInfo rhs ) => DoesContain ( rhs, lhs, rhs.hookIDs.ToArray () );
 		/// <summary>LHS ∈ RHS, or that RHS isn't missing any data provided by LHS, testing only given HookID instead of all</summary>
-		public static bool operator < ( (HHookInfo hookInfo, nint hookID) lhs, HHookInfo rhs ) => DoesContain ( lhs.hookInfo, rhs, lhs.hookID );
+		public static bool operator < ( (HHookInfo hookInfo, DictionaryKey hookID) lhs, HHookInfo rhs ) => DoesContain ( lhs.hookInfo, rhs, lhs.hookID );
 		/// <summary>LHS ∈ RHS, or that RHS isn't missing any data provided by LHS, testing only given HookID instead of all</summary>
-		public static bool operator > ( (HHookInfo hookInfo, nint hookID) lhs, HHookInfo rhs ) => DoesContain ( rhs, lhs.hookInfo, lhs.hookID );
-		private static bool DoesContain ( HHookInfo smaller, HHookInfo larger, params nint[] hookIDs ) {
+		public static bool operator > ( (HHookInfo hookInfo, DictionaryKey hookID) lhs, HHookInfo rhs ) => DoesContain ( rhs, lhs.hookInfo, lhs.hookID );
+		private static bool DoesContain ( HHookInfo smaller, HHookInfo larger, params DictionaryKey[] hookIDs ) {
 			bool ret = smaller.DeviceID == larger.DeviceID;
 			foreach ( var hookID in hookIDs )
 				ret &= larger.hookIDs.Contains ( hookID );

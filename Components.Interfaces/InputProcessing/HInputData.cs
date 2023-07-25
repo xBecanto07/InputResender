@@ -21,8 +21,8 @@ namespace Components.Interfaces {
 
 		public HInputEventDataHolder ( DInputReader owner, HHookInfo hookInfo ) : base ( owner ) { HookInfo = hookInfo; }
 
-		public void AddHookIDs (ICollection<nint> hookIDs) {
-			foreach (nint hookID in hookIDs) HookInfo.AddHookID ( hookID );
+		public void AddHookIDs (ICollection<DictionaryKey> hooks) {
+			foreach ( var hook in hooks ) HookInfo.AddHookID ( hook );
 		}
 
 		public override bool Equals ( object obj ) {
@@ -50,7 +50,8 @@ namespace Components.Interfaces {
 		public abstract VKChange Pressed { get; protected set; }
 		public abstract IInputLLValues Data { get; protected set; }
 		public abstract int SizeOf { get; }
-		public abstract void UpdateByHook (DLowLevelInput hookObj, nint hookID);
+		public abstract void UpdateByHook (DLowLevelInput hookObj, DictionaryKey hookID );
+		public KeyCode Key { get => Data.Key; }
 
 		public override bool Equals ( object obj ) {
 			if ( obj == null ) return false;
@@ -63,6 +64,7 @@ namespace Components.Interfaces {
 	public interface IInputLLValues {
 		IInputLLValues Clone ();
 		int SizeOf { get; }
+		KeyCode Key { get; }
 	}
 
 
@@ -71,7 +73,7 @@ namespace Components.Interfaces {
 		int deviceID = 1;
 
 		public HInputData_Mock ( ComponentBase owner, IInputStruct_Mock values ) : base ( owner ) => data = values;
-		public HInputData_Mock ( ComponentBase owner, int hookID, VKChange keyChange, IntPtr vkCode ) : base ( owner ) => data = new IInputStruct_Mock ( hookID, keyChange, vkCode );
+		public HInputData_Mock ( ComponentBase owner, DictionaryKey hookID, VKChange keyChange, IntPtr vkCode ) : base ( owner ) => data = new IInputStruct_Mock ( hookID, keyChange, vkCode );
 
 		public override IInputLLValues Data {
 			get => data;
@@ -91,18 +93,20 @@ namespace Components.Interfaces {
 		}
 		public override int GetHashCode () => data.HookID.GetHashCode ();
 		public override string ToString () => $"#{data.HookID}:{data.KeyChange}@{data.VKCode}";
-		public override void UpdateByHook ( DLowLevelInput hookObj, nint hookID ) {
-			data.HookID = (int)hookID;
+		public override void UpdateByHook ( DLowLevelInput hookObj, DictionaryKey hookID ) {
+			data.HookID = hookID;
 		}
 
 		public struct IInputStruct_Mock : IInputLLValues {
-			public int HookID;
+			public DictionaryKey HookID;
 			public VKChange KeyChange;
 			public IntPtr VKCode;
 
-			public IInputStruct_Mock ( int hookID, VKChange keyChange, IntPtr vkCode ) { HookID = hookID; KeyChange = keyChange; VKCode = vkCode; }
+			public IInputStruct_Mock ( DictionaryKey hookID, VKChange keyChange, IntPtr vkCode ) { HookID = hookID; KeyChange = keyChange; VKCode = vkCode; }
 
 			public int SizeOf => Marshal.SizeOf ( this );
+
+			public KeyCode Key => (KeyCode)VKCode;
 
 			public IInputLLValues Clone () => new IInputStruct_Mock ( HookID, KeyChange, VKCode );
 		}

@@ -16,7 +16,7 @@ namespace Components.Implementations {
 
 		public abstract void Start ();
 		public abstract void Stop ();
-		public abstract bool ProcessInput ( HInputEventDataHolder inputData );
+		public abstract bool ProcessInput ( DictionaryKey key, HInputEventDataHolder inputData );
 		public abstract void ExecuteAction ();
 	}
 
@@ -30,14 +30,14 @@ namespace Components.Implementations {
 		public override int ComponentVersion => 1;
 
 		public override void Start () {
-			Owner.InputReader.SetupHook ( HookInfo, ProcessInput );
+			Owner.InputReader.SetupHook ( HookInfo, ProcessInput, null );
 			//Owner.InputProcessor.SetupHook ( ExecuteAction );
 		}
 		public override void Stop () {
 			Owner.InputReader.ReleaseHook ( HookInfo );
 			//Owner.InputProcessor.ReleaseHook ();
 		}
-		public override bool ProcessInput (HInputEventDataHolder inputData) {
+		public override bool ProcessInput ( DictionaryKey key, HInputEventDataHolder inputData ) {
 			var inputCombination = Owner.InputParser.ProcessInput ( inputData );
 			Owner.InputProcessor.ProcessInput ( inputCombination );
 			return false;

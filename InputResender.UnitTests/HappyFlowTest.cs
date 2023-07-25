@@ -36,7 +36,7 @@ namespace InputResender.UnitTests {
 			Receiver.PacketSender.ReceiveAsync ( RecvCB );
 		}
 
-		protected bool ProcessInput (HInputEventDataHolder inputData) {
+		protected bool ProcessInput ( DictionaryKey key, HInputEventDataHolder inputData) {
 			var parsedInput = Sender.InputParser.ProcessInput ( inputData );
 			var processedInput = Sender.InputProcessor.ProcessInput ( parsedInput );
 			SentInput.Add ( processedInput );
@@ -85,7 +85,7 @@ namespace InputResender.UnitTests {
 			Init ();
 
 			HHookInfo hookInfo = new HHookInfo ( Sender.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
-			var hookIDs = Sender.InputReader.SetupHook ( hookInfo, ProcessInput );
+			var hookIDs = Sender.InputReader.SetupHook ( hookInfo, ProcessInput, null );
 			foreach (var hookID in hookIDs ) hookInfo.AddHookID ( hookID );
 
 			var pressHolder = Sender.InputReader.SimulateKeyInput ( hookInfo, VKChange.KeyDown, KeyCode.E );

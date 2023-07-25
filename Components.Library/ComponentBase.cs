@@ -7,9 +7,15 @@ namespace Components.Library {
 	public abstract class ComponentBase {
 		private CoreBase Owner;
 		public abstract int ComponentVersion { get; }
+		public readonly DateTime CreationTime;
 		public readonly IReadOnlyList<(string opCode, Type opType)> SupportedCommands;
+		private static int NextID = Random.Shared.Next ();
+		public readonly int ID;
+		public string Name { get => ID.ToShortCode (); }
 
 		protected ComponentBase() {
+			CreationTime = DateTime.Now;
+			ID = NextID++;
 			List<(string opCode, Type opType)> commands = new List<(string opCode, Type opType)>();
 			var cmds = AddCommands ();
 			commands.AddRange ( cmds );

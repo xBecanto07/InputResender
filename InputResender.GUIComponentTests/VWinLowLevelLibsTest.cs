@@ -19,11 +19,11 @@ namespace InputResender.GUIComponentTests {
 		public override VWinLowLevelLibs GenerateTestObject () => new VWinLowLevelLibs ( OwnerCore );
 
 		static AutoResetEvent waiter;
-		static List<(int, VKChange, KeyCode, Input.KeyboardInput)> messages;
+		static List<(DictionaryKey, HInputData)> messages;
 
 		public VWinLowLevelLibsTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) {
 			waiter = new AutoResetEvent ( false );
-			messages = new List<(int, VKChange, KeyCode, Input.KeyboardInput)> ();
+			messages = new List<(DictionaryKey, HInputData)> ();
 		}
 
 		[Fact]
@@ -79,35 +79,30 @@ namespace InputResender.GUIComponentTests {
 
 			waiter.WaitOne ( 200 ).Should ().BeTrue ();
 			messages.Should ().HaveCount ( 1 );
-			messages[0].Item1.Should ().Be ( 0 );
-			messages[0].Item2.Should ().Be ( VKChange.KeyDown );
-			messages[0].Item3.Should ().Be ( KeyCode.E );
+			messages[0].Should ().NotBeNull ();
+			messages[0].Item1.GetHashCode ().Should ().NotBe ( 0 );
+			messages[0].Item2.Pressed.Should ().Be ( VKChange.KeyDown );
+			((Input)messages[0].Item2.Data).Data.ki.vkCode.Should ().Be ( (ushort)KeyCode.E );
 		}
 
-		public nint Callback ( int nCode, nint wParam, nint lParam ) {
-			messages.Add ( (nCode, TestObject.GetChangeType ( (int)wParam ), (KeyCode)Marshal.ReadInt32 ( lParam ), new Input.KeyboardInput ( lParam )) );
+		public bool Callback ( DictionaryKey hookKey, HInputData inputData ) {
+			messages.Add ( (hookKey, inputData) );
 			Thread.MemoryBarrier ();
 			waiter.Set ();
-			return nCode;
+			return true;
 		}
 		public static uint GetPID () => (uint)Process.GetCurrentProcess ().Id;
 
-		public nint SetupHook () {
+		public Hook SetupHook () {
 			for ( int i = 0; i < 3; i++ ) {
-				nint hookID = 0;
-				using ( Process curProcess = Process.GetCurrentProcess () )
-				using ( ProcessModule curModule = curProcess.MainModule ) {
-
-					var moduleHandle = TestObject.GetModuleHandleID ( curModule.ModuleName );
-					hookID = TestObject.SetHookEx ( Callback );
-				}
+				Hook hook = TestObject.SetHookEx ( Callback );
 
 				TestObject.PrintErrors ( Output.WriteLine );
 
-				if ( hookID != (IntPtr)null ) return hookID;
+				if ( hook != null ) return hook;
 			}
 			Assert.Fail ( "SetHookEx should not fail" );
-			return 0;
+			return null;
 		}
 
 		public WinLLInputData GenerateInputData () => WinLLInputData.NewKeyboardData ( TestObject, (ushort)KeyCode.E, (ushort)KeyCode.E, 0, 123456, TestObject.GetMessageExtraInfoPtr () );

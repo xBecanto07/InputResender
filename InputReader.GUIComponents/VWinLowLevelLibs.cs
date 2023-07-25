@@ -3,6 +3,7 @@ using Components.Library;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
@@ -63,20 +64,29 @@ namespace InputResender.GUIComponents {
 			inputUnion.ki = keyboardData;
 			return new WinLLInputData ( highLevelData.Owner, new Input ( 1, inputUnion ) );
 		}
-		public override HInputData ParseHookData ( int nCode, nint vkChngCode, nint vkCode ) => WinLLInputData.NewKeyboardData ( this, vkChngCode, vkCode );
+		public override HInputData ParseHookData ( DictionaryKey hookID, nint vkChngCode, nint vkCode ) => WinLLInputData.NewKeyboardData ( this, vkChngCode, vkCode );
 
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
 		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
-		public override nint SetHookEx ( LowLevelKeyboardProc lpfn ) {
-			Callback = lpfn;
+		public override Hook SetHookEx ( Func<DictionaryKey, HInputData, bool> callback ) {
+			var hookKey = HookKeyFactory.NewKey ();
+			var hook = new Hook ( this, hookKey, callback );
+
 			var moduleHandle = GetModuleHandleID ( "user32.dll" );
-			var ret = SetWindowsHookEx ( HookTypeCode, internalCallback, moduleHandle, 0 );
-			if ( ret == (IntPtr)null ) ErrorList.Add ( (nameof ( SetHookEx ), new Win32Exception ()) );
-			return ret;
+			var hookID = SetWindowsHookEx ( HookTypeCode, hook.LLCallback, moduleHandle, 0 );
+			if ( hookID == (IntPtr)null ) {
+				ErrorList.Add ( (nameof ( SetHookEx ), new Win32Exception ()) );
+				return null;
+			}
+			HookIDDict.Add ( hookKey, hookID );
+			hook.UpdateHookID ( hookID );
+			return hook;
 		}
-		public override bool UnhookHookEx ( nint hhk ) {
+		public override bool UnhookHookEx ( Hook hookID ) {
+			if ( !HookIDDict.ContainsPair ( hookID.Key, hookID.HookID ) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
 			bool ret;
-			if (!(ret = UnhookWindowsHookEx ( hhk ))) ErrorList.Add ( (nameof ( UnhookHookEx ), new Win32Exception ()) );
+			if (!(ret = UnhookWindowsHookEx ( hookID.HookID ))) ErrorList.Add ( (nameof ( UnhookHookEx ), new Win32Exception ()) );
+			HookIDDict.Remove ( hookID.Key );
 			return ret;
 		}
 		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null ) {
@@ -88,23 +98,27 @@ namespace InputResender.GUIComponents {
 		public override nint GetMessageExtraInfoPtr () => GetMessageExtraInfo ();
 
 		[DllImport ( "User32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-		protected static extern IntPtr SetWindowsHookEx ( int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId );
+		private static extern IntPtr SetWindowsHookEx ( int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId );
 
 		[DllImport ( "User32.dll", CharSet = CharSet.Auto, SetLastError = true )]
 		[return: MarshalAs ( UnmanagedType.Bool )]
-		protected static extern bool UnhookWindowsHookEx ( IntPtr hhk );
+		private static extern bool UnhookWindowsHookEx ( IntPtr hhk );
 
 		[DllImport ( "User32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-		protected static extern IntPtr CallNextHookEx ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
+		private static extern IntPtr CallNextHookEx ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
 
 		[DllImport ( "kernel32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-		protected static extern IntPtr GetModuleHandle ( string lpModuleName );
+		private static extern IntPtr GetModuleHandle ( string lpModuleName );
 
 		[DllImport ( "user32.dll" )]
 		private static extern IntPtr GetMessageExtraInfo ();
 
 		[DllImport ( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-		protected static extern uint SendInput ( uint nInputs, Input[] pInputs, int cbSize );
+		private static extern uint SendInput ( uint nInputs, Input[] pInputs, int cbSize );
+
+
+
+
 	}
 
 
@@ -167,7 +181,7 @@ namespace InputResender.GUIComponents {
 		}
 		public override int GetHashCode () => data.GetHashCode ();
 		public override string ToString () => data.ToString ();
-		public override void UpdateByHook ( DLowLevelInput hookObj, nint hookID ) { }
+		public override void UpdateByHook ( DLowLevelInput hookObj, DictionaryKey hookID ) { }
 	}
 	public struct Input : IInputLLValues {
 		public int Type;
@@ -196,15 +210,13 @@ namespace InputResender.GUIComponents {
 
 		public const int TypeKEY = 1, TypeMOUSE = 0, TypeHARDWARE = 2;
 
-		public int SizeOf { get {
-				return Marshal.SizeOf ( typeof ( Input ) );/*
-				int si = sizeof ( int );
-				switch ( Type ) {
-				case 0: return si + Marshal.SizeOf ( Data.mi );
-				case 1: return si + Marshal.SizeOf ( Data.ki );
-				case 2: return si + Marshal.SizeOf ( Data.hi );
+		public int SizeOf { get => Marshal.SizeOf ( typeof ( Input ) ); }
+
+		public KeyCode Key { get {
+				switch (Type) {
+				case TypeKEY: return (KeyCode)Data.ki.vkCode;
+				default: return KeyCode.None;
 				}
-				return 0;*/
 			} }
 
 		public Input (int type, InputUnion data) { Type = type; Data = data; }

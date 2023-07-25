@@ -14,7 +14,7 @@ namespace InputResender.UserTesting {
 		public bool LastResult { get; private set; }
 		public bool ResendEx = false;
 		readonly DLowLevelInput LLInput;
-		nint hookID;
+		Hook hookID;
 
 		public InputCapture ( DLowLevelInput llInput ) {
 			waiter = new AutoResetEvent ( false );
@@ -24,13 +24,15 @@ namespace InputResender.UserTesting {
 
 		public struct InputInfo {
 			public int nCode;
-			public VKChange changeType;
-			public KeyCode keyCode;
-			public Input.KeyboardInput inputData;
+			public DictionaryKey HookKey;
+			public HInputData InputData;
 
-			public InputInfo ( int nnCode, VKChange nchangeType, KeyCode nkeyCode, Input.KeyboardInput ninputData ) { nCode = nnCode; changeType = nchangeType; keyCode = nkeyCode; inputData = ninputData; }
+			public VKChange changeType { get => InputData.Pressed; }
+			public KeyCode keyCode { get => InputData.Key;
+			}
+			public InputInfo ( DictionaryKey key, HInputData data ) { nCode = 0; HookKey = key; InputData = data; }
 
-			public InputInfo ( int nnCode ) { nCode = nnCode; changeType = default; keyCode = default; inputData = default; }
+			public InputInfo ( int nnCode ) { nCode = nnCode; HookKey = new DictionaryKey ( 0 ); InputData = null; }
 		}
 
 		public bool ParseResult (Action<string> log) {
@@ -42,11 +44,11 @@ namespace InputResender.UserTesting {
 		}
 		public bool Accept ( InputInfo info ) { LastMessage = info; return LastResult = true; }
 		public bool Reject ( InputInfo info ) { LastMessage = info; return LastResult = false; }
-		public nint Callback ( int nCode, nint wParam, nint lParam ) {
-			messages.Add ( new (nCode, LLInput.GetChangeType ( (int)wParam ), (KeyCode)Marshal.ReadInt32 ( lParam ), new Input.KeyboardInput ( lParam )) );
+		public bool Callback ( DictionaryKey hookKey, HInputData inputData ) {
+			messages.Add ( new ( hookKey, inputData ) );
 			Thread.MemoryBarrier ();
 			waiter.Set ();
-			return LLInput.CallNextHook ( hookID, nCode, wParam, lParam ); // return 1;
+			return true;
 		}
 		public void Clear () {
 			waiter.Reset ();
@@ -87,15 +89,15 @@ namespace InputResender.UserTesting {
 		public void StartHook (Action<string> errLog) {
 			var moduleHandle = LLInput.GetModuleHandleID ( "user32.dll" );
 			hookID = LLInput.SetHookEx ( Callback );
-			if ( hookID == 0 ) {
+			if ( hookID == null ) {
 				LLInput.PrintErrors ( ( ss ) => errLog ( ss ) );
 				throw new ApplicationException ( $"Error while setting up a hook!" );
 			}
 		}
 		public void ReleaseHook () {
-			if ( hookID == 0 ) return;
+			if ( hookID == null ) return;
 			LLInput.UnhookHookEx ( hookID );
-			hookID = 0;
+			hookID = null;
 		}
 	}
 }
