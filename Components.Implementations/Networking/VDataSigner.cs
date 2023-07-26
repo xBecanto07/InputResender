@@ -31,7 +31,8 @@ namespace Components.Implementations {
 				return aes.DecryptCbc ( dataSpan, IV );
 			}
 		}
-		public override byte[] Encrypt ( byte[] data, byte[] IV ) {
+		public override byte[] Encrypt ( byte[] data, byte[] IV = null ) {
+			if ( IV == null ) IV = GenerateIV ();
 			using ( Aes aes = Aes.Create () ) {
 				aes.Key = Key;
 				aes.IV = IV;

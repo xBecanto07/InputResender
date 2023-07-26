@@ -1,5 +1,4 @@
 ﻿using Components.Library;
-using System.Net;
 
 namespace Components.Interfaces
 {
@@ -61,5 +60,15 @@ namespace Components.Interfaces
 		public abstract void LoadConfiguration ( string path );
 		public abstract void SaveConfiguration ( string path );
 		public abstract void RunApp ();
+
+		public byte[] EncryptInput ( HInputEventDataHolder inputData, out InputData command ) {
+			var combo = InputParser.ProcessInput ( inputData );
+			command = InputProcessor.ProcessInput ( combo );
+			var packet = DataSigner.Encrypt ( command.Serialize () );
+			return packet;
+		}
+		public byte[] EncryptInput ( HInputEventDataHolder inputData ) {
+			return EncryptInput ( inputData, out var nr );
+		}
 	}
 }

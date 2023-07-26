@@ -29,6 +29,7 @@
 			ConsoleOK = new System.Windows.Forms.Button ();
 			timer1 = new System.Windows.Forms.Timer ( components );
 			ActiveTask = new System.Windows.Forms.CheckBox ();
+			Awakener = new System.Windows.Forms.Timer ( components );
 			SuspendLayout ();
 			// 
 			// ConsoleOUT
@@ -87,6 +88,10 @@
 			ActiveTask.UseVisualStyleBackColor = true;
 			ActiveTask.CheckedChanged += ActiveTask_CheckedChanged;
 			// 
+			// Awakener
+			// 
+			Awakener.Tick += Awakener_Tick;
+			// 
 			// Form1
 			// 
 			AutoScaleDimensions = new System.Drawing.SizeF ( 7F, 15F );
@@ -112,5 +117,6 @@
 		private System.Windows.Forms.TextBox ConsoleOUT;
 		public System.Windows.Forms.Timer timer1;
 		public System.Windows.Forms.CheckBox ActiveTask;
+		private System.Windows.Forms.Timer Awakener;
 	}
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Windows.Forms;
@@ -59,7 +60,7 @@ namespace InputResender.UserTesting {
 		private void ConsoleIN_TextChanged ( object sender, System.EventArgs e ) {
 			string text = ConsoleIN.Text;
 			int pos;
-			while ( (pos = text.IndexOf ( '\n' )) >= 0 ) {
+			while ( (pos = text.IndexOf ( Environment.NewLine )) >= 0 ) {
 				inputLines.Enqueue ( text.Substring ( 0, pos ) );
 				text = text.Substring ( pos + 1 );
 			}
@@ -84,6 +85,10 @@ namespace InputResender.UserTesting {
 			Program.Initialized = true;
 			Thread.MemoryBarrier ();
 			UserTestApp.TaskSignaler.Set ();
+		}
+
+		private void Awakener_Tick ( object sender, EventArgs e ) {
+			UserTestApp.Continue ();
 		}
 	}
 }

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Components.Interfaces;
+using Components.Library;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -126,6 +128,15 @@ namespace InputResender.UserTesting {
 				objects.Add ( type );
 			}
 			return objects.ToArray ();
+		}
+
+		protected bool ShouldCancel ( ClientState wantedState) {
+			if ( UserTestApp.ClientState != wantedState ) {
+				SB.AppendLine ( "Skipped (client state)" );
+				Result.Passed = true;
+				return true;
+			}
+			return false;
 		}
 	}
 }

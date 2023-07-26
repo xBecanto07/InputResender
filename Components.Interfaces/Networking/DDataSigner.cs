@@ -21,7 +21,7 @@ namespace Components.Interfaces
         public abstract int KeySize { get; }
         public abstract int ChecksumSize { get; }
         public abstract byte[] Key { get; set; }
-        public abstract byte[] Encrypt ( byte[] data, byte[] IV );
+        public abstract byte[] Encrypt ( byte[] data, byte[] IV = null );
         public abstract byte[] Decrypt ( byte[] data, byte[] IV = null );
         public abstract bool TestPsswd ( byte[] data, byte[] IV );
         public abstract bool TestIntegrity ( byte[] data );
@@ -55,8 +55,9 @@ namespace Components.Interfaces
 
 		}
 		// Msg hash (2) | Key hash (2) | IV (4)
-		public override byte[] Encrypt ( byte[] data, byte[] IV ) {
+		public override byte[] Encrypt ( byte[] data, byte[] IV = null ) {
             if ( data == null ) return null;
+			if ( IV == null ) IV = GenerateIV ();
             byte[] ret = new byte[data.Length + ChecksumSize];
 			long hash = 0;
 			CryptFunc ( data, IV, ( val, i ) => { ret[i + ChecksumSize] = val; hash += val; } );
