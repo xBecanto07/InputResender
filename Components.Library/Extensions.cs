@@ -121,6 +121,7 @@ namespace Components.Library {
 			return ret;
 		}
 		public static string ToShortCode ( this int num ) => $"{(num < 0 ? "-" : "")}{((ulong)(num < 0 ? -num : num)).ToShortCode ()}";
+		public static string ToShortCode ( this long num ) => $"{(num < 0 ? "-" : "")}{((ulong)(num < 0 ? -num : num)).ToShortCode ()}";
 		public static string ToShortCode (this ulong num ) {
 			const string chAr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/*@#$%&?€£¤";
 			ulong N = (ulong)chAr.Length;

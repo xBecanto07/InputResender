@@ -1,3 +1,4 @@
+using Components.Factories;
 using InputResender.GUIComponents;
 
 namespace InputResender {
@@ -5,7 +6,12 @@ namespace InputResender {
 		[STAThread]
 		static void Main () {
 			ApplicationConfiguration.Initialize ();
-			Application.Run ( new MainScreen () );
+
+			DMainAppCoreFactory coreFactory = new DMainAppCoreFactory ();
+			coreFactory.PreferMocks = false;
+			var core = coreFactory.CreateVMainAppCore ();
+
+			Application.Run ( new MainScreen ( core ) );
 		}
 	}
 }

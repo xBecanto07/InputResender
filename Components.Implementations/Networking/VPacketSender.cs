@@ -55,6 +55,7 @@ namespace Components.Implementations {
 		public override void Disconnect ( object epObj ) => Targets.Remove ( ParseEP  ( epObj ) );
 
 		private (IPEndPoint, IPAddress) ParseEP ( object epObj ) {
+			if ( !(epObj is IPEndPoint) ) throw new InvalidCastException ( $"Wrong EP object type. Expected {typeof ( IPEndPoint ).Name} but is {epObj.GetType ().Name}!" );
 			var ep = (IPEndPoint)epObj;
 			var netNode = NetworkList.FindNetwork ( ep.Address );
 			return (ep, netNode.IPAddress);

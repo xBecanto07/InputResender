@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Components.Convertors\Components.Convertors.csproj" />
+    <ProjectReference Include="..\Components.Factories\Components.Factories.csproj" />
     <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
     <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
     <ProjectReference Include="..\Components.Library\Components.Library.csproj" />

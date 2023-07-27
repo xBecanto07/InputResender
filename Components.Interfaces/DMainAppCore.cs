@@ -13,6 +13,7 @@ namespace Components.Interfaces
 		public DInputProcessor InputProcessor { get => Fetch<DInputProcessor> (); }
 		public DDataSigner DataSigner { get => Fetch<DDataSigner> (); }
 		public DPacketSender PacketSender { get => Fetch<DPacketSender> (); }
+		public DMainAppControls MainAppControls { get => Fetch<DMainAppControls> (); }
 
 		public DMainAppCore (
 			Func<DMainAppCore, DEventVector> CreateEventVector,

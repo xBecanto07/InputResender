@@ -1,12 +1,11 @@
 ﻿using Components.Interfaces;
 using Components.Library;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
+using System.Collections.Generic;
+using System;
+using System.Linq;
 
 namespace InputResender.GUIComponents {
 	public class VWinLowLevelLibs : DLowLevelInput {
