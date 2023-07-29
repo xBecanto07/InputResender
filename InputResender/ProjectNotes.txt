@@ -1,0 +1,8 @@
+﻿VTapperInput:
+	Most input messages will be ignored. Only meaningful one is first release message. Then processor must wait until all keys are released and different button is pressed.
+	To make it more secure (error/mistake-wise), it should be first translated into internal-code. E.g.: pinky (or other finger) pressed/released.
+
+User must be able to setup custom modifiers (like assigning LMB as CustomModifier2).
+
+To improve independence from implementation: when a method is designed to be generic ( like DPacketSender.Connect(object) ), than a string must be also accepted and this method must be able to parse such string-based representation into a valid internal object.
+For futher improvement, implement a method to "translate" input string with 'keywords' for better fit when any variant-dependent text could be visible by end-user (or even a programmer). E.g.: request for EndPoint with IPv4, IPv6, DNS or system pipe will be all very different. Component definition would register during its construction all supported keywords and would provide one of four ways how to translate them. These are: 1) replace any accourance with constant string  2) generate constant-per-translation string via given Action and than replace all accourances  3) execute Action over every accourance of given keyword in-sequence  4) use Func<string,string> with additional data following given keyword

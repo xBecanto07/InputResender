@@ -25,7 +25,11 @@ namespace InputResender.UserTesting {
 			if ( lines.Count > MaxLines ) lines.RemoveAt ( MaxLines );
 			UpdateText ();
 		}
-		public void Write ( string s ) { lines[0] += s; UpdateText (); }
+		public void Write ( string s ) {
+			if ( lines.Count > 0 ) lines[0] += s;
+			else lines.Add ( s );
+			UpdateText ();
+		}
 		public void Backspace ( int N = 1 ) { lines[0] = lines[0].Substring ( 0, lines[0].Length - N ); UpdateText (); }
 		public void DeleteLine () { lines.RemoveAt ( 0 ); UpdateText (); }
 		public void ClearInput () { inputLines.Clear (); newText = ""; Invoke ( () => ConsoleIN.Text = "" ); }
@@ -51,6 +55,19 @@ namespace InputResender.UserTesting {
 			}
 
 			Invoke ( () => ConsoleOUT.Text = SB.ToString () );
+		}
+		public void Clear () {
+			Invoke ( () => {
+				lines.Clear ();
+				inputWaiter.Reset ();
+				inputLines.Clear ();
+				newText = "";
+				ConsoleOUT.Text = "";
+				ConsoleIN.Text = "";
+				UserTestApp.Continue ();
+			} );
+
+
 		}
 
 		private void ConsoleOK_Click ( object sender, System.EventArgs e ) {
@@ -88,6 +105,7 @@ namespace InputResender.UserTesting {
 		}
 
 		private void Awakener_Tick ( object sender, EventArgs e ) {
+			UpdateText ();
 			UserTestApp.Continue ();
 		}
 	}

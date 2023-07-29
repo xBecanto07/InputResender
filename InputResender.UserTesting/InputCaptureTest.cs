@@ -27,6 +27,7 @@ namespace InputResender.UserTesting {
 		public IEnumerable<Action> HookTest () {
 			// Wait for user to be ready
 			Program.WriteLine ( "Press 'K' key twice (press and release, once to start hook, second to test the hook) ... " );
+			Program.ClearInput ();
 			yield return () => ReserveChar ( "ek" );
 			if ( ShouldCancel () ) yield break;
 			// Since only E or K are accepted, if cancel is not requested (by E), than we should continue

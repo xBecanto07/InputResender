@@ -90,6 +90,7 @@
 			// 
 			// Awakener
 			// 
+			Awakener.Enabled = true;
 			Awakener.Tick += Awakener_Tick;
 			// 
 			// Form1

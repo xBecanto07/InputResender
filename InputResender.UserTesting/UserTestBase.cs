@@ -18,7 +18,7 @@ namespace InputResender.UserTesting {
 			public ResultInfo ( string name, bool pass, string msg ) { Name = name; Passed = pass; Msg = msg; }
 		}
 
-		protected SBld SB;
+		public readonly SBld SB;
 		public ResultInfo Result;
 		public static ResultInfo[] TestResults { get; private set; } = null;
 		protected char? ReservedChar;

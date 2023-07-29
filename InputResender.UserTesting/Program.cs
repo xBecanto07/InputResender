@@ -1,21 +1,27 @@
 using System.Windows.Forms;
 using System;
 using System.Collections.Generic;
+using Xunit;
+using System.Threading.Tasks;
 
 namespace InputResender.UserTesting {
-	public static class Program {
+	public class Program {
 		public static Form1 MainForm;
 		public static List<string> Inputs = new List<string> ();
 		public static bool Initialized = false;
+		static bool FirstRun = true;
+		public static Task MainThread = null;
 
-		/// <summary></summary>
 		[STAThread]
-		static void Main () {
-			// To customize application configuration such as set high DPI settings or default font,
-			// see https://aka.ms/applicationconfiguration.
-			ApplicationConfiguration.Initialize ();
-			MainForm = new Form1 ();
-			Application.Run ( MainForm );
+		public static void Main () {
+			if ( MainThread == null ) MainThread = Task.Run ( () => {
+				if ( FirstRun ) ApplicationConfiguration.Initialize ();
+				FirstRun = false;
+				MainForm = new Form1 ();
+				Application.Run ( MainForm );
+				MainForm.Dispose ();
+			} );
+			else MainForm.Clear ();
 		}
 
 		public static void WriteLine ( string line = "" ) => MainForm.WriteLine ( line );
