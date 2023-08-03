@@ -29,7 +29,7 @@ namespace InputResender.ServiceTests {
 			testObj.Send ( packet );
 			Thread.Sleep ( 10 );
 			recvTask.Status.Should ().Be ( System.Threading.Tasks.TaskStatus.RanToCompletion );
-			recvTask.Result.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
+			recvTask.Result.Data.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
 			testObj.RecvAsync ().Wait ( 25 ).Should ().BeFalse ();
 			testObj.Stop ();
 		}
@@ -42,8 +42,10 @@ namespace InputResender.ServiceTests {
 			var recvTask = receiver.RecvAsync ();
 			sender.Send ( packet, receiver.EP, false );
 			Thread.Sleep ( 10 );
+			recvTask.Wait ( 25 ).Should ().BeTrue ();
 			recvTask.Status.Should ().Be ( System.Threading.Tasks.TaskStatus.RanToCompletion );
-			recvTask.Result.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
+			var res = recvTask.Result;
+			res.Data.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
 			receiver.RecvAsync ().Wait ( 25 ).Should ().BeFalse ();
 			receiver.Stop ();
 		}
@@ -58,7 +60,8 @@ namespace InputResender.ServiceTests {
 				sender.Send ( packet, receiver.EP );
 				Thread.Sleep ( 10 );
 				recvTask.Status.Should ().Be ( System.Threading.Tasks.TaskStatus.RanToCompletion );
-				recvTask.Result.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
+				var res = recvTask.Result;
+				res.Data.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
 			}
 			receiver.RecvAsync ().Wait ( 25 ).Should ().BeFalse ();
 			receiver.Stop ();
@@ -73,7 +76,8 @@ namespace InputResender.ServiceTests {
 				testObj.Send ( packet );
 				Thread.Sleep ( 10 );
 				recvTask.Status.Should ().Be ( System.Threading.Tasks.TaskStatus.RanToCompletion );
-				recvTask.Result.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
+				var res = recvTask.Result;
+				res.Data.Should ().Equal ( packet ).And.NotBeSameAs ( packet );
 			}
 			testObj.RecvAsync ().Wait ( 25 ).Should ().BeFalse ();
 			testObj.Stop ();

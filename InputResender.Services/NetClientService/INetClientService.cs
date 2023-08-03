@@ -2,37 +2,51 @@
 using System.Net.Sockets;
 using SBld = System.Text.StringBuilder;
 using ClientType = InputResender.Services.INetClientService.ClientType;
+using System.Diagnostics;
 
 namespace InputResender.Services {
 	public abstract class INetClientService : IDisposable {
 		private static List<INetClientService> RegisteredClients = new List<INetClientService> ();
 		public readonly IPEndPoint EP;
-		public Task<Result> ActTask { get; private set; }
-		protected Task<Result> ActInternTask;
-		private Queue<byte[]> PacketBuffer;
+		private Queue<Result> PacketBuffer;
 		public int Available { get => PacketBuffer.Count; }
 		public abstract ClientType ServiceType { get; }
-		public readonly ManualResetEvent ReceiveWaiter;
-		protected bool ShouldStop;
+		public readonly AutoResetEvent ReceiveWaiter;
+		CancellationTokenSource cts;
+		TaskService TaskCreator;
 
 		public INetClientService ( IPEndPoint ep ) {
 			EP = ep;
-			PacketBuffer = new Queue<byte[]> ();
-			ReceiveWaiter = new ManualResetEvent ( false );
+			PacketBuffer = new Queue<Result> ();
+			ReceiveWaiter = new AutoResetEvent ( false );
 			RegisteredClients.Add ( this );
+			TaskCreator = new TaskService ( TaskCreatorAct );
+			TaskCreator.Start ();
+			cts = new CancellationTokenSource ();
+		}
+		public void Dispose () {
+			Stop ();
+			InnerDispose ();
+			TaskCreator.Stop ();
+			TaskCreator.Dispose ();
+			RegisteredClients.Remove ( this );
+			PacketBuffer.Clear ();
+			PacketBuffer = null;
+			ReceiveWaiter.Dispose ();
+			cts.Dispose ();
 		}
 
-		public Task<byte[]> RecvAsync () => Task.Run ( WaitForRecv );
-		public byte[] WaitForRecv () {
+		public Task<Result> RecvAsync () => Task.Run ( WaitForRecv );
+		public Result WaitForRecv () {
 			do {
 				lock ( PacketBuffer ) {
 					if ( PacketBuffer.Count < 1 ) continue;
-					if ( ShouldStop ) return null;
+					if ( cts.IsCancellationRequested ) return new Result ( Result.Type.Interrupted );
 					ReceiveWaiter.Reset ();
 					return PacketBuffer.Dequeue ();
 				}
 			} while ( ReceiveWaiter.WaitOne () );
-			return null;
+			return new Result ( Result.Type.Error ); ;
 		}
 		/// <summary>Send data to a given EP</summary>
 		/// <param name="data">Binary data to be sent</param>
@@ -42,9 +56,9 @@ namespace InputResender.Services {
 			if ( ep == null ) ep = EP;
 			if ( attemptDirect ) {
 				foreach ( var client in RegisteredClients ) {
-					if ( ep != client.EP ) continue;
+					if ( !ep.Equals ( client.EP ) ) continue;
 					lock ( client.PacketBuffer ) {
-						client.PacketBuffer.Enqueue ( (byte[])data.Clone () );
+						client.PacketBuffer.Enqueue ( new Result ( (byte[])data.Clone () ) );
 					}
 					client.ReceiveWaiter.Set ();
 					return;
@@ -52,57 +66,55 @@ namespace InputResender.Services {
 			}
 			InnerSend ( data, ep );
 		}
-		public void Dispose () {
-			Stop ();
-			InnerDispose ( );
-			RegisteredClients.Remove ( this );
-			PacketBuffer.Clear ();
-			PacketBuffer = null;
-			ReceiveWaiter.Dispose ();
-		}
 
-		protected abstract Task<Result> InnerRecv ( ManualResetEvent prepared );
 		public void Start () {
-			var prepared = new ManualResetEvent ( false );
-			InnerStart ( prepared );
-			ActTask = RecvTask ( prepared );
-			prepared.WaitOne ();
+			if ( PacketBuffer == null ) throw new ObjectDisposedException ( nameof ( INetClientService ) );
+			TaskCreator.Signal ( false );
 		}
 		public void Stop () {
-			InnerStop ();
-			ActTask?.Wait ();
+			cts.Cancel ();
 		}
-		public abstract void InnerStart ( ManualResetEvent prepared );
-		public abstract void InnerStop ();
+		protected abstract Result InnerRecv ( CancellationToken ct );
 		protected abstract void InnerDispose ();
 		protected abstract void InnerSend ( byte[] data, IPEndPoint EP );
 
-		public override string ToString () => $"NetClient ({ServiceType}) {((ActTask == null || ActTask.IsCompleted) ? "waiting" : "listening")} on {EP} with {Available} packets.";
+		public override string ToString () => $"NetClient ({ServiceType}) on {EP} with {Available} packets.";
 
-		private Task<Result> RecvTask ( ManualResetEvent prepared ) {
-			return Task.Run ( () => {
-				if ( ActInternTask == null ) {
-					ActInternTask = InnerRecv ( prepared );
+		private void TaskCreatorAct (TaskService context, ManualResetEvent initWaiter ) {
+			context.State = "Starting";
+			while (true) {
+				initWaiter.Set ();
+				context.State = "Waiting for signal";
+				context.WaitSignal ( false );
+				if (context.ShouldStop) {
+					context.State = "Stopping after CTS stop request";
+					return;
 				}
-				var ret = ActInternTask.Result;
-				ActInternTask = null;
-				ActTask = RecvTask ( null );
-				switch ( ret.ResultType ) {
-				case Result.Type.Received:
-				case Result.Type.Direct:
-					lock ( PacketBuffer ) {
-						PacketBuffer.Enqueue ( ret.Data );
-						ReceiveWaiter.Set ();
-					}
-					break;
-				case Result.Type.Interrupted:
-					break;
-				case Result.Type.Closed:
-					break;
-				default: break;
+
+				context.State = "Waiting for receive";
+				Result data = InnerRecv ( cts.Token );
+				if ( cts.IsCancellationRequested ) break;
+				PushResult ( data );
+
+				context.Signal ( true );
+			}
+		}
+		private void PushResult ( Result data ) {
+			switch ( data.ResultType ) {
+			case Result.Type.Received:
+			case Result.Type.Direct:
+				lock ( PacketBuffer ) {
+					data.PushTrace ( $"Received data ({data.ResultType})" );
+					PacketBuffer.Enqueue ( data );
+					ReceiveWaiter.Set ();
 				}
-				return ret;
-			} );
+				break;
+			case Result.Type.Interrupted:
+				break;
+			case Result.Type.Closed:
+				break;
+			default: break;
+			}
 		}
 
 		public struct Result {
@@ -110,9 +122,11 @@ namespace InputResender.Services {
 			public int MsgID;
 			public enum Type { Received, Interrupted, Closed, Direct, Error }
 			public Type ResultType;
+			public List<(string, StackTrace)> Origin;
 			public byte[] Data;
-			public Result ( byte[] data, bool isDirect = false ) { Data = data; ResultType = isDirect ? Type.Direct : Type.Received; MsgID = MsgCnt++; }
-			public Result (Type errType) { Data = null; ResultType = errType; MsgID = MsgCnt++; }
+			public Result ( byte[] data, bool isDirect = false ) { Data = data; ResultType = isDirect ? Type.Direct : Type.Received; MsgID = MsgCnt++; Origin = new List<(string, StackTrace)> (); PushTrace ( "Creating valid result" ); }
+			public Result ( Type errType ) { Data = null; ResultType = errType; MsgID = MsgCnt++; Origin = new List<(string, StackTrace)> (); PushTrace ( $"Creating error ({errType}) result" ); }
+			public void PushTrace ( string context ) => Origin?.Add ( (context, new StackTrace ()) );
 		}
 
 		public enum ClientType { Unknown, UDP }
@@ -127,49 +141,29 @@ namespace InputResender.Services {
 	public class UDPClientService : INetClientService {
 		public override ClientType ServiceType => ClientType.UDP;
 		protected UdpClient UdpClient;
-		CancellationTokenSource cts;
 
 		public UDPClientService ( IPEndPoint ep ) : base ( ep ) {
 			UdpClient = new UdpClient ( ep );
-			cts = new CancellationTokenSource ();
 		}
 
-		public override void InnerStart ( ManualResetEvent prepared ) {
-			if ( ActInternTask != null && !ActInternTask.IsCompleted ) return;
-			cts.TryReset ();
-			ActInternTask = InnerRecv ( prepared );
-		}
-		public override void InnerStop () {
-			if ( ActInternTask == null || ActInternTask.IsCompleted ) return;
-			cts.Cancel ();
-			ActInternTask?.Wait ();
-			ActInternTask?.Dispose ();
-			cts.TryReset ();
-		}
 		protected override void InnerDispose () {
 			Stop ();
 			UdpClient.Dispose ();
-			cts.Dispose ();
 			UdpClient = null;
-			ActInternTask = null;
 		}
-		protected override Task<Result> InnerRecv ( ManualResetEvent prepared ) {
-			if ( ActInternTask != null && !ActInternTask.IsCompleted ) return ActInternTask;
-			return Task.Run ( () => {
-				try {
-					prepared?.Set ();
-					var recvResult = UdpClient.ReceiveAsync ( cts.Token ).GetAwaiter ().GetResult ();
-					
-					if ( recvResult.Buffer != null ) {
-						return new Result ( recvResult.Buffer );
-					}
-				} catch ( Exception e ) {
-					if ( cts.IsCancellationRequested ) return new Result ( Result.Type.Closed );
-					else if ( e.Message.Contains ( "WSACancelBlockingCall" ) ) return new Result ( Result.Type.Interrupted );
-					else return new Result ( Result.Type.Error );
-				}
-				return new Result ( Result.Type.Error );
-			} );
+		protected override Result InnerRecv ( CancellationToken ct ) {
+			try {
+				var recvResult = UdpClient.ReceiveAsync ( ct ).GetAwaiter ().GetResult ();
+
+				if ( recvResult.Buffer != null ) {
+					return new Result ( recvResult.Buffer );
+				} else if ( ct.IsCancellationRequested ) return new Result ( Result.Type.Closed );
+			} catch ( Exception e ) {
+				if ( ct.IsCancellationRequested ) return new Result ( Result.Type.Closed );
+				else if ( e.Message.Contains ( "WSACancelBlockingCall" ) ) return new Result ( Result.Type.Interrupted );
+				else return new Result ( Result.Type.Error );
+			}
+			return new Result ( Result.Type.Error );
 		}
 
 		protected override void InnerSend ( byte[] data, IPEndPoint EP ) {
@@ -182,16 +176,14 @@ namespace InputResender.Services {
 		public TCPClientService ( IPEndPoint ep ) : base ( ep ) {
 		}
 
-		public override void InnerStart ( ManualResetEvent prepared ) => throw new NotImplementedException ();
-		public override void InnerStop () => throw new NotImplementedException ();
 		protected override void InnerDispose () => throw new NotImplementedException ();
-		protected override Task<Result> InnerRecv (ManualResetEvent prepared ) => throw new NotImplementedException ();
+		protected override Result InnerRecv ( CancellationToken ct ) => throw new NotImplementedException ();
 		protected override void InnerSend ( byte[] data, IPEndPoint EP ) => throw new NotImplementedException ();
 	}
 
 	public class NetClientList : IDisposable {
 		private readonly List<INetClientService> ClientList;
-		private readonly List<Task<byte[]>> RecvList;
+		private readonly List<Task<INetClientService.Result>> RecvList;
 		public int Count { get => ClientList.Count; }
 		public bool Active { get; private set; }
 		private AutoResetEvent Signal;
@@ -201,7 +193,7 @@ namespace InputResender.Services {
 			Active = false;
 			Signal = new AutoResetEvent ( false );
 			ClientList = new List<INetClientService> ();
-			RecvList = new List<Task<byte[]>> ();
+			RecvList = new List<Task<INetClientService.Result>> ();
 		}
 
 		public INetClientService Add ( IPEndPoint ep, ClientType type = ClientType.Unknown ) {
@@ -229,7 +221,7 @@ namespace InputResender.Services {
 			}
 			return false;
 		}
-		public (Task<byte[]> task, INetClientService client) WaitAny () {
+		public (Task<INetClientService.Result> task, INetClientService client) WaitAny () {
 			int N = ClientList.Count;
 			for (int i = 0; i < N; i++ ) {
 				if ( RecvList[i] == null ) RecvList[i] = ClientList[i].RecvAsync ();
@@ -237,12 +229,12 @@ namespace InputResender.Services {
 
 
 
-			List<Task<byte[]>> tasks = new( RecvList ) {
+			List<Task<INetClientService.Result>> tasks = new( RecvList ) {
 				Task.Run ( () => {
 					while ( true ) {
 						Signal.WaitOne ();
 						if ( DirectMessage.ResultType == INetClientService.Result.Type.Direct )
-							return DirectMessage.Data;
+							return DirectMessage;
 					}
 				} )
 			};

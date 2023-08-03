@@ -14,14 +14,21 @@ namespace InputResender.UserTesting {
 
 		[STAThread]
 		public static void Main () {
-			if ( MainThread == null ) MainThread = Task.Run ( () => {
-				if ( FirstRun ) ApplicationConfiguration.Initialize ();
-				FirstRun = false;
-				MainForm = new Form1 ();
-				Application.Run ( MainForm );
-				MainForm.Dispose ();
-			} );
-			else MainForm.Clear ();
+			if ( UserTestApp.TestMethod == null ) {
+				UserTestApp.Init ();
+				Run ();
+			} else {
+				if ( MainThread == null ) MainThread = Task.Run ( Run );
+				else MainForm.Clear ();
+			}
+		}
+
+		private static void Run () {
+			if ( FirstRun ) ApplicationConfiguration.Initialize ();
+			FirstRun = false;
+			MainForm = new Form1 ();
+			Application.Run ( MainForm );
+			MainForm.Dispose ();
 		}
 
 		public static void WriteLine ( string line = "" ) => MainForm.WriteLine ( line );

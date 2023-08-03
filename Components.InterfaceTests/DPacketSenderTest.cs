@@ -12,6 +12,7 @@ namespace Components.InterfaceTests {
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
 		protected List<long> Received = new List<long> ();
 		protected AutoResetEvent resetEvent = new AutoResetEvent (false);
+		bool TestFinished = false;
 
 		public DPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
@@ -55,7 +56,7 @@ namespace Components.InterfaceTests {
 		protected bool SimpleCallback ( byte[] data) {
 			Received.Add (data.CalcHash ());
 			resetEvent.Set ();
-			return true;
+			return !TestFinished;
 		}
 
 		protected byte[] GenData ( int length ) {

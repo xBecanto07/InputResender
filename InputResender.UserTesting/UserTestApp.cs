@@ -31,7 +31,8 @@ public static class UserTestApp {
 		}
 		Program.WriteLine ();
 		Program.WriteLine ( "To close this window, press Enter ..." );
-		Program.ReadLine ();
+		yield return () => Program.ReadLine ();
+		Application.Exit ();
 	}
 
 	static void Finish () {

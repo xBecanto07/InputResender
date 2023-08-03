@@ -72,6 +72,7 @@ namespace InputResender.UserTesting {
 			while ( true ) {
 				string targEPss = "";
 				yield return () => { targEPss = Program.ReadLine (); };
+				if ( targEPss.StartsWith ( "ee" ) ) yield break;
 				if ( IPEndPoint.TryParse ( targEPss, out TargEP ) ) {
 					Core.PacketSender.Connect ( TargEP );
 					break;

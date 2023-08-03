@@ -68,7 +68,7 @@ namespace Components.Implementations {
 					if ( Clients.Count == 0 ) return;
 					var recv = Clients.WaitAny ();
 					var res = recv.task.Result;
-					if ( !callback ( recv.task.Result ) ) return;
+					if ( !callback ( recv.task.Result.Data ) ) return;
 				}
 			} );
 		}
