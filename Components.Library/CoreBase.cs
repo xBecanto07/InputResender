@@ -7,6 +7,7 @@ namespace Components.Library {
 		private static int index = 0;
 		public readonly int CoreID;
 		public string Name;
+		public Action<string> LogFcn = null;
 
 		private static readonly string[] nameList = new string[] { "Alfa", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu" };
 

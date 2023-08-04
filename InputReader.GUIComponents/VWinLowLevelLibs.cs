@@ -12,20 +12,15 @@ namespace InputResender.GUIComponents {
 		private const int WH_KEYBOARD_LOW_LEVEL = 13;
 		private LowLevelKeyboardProc Callback;
 		private static VWinLowLevelLibs mainInstance;
-		public static List<(int, VKChange, Input.KeyboardInput)> EventList = new List<(int, VKChange, Input.KeyboardInput)> ();
-		public static LowLevelKeyboardProc internalCallback = ProcessHook;
+		const int MaxLog = 256;
+		public static List<(int nCode, VKChange changeCode, Input.KeyboardInput inputData)> EventList = new List<(int, VKChange, Input.KeyboardInput)> ( MaxLog );
 
-		private static nint ProcessHook ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
+		private static void Log ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
 			var change = (VKChange)vkChngCode;
 			var input = new Input.KeyboardInput ( vkCode );
 			// if ( EventList.Count > 0 && EventList[0].Item3.Equals ( input ) && EventList[0].Item2 == change ) vkChngCode ^= 0x1;
+			if ( EventList.Count >= MaxLog ) EventList.RemoveAt ( MaxLog - 1 );
 			EventList.Insert ( 0, (nCode, change, input) );
-			//if ( nCode >= 0 ) Callback ( (Keys)KeyCode, KeyCode );
-			if ( nCode >= 0 ) {
-				return mainInstance.Callback ( nCode, vkChngCode, vkCode );
-			} else {
-				return mainInstance.CallNextHook ( 0, nCode, vkChngCode, vkCode );
-			}
 		}
 
 		public VWinLowLevelLibs ( CoreBase owner ) : base ( owner ) { mainInstance = this; }
@@ -48,10 +43,16 @@ namespace InputResender.GUIComponents {
 			throw new InvalidCastException ( $"No key change action type corresponds to code {vkCode:X}" );
 		}
 
-		public override HInputEventDataHolder GetHighLevelData ( DInputReader requester, HInputData lowLevelData ) {
+		public override HInputEventDataHolder GetHighLevelData ( DictionaryKey hookKey, DInputReader requester, HInputData lowLevelData ) {
 			Input llData = (Input)lowLevelData.Data;
 			Input.KeyboardInput keyInfo = llData.Data.ki;
-			return new HKeyboardEventDataHolder ( requester, 0, keyInfo.vkCode, lowLevelData.IsPressed ? 1 : 0 );
+			float newVal = 0, oldVal = 0;
+			switch ( lowLevelData.Pressed ) {
+			case VKChange.KeyDown: oldVal = 0; newVal = 1; break;
+			case VKChange.KeyUp: oldVal = 1; newVal = 0; break;
+			}
+			var ret = new HKeyboardEventDataHolder ( requester, 0, keyInfo.vkCode, newVal, newVal - oldVal );
+			return ret;
 		}
 		public override HInputData GetLowLevelData ( HInputEventDataHolder highLevelData ) {
 			var keyboardData = new Input.KeyboardInput ();
@@ -67,19 +68,26 @@ namespace InputResender.GUIComponents {
 
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
 		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
-		public override Hook SetHookEx ( Func<DictionaryKey, HInputData, bool> callback ) {
+		public override Hook[] SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> callback ) {
 			var hookKey = HookKeyFactory.NewKey ();
-			var hook = new Hook ( this, hookKey, callback );
+			var hook = new Hook ( this, hookInfo, hookKey, callback, Log );
+
+			if ( hook == null ) {
+				System.Text.StringBuilder SB = new System.Text.StringBuilder ();
+				SB.AppendLine ( $"Error when creating hook for {hookInfo}!{Environment.NewLine}" );
+				PrintErrors ( ( ss ) => SB.AppendLine ( ss ) );
+				throw new InvalidOperationException ( SB.ToString () );
+			}
 
 			var moduleHandle = GetModuleHandleID ( "user32.dll" );
-			var hookID = SetWindowsHookEx ( HookTypeCode, hook.LLCallback, moduleHandle, 0 );
+			var hookID = SetWindowsHookEx ( HookTypeCode, hook.Callback, moduleHandle, 0 );
 			if ( hookID == (IntPtr)null ) {
 				ErrorList.Add ( (nameof ( SetHookEx ), new Win32Exception ()) );
 				return null;
 			}
 			HookIDDict.Add ( hookKey, hookID );
 			hook.UpdateHookID ( hookID );
-			return hook;
+			return new Hook[1] { hook };
 		}
 		public override bool UnhookHookEx ( Hook hookID ) {
 			if ( !HookIDDict.ContainsPair ( hookID.Key, hookID.HookID ) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );

@@ -10,8 +10,4 @@
     <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="InputProcessing\" />
-  </ItemGroup>
-
 </Project>

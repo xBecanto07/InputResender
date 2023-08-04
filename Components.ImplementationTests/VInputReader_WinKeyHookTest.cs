@@ -35,8 +35,7 @@ namespace Components.ImplementationTests {
 		[Fact]
 		public void SimKeyPressPasses () {
 			HInputEventDataHolder inputData = GenerateKeyboardEvent ();
-			ExecOnHook ( inputData, () => ((MInputReader)TestObject).SimulateKeyPress ( KeyCode.E, true, inputData.HookInfo.DeviceID )
-			, true, true );
+			ExecOnHook ( inputData, () => ((MInputReader)TestObject).SimulateKeyPress ( inputData.HookInfo, KeyCode.E, VKChange.KeyDown ) , true, true );
 			EventList.Should ().HaveCount ( 1 );
 		}
 	}

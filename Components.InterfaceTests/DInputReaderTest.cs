@@ -59,7 +59,7 @@ namespace Components.InterfaceTests {
 		protected HInputEventDataHolder GenerateKeyboardEvent ( HHookInfo hookInfo = null, DInputReader owner = null ) {
 			if ( owner == null ) owner = TestObject;
 			if ( hookInfo == null ) hookInfo = GenerateHookInfo ();
-			return new HKeyboardEventDataHolder ( owner, hookInfo, 1, 1 );
+			return new HKeyboardEventDataHolder ( owner, hookInfo, 1, VKChange.KeyDown );
 		}
 
 		protected bool SimpleTestCallback ( DictionaryKey key, HInputEventDataHolder inpudData ) {

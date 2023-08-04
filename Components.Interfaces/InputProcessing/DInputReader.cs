@@ -17,7 +17,7 @@ namespace Components.Interfaces {
 		public abstract int ReleaseHook ( HHookInfo hookInfo );
 		public abstract uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture );
 		public HInputEventDataHolder SimulateKeyInput ( HHookInfo hookInfo, VKChange action, KeyCode key ) {
-			HInputEventDataHolder ret = new HKeyboardEventDataHolder ( this, hookInfo, (int)key, action == VKChange.KeyDown ? 1 : 0 );
+			HInputEventDataHolder ret = new HKeyboardEventDataHolder ( this, hookInfo, (int)key, action );
 			SimulateInput ( ret, true );
 			return ret;
 		}
@@ -58,13 +58,15 @@ namespace Components.Interfaces {
 			return 0;
 		}
 
-		public uint SimulateKeyPress ( KeyCode keyCode, bool Pressed, int DeviceID = 1 ) => SimulateInput ( new HKeyboardEventDataHolder ( this, DeviceID, (int)keyCode, Pressed ? 1f : 0f ), false );
+		public uint SimulateKeyPress ( HHookInfo hookInfo, KeyCode keyCode, VKChange Pressed ) => SimulateInput ( new HKeyboardEventDataHolder ( this, hookInfo, (int)keyCode, Pressed), false );
 	}
 	
 
 
 	public class HKeyboardEventDataHolder : HInputEventDataHolder {
-		public HKeyboardEventDataHolder ( DInputReader owner, int deviceID, int keycode, float pressValue ) : this ( owner, new HHookInfo ( owner, deviceID, pressValue > 0.3f ? VKChange.KeyDown : VKChange.KeyUp ), keycode, pressValue ) {
+		public HKeyboardEventDataHolder ( DInputReader owner, HHookInfo hookInfo, int keycode, VKChange change ) : this ( owner, hookInfo, keycode, change == VKChange.KeyDown ? 1 : 0, change == VKChange.KeyDown ? 1 : -1 ) { }
+		public HKeyboardEventDataHolder ( DInputReader owner, int deviceID, int keycode, float pressValue, float delta ) : this ( owner, new HHookInfo ( owner, deviceID, pressValue > 1 ? VKChange.KeyDown : VKChange.KeyUp ), keycode, pressValue, delta ) { }
+		public HKeyboardEventDataHolder ( DInputReader owner, HHookInfo hookInfo, int keycode, float pressValue, float delta ) : base ( owner, hookInfo ) {
 			InputCode = keycode;
 			ValueX = (int)(pressValue * PressThreshold);
 			ValueY = ValueZ = 0;
@@ -75,6 +77,6 @@ namespace Components.Interfaces {
 			ValueY = ValueZ = 0;
 		}
 
-		public override DataHolderBase Clone () => new HKeyboardEventDataHolder ( (DInputReader)Owner, HookInfo.DeviceID, InputCode, ValueX / (float)ushort.MaxValue );
+		public override DataHolderBase Clone () => new HKeyboardEventDataHolder ( (DInputReader)Owner, HookInfo, InputCode, ValueX / (float)ushort.MaxValue );
 	}
 }

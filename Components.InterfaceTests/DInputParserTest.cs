@@ -45,7 +45,7 @@ namespace Components.InterfaceTests {
 			else TestObject.ProcessInput ( newInput ).Should ().Contain ( currentState );
 		}
 		protected DataHolder GenerateInputData ( KeyCode keyCode, bool pressed ) {
-			return new HKeyboardEventDataHolder ( InputReader, HookInfo, (int)keyCode, pressed ? 1 : 0 );
+			return new HKeyboardEventDataHolder ( InputReader, HookInfo, (int)keyCode, pressed ? VKChange.KeyDown : VKChange.KeyUp );
 		}
 		/// <summary>Generate holders, always for given KeyCode in pair of (press/release)</summary>
 		protected DataHolder[] GenerateInputData ( params KeyCode[] keyCode ) {

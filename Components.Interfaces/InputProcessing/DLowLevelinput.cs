@@ -1,6 +1,7 @@
 ﻿using Components.Library;
 using System.ComponentModel;
 using System.Net;
+using System.Runtime.InteropServices;
 
 namespace Components.Interfaces {
 	public abstract class DLowLevelInput : ComponentBase<CoreBase> {
@@ -14,7 +15,7 @@ namespace Components.Interfaces {
 		public DLowLevelInput ( CoreBase owner ) : base ( owner ) { }
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
-				(nameof(SetHookEx), typeof(IntPtr)),
+				(nameof(SetHookEx), typeof(Hook[])),
 				(nameof(UnhookHookEx), typeof(bool)),
 				(nameof(CallNextHook), typeof(IntPtr)),
 				(nameof(GetModuleHandleID), typeof(IntPtr)),
@@ -39,7 +40,7 @@ namespace Components.Interfaces {
 		/// <param name="hMod">Hook of DLL containing callback. Must be <see langword="null"/> if in same thread, otherwise following is recommended: <code>LoadLibrary(TEXT("c:\\myapp\\sysmsg.dll"))</code></param>
 		/// <param name="dwThreadId">Process ID on which the hook should operate</param>
 		/// <returns>Hook handle number, ID to this specific hook</returns>
-		public abstract Hook SetHookEx ( Func<DictionaryKey, HInputData, bool> lpfn );
+		public abstract Hook[] SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> lpfn );
 		/// <summary>Stop hook specified by its ID of <paramref name="hhk"/></summary>
 		public abstract bool UnhookHookEx ( Hook hookID );
 		/// <summary>Pass processing to another hook in system queue</summary>
@@ -58,7 +59,7 @@ namespace Components.Interfaces {
 		/// <returns>Number of successfully called input events</returns>
 		public abstract uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null );
 		public abstract HInputData GetLowLevelData ( HInputEventDataHolder higLevelData );
-		public abstract HInputEventDataHolder GetHighLevelData ( DInputReader requester, HInputData highLevelData );
+		public abstract HInputEventDataHolder GetHighLevelData ( DictionaryKey hookKey, DInputReader requester, HInputData highLevelData );
 		public abstract int GetChangeCode ( VKChange vkChange );
 		public abstract VKChange GetChangeType ( int vkCode );
 		public abstract int HookTypeCode { get; }
@@ -79,17 +80,31 @@ namespace Components.Interfaces {
 		public nint HookID { get; private set; }
 		public Func<DictionaryKey, HInputData, bool> HLCallback;
 		public bool EnforcePassthrough = false;
+		public Action<int, IntPtr, IntPtr> Log;
+		public int MsgID = 0;
+		public readonly DLowLevelInput.LowLevelKeyboardProc Callback;
+		public readonly HHookInfo HookInfo;
+		private readonly GCHandle _gcHandler;
 
 		private DLowLevelInput LLInput { get => (DLowLevelInput)Owner; }
 
-		public Hook ( DLowLevelInput owner, DictionaryKey key, Func<DictionaryKey, HInputData, bool> callback ) : base ( owner ) {
+		public Hook ( DLowLevelInput owner, HHookInfo hookInfo, DictionaryKey key, Func<DictionaryKey, HInputData, bool> callback, Action<int, IntPtr, IntPtr> log = null ) : base ( owner ) {
 			Key = key;
+			HookInfo = (HHookInfo)hookInfo.Clone ();
 			HLCallback = callback;
+			Log = log;
+			Callback = LLCallback;
+			_gcHandler = GCHandle.Alloc ( Callback );
+		}
+		~Hook () {
+			_gcHandler.Free ();
 		}
 
 		public void UpdateHookID ( nint hookID ) => HookID = hookID;
 
-		public nint LLCallback ( int nCode, IntPtr wParam, IntPtr lParam ) {
+		private nint LLCallback ( int nCode, IntPtr wParam, IntPtr lParam ) {
+			MsgID++;
+			Log?.Invoke ( nCode, wParam, lParam );
 			bool resend = false;
 			if ( (nCode >= 0) | (EnforcePassthrough) ) {
 				var res = LLInput.ParseHookData ( Key, wParam, lParam );
@@ -99,9 +114,10 @@ namespace Components.Interfaces {
 		}
 
 		public override DataHolderBase Clone () {
-			var ret = new Hook ( LLInput, Key, HLCallback );
+			var ret = new Hook ( LLInput, HookInfo, Key, HLCallback );
 			ret.HookID = HookID;
 			ret.HLCallback = HLCallback;
+			ret.Log = Log;
 			return ret;
 		}
 		public override bool Equals ( object obj ) => GetHashCode () == obj.GetHashCode ();

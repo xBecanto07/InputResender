@@ -14,7 +14,9 @@ namespace Components.Implementations {
 			waiter = new AutoResetEvent ( false );
 		}
 
-		struct HLHookInfo {
+		public HLHookInfo GetHook (DictionaryKey key) => HookSet[key];
+
+		public struct HLHookInfo {
 			public Hook hook;
 			public Func<DictionaryKey, HInputEventDataHolder, bool> MainCallback;
 			public Action<DictionaryKey, HInputEventDataHolder> DelayedCB;
@@ -32,19 +34,15 @@ namespace Components.Implementations {
 		protected DLowLevelInput LowLevelComponent { get { return Owner.Fetch<DLowLevelInput> (); } }
 
 		public override ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
-			var lowLevelComponent = LowLevelComponent;
 			var ret = new HashSet<DictionaryKey> ();
-			foreach ( var changeType in hookInfo.ChangeMask ) {
-				var hook = LowLevelComponent.SetHookEx ( LocalCallback );
-				if ( hook == null ) {
-					System.Text.StringBuilder SB = new System.Text.StringBuilder ();
-					SB.AppendLine ( $"Error when creating hook for {hookInfo.DeviceID}:{changeType}!{Environment.NewLine}" );
-					LowLevelComponent.PrintErrors ( ( ss ) => SB.AppendLine ( ss ) );
-					throw new InvalidOperationException ( SB.ToString () );
-				}
+			var hooks = LowLevelComponent.SetHookEx ( hookInfo, LocalCallback );
 
+			foreach ( var hook in hooks ) {
 				HookSet.Add ( hook.Key, new ( hook, mainCB, delayedCB ) );
 				ret.Add ( hook.Key );
+
+				waiter.Reset ();
+				Continue = true;
 				inputHandler ??= Task.Run ( CallbackParaTask );
 			}
 			return ret;
@@ -72,7 +70,7 @@ namespace Components.Implementations {
 		}
 
 		private bool LocalCallback ( DictionaryKey hookKey, HInputData inputData ) {
-			var inputEventDataHolder = LowLevelComponent.GetHighLevelData ( this, inputData );
+			var inputEventDataHolder = LowLevelComponent.GetHighLevelData ( hookKey, this, inputData );
 			bool willResend = true;
 			if ( HookSet.TryGetValue ( hookKey, out var hookRef ) ) {
 				if ( hookRef.MainCallback != null ) willResend = hookRef.MainCallback ( hookKey, inputEventDataHolder );

@@ -46,7 +46,7 @@ namespace Components.InterfaceTests {
 
 		[Fact]
 		public void ReleaseNonexistingHookThrowsKeyNotFound () {
-			Hook nonexistingHook = new Hook ( TestObject, new DictionaryKey ( 1234 ), SimpleTestCallback );
+			Hook nonexistingHook = new Hook ( TestObject, NewHookInfo (), new DictionaryKey ( 1234 ), SimpleTestCallback );
 			nonexistingHook.UpdateHookID ( 4321 );
 			Action act = () => TestObject.UnhookHookEx ( nonexistingHook );
 			act.Should ().Throw<KeyNotFoundException> ();
@@ -59,10 +59,12 @@ namespace Components.InterfaceTests {
 
 		protected void ExecOnHook ( HInputData[] HLData, Action act, bool shouldRetest, bool shouldReceiveEvent ) {
 			EventList.Clear ();
-			Hook hookID = TestObject.SetHookEx ( SimpleTestCallback );
-			for ( int i = 0; i < HLData.Length; i++ ) HLData[i].UpdateByHook ( TestObject, hookID.Key );
+			Hook[] hooks = TestObject.SetHookEx ( NewHookInfo (), SimpleTestCallback );
+			hooks.Should ().HaveCount ( 1 );
+			Hook hook = hooks[0];
+			for ( int i = 0; i < HLData.Length; i++ ) HLData[i].UpdateByHook ( TestObject, hook.Key );
 			act ();
-			TestObject.UnhookHookEx ( hookID );
+			TestObject.UnhookHookEx ( hook );
 			if ( shouldRetest ) act ();
 			onInputReceived.WaitOne ( 100 ).Should ().Be ( shouldReceiveEvent );
 			if ( !shouldReceiveEvent ) EventList.Should ().HaveCount ( 0 );
@@ -85,5 +87,6 @@ namespace Components.InterfaceTests {
 				}
 			}
 		}
+		private HHookInfo NewHookInfo () => new HHookInfo ( TestObject, 1, VKChange.KeyDown, VKChange.KeyUp );
 	}
 }

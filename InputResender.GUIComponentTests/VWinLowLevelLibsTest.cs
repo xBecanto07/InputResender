@@ -29,7 +29,9 @@ namespace InputResender.GUIComponentTests {
 		[Fact]
 		public void HL_LL_DataConversion () {
 			var inputData = GenerateInputData ();
-			var HL_Data = TestObject.GetHighLevelData(OwnerCore.Fetch<DInputReader> (), inputData );
+			var hookID = SetupHook ();
+			var HL_Data = TestObject.GetHighLevelData( hookID.Key, OwnerCore.Fetch<DInputReader> (), inputData );
+			TestObject.UnhookHookEx ( hookID );
 			var LL_Data = TestObject.GetLowLevelData ( HL_Data );
 			LL_Data.Should ().Be ( inputData );
 		}
@@ -94,15 +96,10 @@ namespace InputResender.GUIComponentTests {
 		public static uint GetPID () => (uint)Process.GetCurrentProcess ().Id;
 
 		public Hook SetupHook () {
-			for ( int i = 0; i < 3; i++ ) {
-				Hook hook = TestObject.SetHookEx ( Callback );
-
-				TestObject.PrintErrors ( Output.WriteLine );
-
-				if ( hook != null ) return hook;
-			}
-			Assert.Fail ( "SetHookEx should not fail" );
-			return null;
+			HHookInfo hookInfo = new HHookInfo ( TestObject, 1, VKChange.KeyDown, VKChange.KeyUp );
+			Hook[] hooks = TestObject.SetHookEx ( hookInfo, Callback );
+			TestObject.PrintErrors ( Output.WriteLine );
+			return hooks[0];
 		}
 
 		public WinLLInputData GenerateInputData () => WinLLInputData.NewKeyboardData ( TestObject, (ushort)KeyCode.E, (ushort)KeyCode.E, 0, 123456, TestObject.GetMessageExtraInfoPtr () );

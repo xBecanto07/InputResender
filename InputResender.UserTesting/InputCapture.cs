@@ -87,8 +87,8 @@ namespace InputResender.UserTesting {
 		}
 
 		public void StartHook (Action<string> errLog) {
-			var moduleHandle = LLInput.GetModuleHandleID ( "user32.dll" );
-			hookID = LLInput.SetHookEx ( Callback );
+			HHookInfo hookInfo = new HHookInfo (LLInput, 1, VKChange.KeyDown, VKChange.KeyUp );
+			hookID = LLInput.SetHookEx ( hookInfo, Callback )[0];
 			if ( hookID == null ) {
 				LLInput.PrintErrors ( ( ss ) => errLog ( ss ) );
 				throw new ApplicationException ( $"Error while setting up a hook!" );
