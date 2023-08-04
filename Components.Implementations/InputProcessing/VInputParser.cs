@@ -18,8 +18,12 @@ namespace Components.Implementations {
 		public override DataHolder[] ProcessInput ( DataHolder inputData ) {
 			if ( inputData == null ) return new DataHolder[0];
 			KeyCode keyCode = (KeyCode)inputData.InputCode;
-			List<DataHolder> ret = new List<DataHolder> { inputData };
-			ret.AddRange ( eventList );
+			List<DataHolder> ret = new List<DataHolder> { (DataHolder)inputData.Clone () };
+			for (int i = 0; i < eventList.Count; i++) {
+				var data = eventList[i].Clone<DataHolder> ();
+				data.SetNewValue ( data.ValueX, data.ValueY, data.ValueZ );
+				ret.Add ( data );
+			}
 
 			if ( inputData.Pressed < 1 ) {
 				// If key is released
@@ -35,6 +39,13 @@ namespace Components.Implementations {
 				} else {
 					eventList.Insert ( 0, inputData );
 				}
+			}
+
+			if (Owner.LogFcn != null) {
+				var SB = new System.Text.StringBuilder ();
+				SB.Append ( $" -- {nameof ( ProcessInput )}:" );
+				foreach ( var data in ret ) SB.Append ( $"  {(data.Pressed >= 1 ? '↓' : '↑')}{(KeyCode)data.InputCode}" );
+				Owner.LogFcn ( SB.ToString () );
 			}
 			return ret.ToArray ();
 		}

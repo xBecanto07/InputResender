@@ -10,6 +10,7 @@
 		public virtual bool FullEqCheck { get; protected set; } = true;
 		public virtual bool IsSerializable { get; } = false;
 		public abstract DataHolderBase Clone ();
+		public T Clone<T> () where T : DataHolderBase => (T)Clone ();
 		public abstract override bool Equals ( object obj );
 		public abstract override int GetHashCode ();
 		public abstract override string ToString ();

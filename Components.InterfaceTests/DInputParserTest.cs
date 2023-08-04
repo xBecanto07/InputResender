@@ -43,6 +43,7 @@ namespace Components.InterfaceTests {
 		protected void Process ( DataHolder newInput, bool Equal, params DataHolder[] currentState) {
 			if ( Equal ) TestObject.ProcessInput ( newInput ).Should ().Equal ( currentState );
 			else TestObject.ProcessInput ( newInput ).Should ().Contain ( currentState );
+			newInput.SetNewValue ( newInput.ValueX, newInput.ValueY, newInput.ValueZ );
 		}
 		protected DataHolder GenerateInputData ( KeyCode keyCode, bool pressed ) {
 			return new HKeyboardEventDataHolder ( InputReader, HookInfo, (int)keyCode, pressed ? VKChange.KeyDown : VKChange.KeyUp );

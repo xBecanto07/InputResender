@@ -68,15 +68,11 @@ namespace Components.Interfaces {
 		public HKeyboardEventDataHolder ( DInputReader owner, int deviceID, int keycode, float pressValue, float delta ) : this ( owner, new HHookInfo ( owner, deviceID, pressValue > 1 ? VKChange.KeyDown : VKChange.KeyUp ), keycode, pressValue, delta ) { }
 		public HKeyboardEventDataHolder ( DInputReader owner, HHookInfo hookInfo, int keycode, float pressValue, float delta ) : base ( owner, hookInfo ) {
 			InputCode = keycode;
-			ValueX = (int)(pressValue * PressThreshold);
-			ValueY = ValueZ = 0;
-		}
-		public HKeyboardEventDataHolder ( DInputReader owner, HHookInfo hookInfo, int keycode, float pressValue ) : base ( owner, hookInfo ) {
-			InputCode = keycode;
-			ValueX = (int)(pressValue * PressThreshold);
-			ValueY = ValueZ = 0;
+			ValueX = Convert ( pressValue );
+			DeltaX = Convert ( delta );
+			ValueY = ValueZ = DeltaY = DeltaZ = 0;
 		}
 
-		public override DataHolderBase Clone () => new HKeyboardEventDataHolder ( (DInputReader)Owner, HookInfo, InputCode, ValueX / (float)ushort.MaxValue );
+		public override DataHolderBase Clone () => new HKeyboardEventDataHolder ( (DInputReader)Owner, HookInfo, InputCode, ValueX / (float)PressThreshold, DeltaX / (float)PressThreshold );
 	}
 }

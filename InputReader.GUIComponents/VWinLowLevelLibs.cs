@@ -52,6 +52,7 @@ namespace InputResender.GUIComponents {
 			case VKChange.KeyUp: oldVal = 1; newVal = 0; break;
 			}
 			var ret = new HKeyboardEventDataHolder ( requester, 0, keyInfo.vkCode, newVal, newVal - oldVal );
+			ret.SetNewValue ( ret.Convert ( newVal ), 0, 0 );
 			return ret;
 		}
 		public override HInputData GetLowLevelData ( HInputEventDataHolder highLevelData ) {

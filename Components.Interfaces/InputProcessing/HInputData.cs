@@ -1,6 +1,5 @@
 ﻿using Components.Library;
 using System.Runtime.InteropServices;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Components.Interfaces {
 	public abstract class HInputEventDataHolder : DataHolderBase {
@@ -10,6 +9,9 @@ namespace Components.Interfaces {
 		public int ValueX { get; protected set; }
 		public int ValueY { get; protected set; }
 		public int ValueZ { get; protected set; }
+		public int DeltaX { get; protected set; }
+		public int DeltaY { get; protected set; }
+		public int DeltaZ { get; protected set; }
 
 		public float Pressed {
 			get {
@@ -24,6 +26,12 @@ namespace Components.Interfaces {
 		public void AddHookIDs (ICollection<DictionaryKey> hooks) {
 			foreach ( var hook in hooks ) HookInfo.AddHookID ( hook );
 		}
+		public void SetNewValue ( int X, int Y, int Z ) {
+			DeltaX = X - ValueX; DeltaY = Y - ValueY; DeltaZ = Z - ValueZ;
+			ValueX = X; ValueY = Y; ValueZ = Z;
+		}
+
+		public int Convert ( float f ) => (int)(f * PressThreshold);
 
 		public override bool Equals ( object obj ) {
 			if ( obj == null ) return false;
@@ -33,11 +41,14 @@ namespace Components.Interfaces {
 			bool ret = (InputCode.Equals ( item.InputCode )) &
 				(ValueX.Equals ( item.ValueX )) &
 				(ValueY.Equals ( item.ValueY )) &
-				(ValueZ.Equals ( item.ValueZ ));
+				(ValueZ.Equals ( item.ValueZ )) &
+				(DeltaX.Equals ( item.DeltaX )) &
+				(DeltaY.Equals ( item.DeltaY )) &
+				(DeltaZ.Equals ( item.DeltaZ ));
 			return ret & (HookInfo.Equals ( item.HookInfo ));
 		}
-		public override int GetHashCode () => (HookInfo, InputCode, ValueX, ValueY, ValueZ).GetHashCode ();
-		public override string ToString () => $"{HookInfo.DeviceID}.{InputCode}:{HookInfo.LatestChangeType} [{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}]";
+		public override int GetHashCode () => (HookInfo, InputCode, ValueX, ValueY, ValueZ, DeltaX, DeltaY, DeltaZ).GetHashCode ();
+		public override string ToString () => $"{HookInfo.DeviceID}.{InputCode}:{HookInfo.LatestChangeType} [{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}] D[{DeltaX.ToShortString ()};{DeltaY.ToShortString ()};{DeltaZ.ToShortString ()}]";
 	}
 
 
