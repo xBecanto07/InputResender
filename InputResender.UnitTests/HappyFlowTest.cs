@@ -38,11 +38,13 @@ namespace InputResender.UnitTests {
 
 		protected bool ProcessInput ( DictionaryKey key, HInputEventDataHolder inputData) {
 			var parsedInput = Sender.InputParser.ProcessInput ( inputData );
-			var processedInput = Sender.InputProcessor.ProcessInput ( parsedInput );
-			SentInput.Add ( processedInput );
-			var packet = Sender.DataSigner.Encrypt ( processedInput.Serialize (), IV );
-			Sender.PacketSender.Send ( packet );
+			Sender.InputProcessor.ProcessInput ( parsedInput );
 			return true;
+		}
+		private void ProcessedCallback ( InputData inputData ) {
+			SentInput.Add ( inputData );
+			var packet = Sender.DataSigner.Encrypt ( inputData.Serialize (), IV );
+			Sender.PacketSender.Send ( packet );
 		}
 
 		protected bool RecvCB ( byte[] data) {
@@ -84,6 +86,7 @@ namespace InputResender.UnitTests {
 		public void MainProcess () {
 			Init ();
 
+			Sender.InputProcessor.Callback = ProcessedCallback;
 			HHookInfo hookInfo = new HHookInfo ( Sender.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
 			var hookIDs = Sender.InputReader.SetupHook ( hookInfo, ProcessInput, null );
 			foreach (var hookID in hookIDs ) hookInfo.AddHookID ( hookID );

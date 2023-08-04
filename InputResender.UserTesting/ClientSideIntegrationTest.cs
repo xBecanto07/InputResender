@@ -29,9 +29,9 @@ namespace InputResender.UserTesting {
 			yield return () => ReserveChar ( "eh" );
 			if ( ShouldCancel () ) yield break;
 
-			var LLInput = Core.Fetch<DInputReader> ();
-			HHookInfo hookInfo = new HHookInfo ( LLInput, 1, VKChange.KeyDown, VKChange.KeyUp );
-			var hookIDs = LLInput.SetupHook ( hookInfo, Callback, DelayedCallback );
+			Core.InputProcessor.Callback = ProcessedCallback;
+			HHookInfo hookInfo = new HHookInfo ( Core.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
+			var hookIDs = Core.InputReader.SetupHook ( hookInfo, Callback, DelayedCallback );
 			foreach ( var ID in hookIDs ) hookInfo.AddHookID ( ID );
 
 			var expMod = InputData.Modifier.Ctrl | InputData.Modifier.Shift;
@@ -64,24 +64,28 @@ namespace InputResender.UserTesting {
 				break;
 			}
 
-			LLInput.ReleaseHook ( hookInfo );
+			Core.InputReader.ReleaseHook ( hookInfo );
 
 			RecvData.Clear ();
 			RecvData = null;
 			yield break;
 		}
 
-		public bool Callback ( DictionaryKey key, HInputEventDataHolder inputData ) {
+		private bool Callback ( DictionaryKey key, HInputEventDataHolder inputData ) {
 			return true;
 		}
 
-		public void DelayedCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {
+		private void DelayedCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {
 			if ( inputData == null ) return;
 			if ( Result.Passed ) return;
 
 			Program.WriteLine ( $" - Received input {(KeyCode)inputData.InputCode} {(inputData.Pressed >= 1 ? "KeyDown" : "KeyUp")}" );
 			Core.DataSigner.Key = Core.DataSigner.GenerateIV ( System.Text.Encoding.UTF8.GetBytes ( Password ) );
-			var msg = Core.EncryptInput ( inputData );
+			var combo = Core.InputParser.ProcessInput ( inputData );
+			Core.InputProcessor.ProcessInput ( combo );
+		}
+		private void ProcessedCallback (InputData inputData) {
+			var msg = Core.DataSigner.Encrypt ( inputData.Serialize () );
 			RecvData.Enqueue ( msg );
 			Program.SendSignal ();
 		}

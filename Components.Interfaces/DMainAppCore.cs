@@ -62,14 +62,11 @@ namespace Components.Interfaces
 		public abstract void SaveConfiguration ( string path );
 		public abstract void RunApp ();
 
-		public byte[] EncryptInput ( HInputEventDataHolder inputData, out InputData command ) {
+		public bool ShouldDefaultHookResend;
+		public bool DefaultFastHooCallback ( DictionaryKey key, HInputEventDataHolder inputData ) => ShouldDefaultHookResend;
+		public void DefaultDelayedCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {
 			var combo = InputParser.ProcessInput ( inputData );
-			command = InputProcessor.ProcessInput ( combo );
-			var packet = DataSigner.Encrypt ( command.Serialize () );
-			return packet;
-		}
-		public byte[] EncryptInput ( HInputEventDataHolder inputData ) {
-			return EncryptInput ( inputData, out var nr );
+			InputProcessor.ProcessInput ( combo );
 		}
 	}
 }

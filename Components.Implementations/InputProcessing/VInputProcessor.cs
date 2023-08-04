@@ -9,9 +9,9 @@ namespace Components.Implementations {
 
 		public override int ComponentVersion => 1;
 
-		public override InputData ProcessInput ( DataHolder[] inputCombination ) {
+		public override void ProcessInput ( DataHolder[] inputCombination ) {
 			int Cnt = inputCombination == null ? -1 : inputCombination.Length;
-			if ( Cnt < 1 ) return InputData.Empty ( this );
+			if ( Cnt < 1 ) return;
 
 			InputData ret = new InputData ( this ) {
 				Cmnd = inputCombination[0].Pressed >= 1 ? InputData.Command.KeyPress : InputData.Command.KeyRelease,
@@ -38,7 +38,7 @@ namespace Components.Implementations {
 				}
 			}
 			ret.Modifiers = mods;
-			return ret;
+			Callback ( ret );
 		}
 	}
 }

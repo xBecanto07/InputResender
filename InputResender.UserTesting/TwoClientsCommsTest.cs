@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
+using static Components.Interfaces.InputData;
 using SBld = System.Text.StringBuilder;
 
 namespace InputResender.UserTesting {
@@ -22,6 +22,7 @@ namespace InputResender.UserTesting {
 		public TwoClientsCommsTest ( SBld sb ) : base ( sb ) {
 			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
 			Core = CoreFactory.CreateVMainAppCore ();
+			Core.InputProcessor.Callback = ProcessedCallback;
 			Core.DataSigner.Key = Core.DataSigner.GenerateIV ( System.Text.Encoding.UTF8.GetBytes ( Password ) );
 			Combo = new InputData ( Core.DataSigner );
 			RecvData = new Queue<byte[]> ();
@@ -39,7 +40,8 @@ namespace InputResender.UserTesting {
 			if ( ShouldCancel () ) yield break;
 
 			HHookInfo hookInfo = new HHookInfo ( Core.InputReader, 1, VKChange.KeyDown );
-			var hookIDs = Core.InputReader.SetupHook ( hookInfo, Callback, DelayedCallback );
+			Core.ShouldDefaultHookResend = true;
+			var hookIDs = Core.InputReader.SetupHook ( hookInfo, Core.DefaultFastHooCallback, Core.DefaultDelayedCallback );
 			foreach ( var ID in hookIDs ) hookInfo.AddHookID ( ID );
 
 			foreach ( var a in WaitForMessage ( KeyCode.C, InputData.Modifier.Shift ) ) yield return a;
@@ -57,7 +59,8 @@ namespace InputResender.UserTesting {
 			foreach ( var a in WaitForMessage ( KeyCode.S, InputData.Modifier.None ) ) yield return a;
 
 			HHookInfo hookInfo = new HHookInfo ( Core.InputReader, 1, VKChange.KeyDown );
-			var hookIDs = Core.InputReader.SetupHook ( hookInfo, Callback, DelayedCallback );
+			Core.ShouldDefaultHookResend = true;
+			var hookIDs = Core.InputReader.SetupHook ( hookInfo, Core.DefaultFastHooCallback, Core.DefaultDelayedCallback );
 			foreach ( var ID in hookIDs ) hookInfo.AddHookID ( ID );
 
 			yield return () => waiter.WaitOne ();
@@ -99,21 +102,15 @@ namespace InputResender.UserTesting {
 			yield break;
 		}
 
-		private bool Callback ( DictionaryKey key, HInputEventDataHolder inputData ) {
-			return true;
-		}
-		private void DelayedCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {
-			byte[] msg;
-			if (UserTestApp.ClientState == ClientState.Slave ) {
-				msg = Core.EncryptInput ( inputData, out InputData combo );
+		private void ProcessedCallback (InputData combo ) {
+			byte[] msg = Core.DataSigner.Encrypt ( combo.Serialize () );
+			if ( UserTestApp.ClientState == ClientState.Slave ) {
 				Program.WriteLine ( $"Input: {combo.Cmnd} | {combo.Key} | {combo.Modifiers}" );
-				if ( combo.Cmnd != InputData.Command.KeyPress ) return;
+				if ( combo.Cmnd != Command.KeyPress ) return;
 				if ( combo.Key != KeyCode.C ) return;
-				if ( combo.Modifiers != InputData.Modifier.Shift ) return;
+				if ( combo.Modifiers != Modifier.Shift ) return;
 				Program.WriteLine ( "Sending C+Shift" );
 				waiter.Set ();
-			} else {
-				msg = Core.EncryptInput ( inputData );
 			}
 			Core.PacketSender.Send ( msg );
 		}

@@ -6,10 +6,11 @@ namespace Components.Interfaces {
 		public DInputProcessor ( CoreBase owner ) : base ( owner ) { }
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
-				(nameof(ProcessInput), typeof(void))
+				(nameof(ProcessInput), typeof(void)),
 			};
 
-		public abstract InputData ProcessInput ( HInputEventDataHolder[] inputCombination );
+		public abstract void ProcessInput ( HInputEventDataHolder[] inputCombination );
+		public Action<InputData> Callback;
 	}
 
 	public class MInputProcessor : DInputProcessor {
@@ -17,16 +18,15 @@ namespace Components.Interfaces {
 
 		public override int ComponentVersion => 1;
 
-		public override InputData ProcessInput ( HInputEventDataHolder[] inputCombination ) {
-			if ( inputCombination == null || inputCombination.Length == 0 )
-				return Empty ( this );
+		public override void ProcessInput ( HInputEventDataHolder[] inputCombination ) {
+			if ( inputCombination == null || inputCombination.Length == 0 ) return;
 			var firstEvent = inputCombination[0];
-			return new InputData ( this ) {
+			Callback?.Invoke ( new InputData ( this ) {
 				Cmnd = firstEvent.Pressed >= 1 ? Command.KeyPress : Command.KeyRelease,
 				X = firstEvent.Pressed,
 				Key = (KeyCode)firstEvent.InputCode,
 				DeviceID = firstEvent.HookInfo.DeviceID
-			};
+			} );
 		}
 	}
 

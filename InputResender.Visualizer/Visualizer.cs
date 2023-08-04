@@ -30,6 +30,7 @@ namespace InputResender.Visualizer {
 			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
 			Core = CoreFactory.CreateVMainAppCore ();
 
+			Core.InputProcessor.Callback = ProcessedCallback;
 			HookInfo = new HHookInfo ( Core.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
 			SetupHook ();
 			CompSelect.SelectedIndex = ActID;
@@ -74,9 +75,11 @@ namespace InputResender.Visualizer {
 				Log ( $"{Core.InputParser.GetType ().Name}: {Print ( combo )}" );
 				if ( ActID == 3 ) return;
 			}
-			var cmd = Core.InputProcessor.ProcessInput ( combo );
+			Core.InputProcessor.ProcessInput ( combo );
+		}
+		private void ProcessedCallback (InputData data) {
 			if ( ActID >= 4 ) {
-				Log ( $"{Core.InputProcessor.GetType ().Name}: {Print ( cmd )}" );
+				Log ( $"{Core.InputProcessor.GetType ().Name}: {Print ( data )}" );
 				if ( ActID == 4 ) return;
 			}
 		}

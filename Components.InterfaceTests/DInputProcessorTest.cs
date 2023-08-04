@@ -1,12 +1,15 @@
 ﻿using Components.Interfaces;
 using Components.Library;
 using FluentAssertions;
+using System.Collections.Generic;
+using System.Threading;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Components.InterfaceTests {
 	public abstract class DInputProcessorTest : ComponentTestBase<DInputProcessor> {
 		public DInputProcessorTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
+		List<InputData> ProcessedInputs = new List<InputData> ();
 
 		public override CoreBase CreateCoreBase () {
 			var ret = new CoreBaseMock ();
@@ -16,7 +19,12 @@ namespace Components.InterfaceTests {
 
 		[Fact]
 		public void EmptyInputToEmptyOutput () {
-			TestObject.ProcessInput ( null ).Should ().Be ( InputData.Empty ( TestObject ) );
+			TestObject.ProcessInput ( null );
+			Thread.Sleep ( 1 );
+			ProcessedInputs.Should ().BeEmpty ();
+		}
+		private void ProcessedCallback (InputData data) {
+			ProcessedInputs.Add ( data );
 		}
 	}
 
