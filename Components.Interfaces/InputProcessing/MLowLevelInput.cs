@@ -64,15 +64,15 @@ namespace Components.Interfaces {
 			if ( SetHookResult < 0 ) return null;
 			var hookKey = HookKeyFactory.NewKey ();
 			var hookID = LastID++;
-			HookIDDict.Add ( hookKey, hookID );
 			var hook = new Hook ( this, hookInfo, hookKey, callback );
 			hook.UpdateHookID ( hookID );
 			HookList.Add ( hookKey, hook );
+			HookIDDict.Add ( hookKey, hook );
 			return new Hook[1] { hook };
 		}
 		/// <inheritdoc />
 		public override bool UnhookHookEx ( Hook hookID ) {
-			if ( !HookIDDict.ContainsPair (hookID.Key, hookID.HookID) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
+			if ( !HookIDDict.ContainsPair (hookID.Key, hookID) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
 			HookList.Remove ( hookID.Key );
 			return UnhookResult;
 		}

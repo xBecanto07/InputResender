@@ -5,12 +5,52 @@ namespace Components.Interfaces {
 	public abstract class DInputProcessor : ComponentBase<CoreBase> {
 		public DInputProcessor ( CoreBase owner ) : base ( owner ) { }
 
+		public struct KeyCombo {
+			public KeyCode Key;
+			public Modifier Modifier;
+			public KeyCombo ( KeyCode key, Modifier mod = Modifier.None ) { Key = key; Modifier = mod; }
+		}
+		public struct KeySetup {
+			public string Description;
+			public KeyCombo keyCombo;
+			public KeyCode Key { get => keyCombo.Key; set => keyCombo.Key = value; }
+			public Modifier Modifier { get => keyCombo.Modifier; set => keyCombo.Modifier = value; }
+			public KeySetup ( string dsc, KeyCode key, Modifier mod = Modifier.None ) { Description = dsc; Key = key; Modifier = mod; }
+			public override string ToString () => $"({Description}:'{Key}'+{Modifier})";
+		}
+
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(ProcessInput), typeof(void)),
 			};
 
 		public abstract void ProcessInput ( HInputEventDataHolder[] inputCombination );
 		public Action<InputData> Callback;
+
+		protected Modifier ReadModifiers ( HInputEventDataHolder[] inputCombination) {
+			int Cnt = inputCombination == null ? -1 : inputCombination.Length;
+			if ( Cnt < 1 ) return Modifier.None;
+
+			Modifier mods = Modifier.None;
+			for ( int i = Cnt - 1; i >= 0; i-- ) {
+				Modifier nMod;
+				switch ( (KeyCode)inputCombination[i].InputCode ) {
+				case KeyCode.ControlKey: nMod = Modifier.Ctrl; break;
+				case KeyCode.ShiftKey: nMod = Modifier.Shift; break;
+				case KeyCode.LControlKey: nMod = Modifier.Ctrl; break;
+				case KeyCode.RControlKey: nMod = Modifier.Ctrl; break;
+				case KeyCode.LShiftKey: nMod = Modifier.Shift; break;
+				case KeyCode.RShiftKey: nMod = Modifier.Shift; break;
+				case KeyCode.Alt: nMod = Modifier.Alt; break;
+				case KeyCode.RMenu: nMod = Modifier.AltGr; break;
+				case KeyCode.LWin: nMod = Modifier.WinKey; break;
+				case KeyCode.RWin: nMod = Modifier.WinKey; break;
+				default: nMod = Modifier.None; break;
+				}
+				if ( inputCombination[i].Pressed >= 1 ) mods |= nMod;
+				else mods &= ~nMod;
+			}
+			return mods;
+		}
 	}
 
 	public class MInputProcessor : DInputProcessor {
@@ -31,7 +71,7 @@ namespace Components.Interfaces {
 	}
 
 	public class InputData : SerializableDataHolderBase {
-		public enum Command { None, KeyPress, KeyRelease, MouseMove }
+		public enum Command { None, KeyPress, KeyRelease, MouseMove, Cancel, Type }
 		[Flags]
 		public enum Modifier {
 			None = 0, Shift = 1, Ctrl = 2, Alt = 4, AltGr = 8, WinKey = 16,
@@ -60,6 +100,13 @@ namespace Components.Interfaces {
 			};
 		}
 		public InputData ( ComponentBase owner ) : base ( owner ) { }
+		public InputData ( ComponentBase owner, KeyCode key, bool Pressed, Modifier mod = Modifier.None ) : base ( owner ) {
+			Cmnd = Pressed ? Command.KeyPress : Command.KeyRelease;
+			Key = key;
+			Modifiers = mod;
+			X = Pressed ? 1 : 0;
+			Y = Z = 0;
+		}
 
 		public override DataHolderBase Clone () => new InputData (Owner) { Cmnd = Cmnd, Key = Key, DeviceID = DeviceID, Modifiers = Modifiers, X = X, Y = Y, Z = Z };
 		public override bool Equals ( object obj ) {

@@ -6,6 +6,7 @@ using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
 using InputResender.GUIComponents;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using SBld = System.Text.StringBuilder;
 
 namespace InputResender.Visualizer {
@@ -15,10 +16,13 @@ namespace InputResender.Visualizer {
 		DMainAppCore Core;
 		bool Active = false;
 		int ActID = 0;
+		VTapperInput Tapper;
+		MTextWriter TextWriter;
 		List<string>[] Lines = new List<string>[ConsCnt];
 		const int MaxLines = 40;
 		const int ConsCnt = 3;
 		Label[] Consoles = new Label[ConsCnt];
+		bool[] TextUpdated = new bool[ConsCnt];
 
 		public Visualizer () {
 			for ( int i = 0; i < ConsCnt; i++ ) Lines[i] = new List<string> ( MaxLines );
@@ -29,8 +33,11 @@ namespace InputResender.Visualizer {
 		private void Visualizer_Load ( object sender, EventArgs e ) {
 			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
 			Core = CoreFactory.CreateVMainAppCore ();
+			Tapper = new VTapperInput ( new CoreBaseMock (), new DInputProcessor.KeySetup[5] { new ( "Little", KeyCode.A ), new ( "Ring", KeyCode.S ), new ( "Middle", KeyCode.D ), new ( "Index", KeyCode.F ), new ( "Thumb", KeyCode.Space ) } );
+			TextWriter = new MTextWriter ( Core );
 
 			Core.InputProcessor.Callback = ProcessedCallback;
+			Tapper.Callback = ProcessedCallback;
 			HookInfo = new HHookInfo ( Core.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
 			SetupHook ();
 			CompSelect.SelectedIndex = ActID;
@@ -53,8 +60,9 @@ namespace InputResender.Visualizer {
 			if ( inputData != null ) {
 				Log ( Environment.NewLine, 0 );
 				int sel = inputData.ValueX < 1 ? 2 : 1;
-				Log ( $"{Environment.NewLine}{Environment.NewLine}", sel );
+				Log ( $"{Environment.NewLine}{Environment.NewLine}{Environment.NewLine}", sel );
 				Core.LogFcn = ( ss ) => Log ( ss, sel );
+				Tapper.Owner.LogFcn = Core.LogFcn;
 			}
 			if ( ActID >= 1 ) {
 				var eventList = VWinLowLevelLibs.EventList;
@@ -75,12 +83,29 @@ namespace InputResender.Visualizer {
 				Log ( $"{Core.InputParser.GetType ().Name}: {Print ( combo )}" );
 				if ( ActID == 3 ) return;
 			}
-			Core.InputProcessor.ProcessInput ( combo );
+			if (ActID >= 5) Tapper.ProcessInput ( combo );
+			else Core.InputProcessor.ProcessInput ( combo );
 		}
-		private void ProcessedCallback (InputData data) {
-			if ( ActID >= 4 ) {
-				Log ( $"{Core.InputProcessor.GetType ().Name}: {Print ( data )}" );
+		private void ProcessedCallback (InputData cmd) {
+			if ( ActID < 5 ) {
+				Log ( $"{Core.InputProcessor.GetType ().Name}: {Print ( cmd )}" );
 				if ( ActID == 4 ) return;
+			}
+			if ( ActID >= 5 ) {
+				if ( cmd == null ) {
+					Log ( $"{Tapper.GetType ().Name}: Input skipped." );
+					return;
+				}
+				Log ( $"{Tapper.GetType ().Name}: {Print ( cmd )} \t{Tapper.PrintState ()}" );
+				if ( ActID == 5 ) return;
+			}
+			TextWriter.Type ( cmd );
+			if ( ActID >= 6 ) {
+				Log ( $"{TextWriter.GetType ().Name}: Written {TextWriter.Text}" );
+				Invoke ( () => {
+					textBox1.Text = TextWriter.Text;
+				} );
+				if ( ActID == 6 ) return;
 			}
 		}
 
@@ -90,16 +115,7 @@ namespace InputResender.Visualizer {
 				if ( Lines[sel].Count >= MaxLines ) Lines[sel].RemoveAt ( MaxLines - 1 );
 				Lines[sel].Insert ( 0, ssAr[i] );
 			}
-
-			Invoke ( () => {
-				Consoles[sel].ResetText ();
-				SBld lSB = new SBld ();
-				for ( int i = 0; i < Lines[sel].Count; i++ )
-					lSB.AppendLine ( Lines[sel][i] );
-				string s = lSB.ToString ();
-				Consoles[sel].Text = s;
-				Clipboard.SetText ( s );
-			} );
+			TextUpdated[sel] = true;
 		}
 
 		private void Visualizer_FormClosing ( object sender, FormClosingEventArgs e ) {
@@ -109,7 +125,7 @@ namespace InputResender.Visualizer {
 
 		private static string Print ( Input.KeyboardInput data ) => $"{Print ( data.vkCode )};{Print ( data.scanCode )};{data.dwFlags:X}";
 		private static string Print ( int code ) => $"{(KeyCode)code}({code:X2})";
-		private static string Print ( HInputEventDataHolder data ) => $"{Print ( data.InputCode )} ↓{data.ValueX:F1}";
+		private static string Print ( HInputEventDataHolder data ) => $"{Print ( data.InputCode )} ↓{data.ValueX:F1} Δ{data.DeltaX:F1}";
 		private static string Print ( HInputEventDataHolder[] combo ) {
 			SBld lSB = new SBld ();
 			int N = combo.Length;
@@ -132,6 +148,20 @@ namespace InputResender.Visualizer {
 		private void ReleaseHook () {
 			Core.InputReader.ReleaseHook ( HookInfo );
 			foreach ( var ID in HookInfo.HookIDs ) HookInfo.RemoveHookID ( ID );
+		}
+
+		private void Awakener_Tick ( object sender, EventArgs e ) {
+			SBld lSB = new SBld ();
+			for ( int sel = 0; sel < ConsCnt; sel++ ) {
+				if ( !TextUpdated[sel] ) continue;
+				lSB.Clear ();
+				Consoles[sel].ResetText ();
+				for ( int i = 0; i < Lines[sel].Count; i++ )
+					lSB.AppendLine ( Lines[sel][i] );
+				string s = lSB.ToString ();
+				Consoles[sel].Text = s;
+				TextUpdated[sel] = false;
+			}
 		}
 	}
 }

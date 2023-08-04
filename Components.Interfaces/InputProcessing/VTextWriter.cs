@@ -1,0 +1,92 @@
+﻿using Components.Interfaces;
+using Components.Library;
+using Mod = Components.Interfaces.InputData.Modifier;
+
+namespace Components.Interfaces {
+	public class MTextWriter : DTextWriter {
+		string text = "";
+		DropOutStack<string> UndoList, RedoList;
+
+		public MTextWriter ( CoreBase newOwner ) : base ( newOwner ) {
+			UndoList = new DropOutStack<string> ( 64 );
+			RedoList = new DropOutStack<string> ( 64 );
+		}
+
+		public override string Text => text;
+		public override int ComponentVersion => 1;
+
+		public override void Undo () { if ( UndoList.Count < 1 ) return; RedoList.Push ( text ); text = UndoList.Pop (); }
+		public override void Redo () { if ( RedoList.Count < 1 ) return; UndoList.Push ( text ); text = RedoList.Pop (); }
+
+		public override void Clear () { text = ""; UndoList.Clear (); RedoList.Clear (); }
+
+		public override bool Type ( InputData input ) {
+			if ( input == null || input.Cmnd == InputData.Command.None ) return false;
+			if ( input.Cmnd == InputData.Command.Cancel ) {
+				Undo ();
+				return true;
+			}
+			if ( input.Cmnd != InputData.Command.Type && input.Cmnd != InputData.Command.KeyPress ) return false;
+
+			Mod mod = input.Modifiers;
+
+			if (mod == Mod.Ctrl) {
+				switch (input.Key) {
+				case KeyCode.Z: Undo (); return true;
+				case KeyCode.Y: Undo (); return true;
+				}
+			}
+			if (mod != Mod.None & mod != Mod.Shift ) return false;
+
+			bool shift = mod == Mod.Shift;
+			char C = (char)input.Key;
+			UndoList.Push ( text );
+			RedoList.Clear ();
+
+			if (C >= '0' & C <= '9' ) {
+				if ( mod == Mod.None ) { text += C; return true; }
+				if ( shift ) {
+					switch (C) {
+					case '0': text += ")"; return true;
+					case '1': text += "!"; return true;
+					case '2': text += "@"; return true;
+					case '3': text += "#"; return true;
+					case '4': text += "$"; return true;
+					case '5': text += "%"; return true;
+					case '6': text += "^"; return true;
+					case '7': text += "&"; return true;
+					case '8': text += "*"; return true;
+					case '9': text += "("; return true;
+					}
+				}
+			}
+			if ( C >= 'A' & C <= 'Z' ) {
+				if ( mod == Mod.Shift ) { text += C; return true; }
+				if ( mod == Mod.None ) { text += char.ToLower ( C ); return true; }
+			}
+
+			int N = text.Length;
+			switch (input.Key) {
+			case KeyCode.Back: if (N > 0) text = text.Substring (0, N - 1); break;
+			case KeyCode.Decimal: text += '.'; return true;
+			case KeyCode.OemBackslash: text += shift ? '|' : '\\'; return true;
+			case KeyCode.OemCloseBrackets: text += shift ? '}' : ']'; return true;
+			case KeyCode.Oemcomma: text += shift ? '<' : ','; return true;
+			case KeyCode.OemMinus: text += shift ? '_' : '-'; return true;
+			case KeyCode.OemOpenBrackets: text += shift ? '{' : '['; return true;
+			case KeyCode.OemPeriod: text += shift ? '>' : '.'; return true;
+			case KeyCode.OemPipe: text += shift ? '|' : '\\'; return true;
+			case KeyCode.Oemplus: text += shift ? '+' : '='; return true;
+			case KeyCode.OemQuestion: text += shift ? '?' : '/'; return true;
+			case KeyCode.OemQuotes: text += shift ? '"' : '\''; return true;
+			case KeyCode.OemSemicolon: text += shift ? ':' : ';'; return true;
+			case KeyCode.Oemtilde: text += shift ? '~' : '`'; return true;
+			case KeyCode.Tab: text += '\t'; return true;
+			case KeyCode.Space: text += ' '; return true;
+			case KeyCode.LineFeed: text += Environment.NewLine; return true;
+			}
+
+			return false;
+		}
+	}
+}

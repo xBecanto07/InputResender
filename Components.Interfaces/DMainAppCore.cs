@@ -1,10 +1,11 @@
 ﻿using Components.Library;
+using System.Net;
 
 namespace Components.Interfaces
 {
     public abstract class DMainAppCore : CoreBase {
 		[Flags]
-		public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputParser = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, All = 255 }
+		public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputParser = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, All = 0xFFFF }
 
 		public DEventVector EventVector { get => Fetch<DEventVector> (); }
 		public DLowLevelInput LowLevelInput { get => Fetch<DLowLevelInput> (); }

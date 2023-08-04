@@ -31,7 +31,7 @@ namespace Components.Interfaces {
 				(nameof(GetMessageExtraInfoPtr), typeof(nint))
 			};
 
-		protected static Dictionary<DictionaryKey, nint> HookIDDict = new Dictionary<DictionaryKey, nint> ();
+		protected static Dictionary<DictionaryKey, Hook> HookIDDict = new Dictionary<DictionaryKey, Hook> ();
 		protected static DictionaryKeyFactory HookKeyFactory = new DictionaryKeyFactory ();
 
 		/// <summary></summary>

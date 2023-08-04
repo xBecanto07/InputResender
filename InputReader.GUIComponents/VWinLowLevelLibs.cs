@@ -46,13 +46,7 @@ namespace InputResender.GUIComponents {
 		public override HInputEventDataHolder GetHighLevelData ( DictionaryKey hookKey, DInputReader requester, HInputData lowLevelData ) {
 			Input llData = (Input)lowLevelData.Data;
 			Input.KeyboardInput keyInfo = llData.Data.ki;
-			float newVal = 0, oldVal = 0;
-			switch ( lowLevelData.Pressed ) {
-			case VKChange.KeyDown: oldVal = 0; newVal = 1; break;
-			case VKChange.KeyUp: oldVal = 1; newVal = 0; break;
-			}
-			var ret = new HKeyboardEventDataHolder ( requester, 0, keyInfo.vkCode, newVal, newVal - oldVal );
-			ret.SetNewValue ( ret.Convert ( newVal ), 0, 0 );
+			var ret = new HKeyboardEventDataHolder ( requester, HookIDDict[hookKey].HookInfo, keyInfo.vkCode, lowLevelData.Pressed );
 			return ret;
 		}
 		public override HInputData GetLowLevelData ( HInputEventDataHolder highLevelData ) {
@@ -86,12 +80,12 @@ namespace InputResender.GUIComponents {
 				ErrorList.Add ( (nameof ( SetHookEx ), new Win32Exception ()) );
 				return null;
 			}
-			HookIDDict.Add ( hookKey, hookID );
+			HookIDDict.Add ( hookKey, hook );
 			hook.UpdateHookID ( hookID );
 			return new Hook[1] { hook };
 		}
 		public override bool UnhookHookEx ( Hook hookID ) {
-			if ( !HookIDDict.ContainsPair ( hookID.Key, hookID.HookID ) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
+			if ( !HookIDDict.ContainsPair ( hookID.Key, hookID ) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
 			bool ret;
 			if (!(ret = UnhookWindowsHookEx ( hookID.HookID ))) ErrorList.Add ( (nameof ( UnhookHookEx ), new Win32Exception ()) );
 			HookIDDict.Remove ( hookID.Key );
