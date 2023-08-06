@@ -67,7 +67,7 @@ namespace Components.Interfaces {
 
 			int N = text.Length;
 			switch (input.Key) {
-			case KeyCode.Back: if (N > 0) text = text.Substring (0, N - 1); break;
+			case KeyCode.Back: if (N > 0) text = text.Substring (0, N - 1); return true;
 			case KeyCode.Decimal: text += '.'; return true;
 			case KeyCode.OemBackslash: text += shift ? '|' : '\\'; return true;
 			case KeyCode.OemCloseBrackets: text += shift ? '}' : ']'; return true;

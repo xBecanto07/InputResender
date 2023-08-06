@@ -39,7 +39,7 @@ namespace InputResender.UnitTests {
 		protected bool ProcessInput ( DictionaryKey key, HInputEventDataHolder inputData) {
 			var parsedInput = Sender.InputParser.ProcessInput ( inputData );
 			Sender.InputProcessor.ProcessInput ( parsedInput );
-			return true;
+			return false;
 		}
 		private void ProcessedCallback ( InputData inputData ) {
 			SentInput.Add ( inputData );

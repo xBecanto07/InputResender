@@ -15,7 +15,7 @@ namespace Components.Factories {
 				( core ) => new MInputProcessor ( core ),
 				( core ) => new MDataSigner ( core ),
 				( core ) => new MPacketSender ( core ),
-				DMainAppCore.CompSelect.All
+				selector
 				);
 			else return new VMainAppCore (
 				( core ) => new MEventVector ( core ),
@@ -25,7 +25,7 @@ namespace Components.Factories {
 				( core ) => new VInputProcessor ( core ),
 				( core ) => new VDataSigner ( core ),
 				( core ) => new VPacketSender ( core ),
-				DMainAppCore.CompSelect.All
+				selector
 				);
 		}
 	}

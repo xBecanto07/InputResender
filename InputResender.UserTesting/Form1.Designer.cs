@@ -43,7 +43,7 @@
 			ConsoleOUT.Name = "ConsoleOUT";
 			ConsoleOUT.ReadOnly = true;
 			ConsoleOUT.ScrollBars = System.Windows.Forms.ScrollBars.Horizontal;
-			ConsoleOUT.Size = new System.Drawing.Size ( 940, 658 );
+			ConsoleOUT.Size = new System.Drawing.Size ( 1200, 658 );
 			ConsoleOUT.TabIndex = 0;
 			ConsoleOUT.TabStop = false;
 			ConsoleOUT.Text = "Hello, World!";
@@ -97,7 +97,7 @@
 			// 
 			AutoScaleDimensions = new System.Drawing.SizeF ( 7F, 15F );
 			AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			ClientSize = new System.Drawing.Size ( 940, 700 );
+			ClientSize = new System.Drawing.Size ( 1200, 700 );
 			Controls.Add ( ActiveTask );
 			Controls.Add ( ConsoleOK );
 			Controls.Add ( ConsoleIN );

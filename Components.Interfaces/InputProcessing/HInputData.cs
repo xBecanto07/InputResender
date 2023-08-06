@@ -48,7 +48,7 @@ namespace Components.Interfaces {
 			return ret & (HookInfo.Equals ( item.HookInfo ));
 		}
 		public override int GetHashCode () => (HookInfo, InputCode, ValueX, ValueY, ValueZ, DeltaX, DeltaY, DeltaZ).GetHashCode ();
-		public override string ToString () => $"{HookInfo.DeviceID}.{InputCode}:{HookInfo.LatestChangeType} [{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}] D[{DeltaX.ToShortString ()};{DeltaY.ToShortString ()};{DeltaZ.ToShortString ()}]";
+		public override string ToString () => $"{HookInfo.DeviceID}.{InputCode} [{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}] Δ[{DeltaX.ToShortString ()};{DeltaY.ToShortString ()};{DeltaZ.ToShortString ()}]";
 	}
 
 

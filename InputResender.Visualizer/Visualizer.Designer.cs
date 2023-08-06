@@ -48,9 +48,9 @@
 			ConsoleOut1.Dock = System.Windows.Forms.DockStyle.Bottom;
 			ConsoleOut1.Font = new System.Drawing.Font ( "Lucida Console", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
 			ConsoleOut1.ForeColor = System.Drawing.Color.Lime;
-			ConsoleOut1.Location = new System.Drawing.Point ( 0, 671 );
+			ConsoleOut1.Location = new System.Drawing.Point ( 0, 471 );
 			ConsoleOut1.Name = "ConsoleOut1";
-			ConsoleOut1.Size = new System.Drawing.Size ( 1625, 550 );
+			ConsoleOut1.Size = new System.Drawing.Size ( 1625, 790 );
 			ConsoleOut1.TabIndex = 2;
 			ConsoleOut1.Text = "label2";
 			// 
@@ -67,7 +67,7 @@
 			ConsoleOut2.ForeColor = System.Drawing.Color.Gold;
 			ConsoleOut2.Location = new System.Drawing.Point ( 0, 48 );
 			ConsoleOut2.Name = "ConsoleOut2";
-			ConsoleOut2.Size = new System.Drawing.Size ( 800, 600 );
+			ConsoleOut2.Size = new System.Drawing.Size ( 800, 400 );
 			ConsoleOut2.TabIndex = 3;
 			ConsoleOut2.Text = "label2";
 			// 
@@ -79,7 +79,7 @@
 			ConsoleOut3.ForeColor = System.Drawing.Color.Magenta;
 			ConsoleOut3.Location = new System.Drawing.Point ( 825, 48 );
 			ConsoleOut3.Name = "ConsoleOut3";
-			ConsoleOut3.Size = new System.Drawing.Size ( 800, 600 );
+			ConsoleOut3.Size = new System.Drawing.Size ( 800, 400 );
 			ConsoleOut3.TabIndex = 4;
 			ConsoleOut3.Text = "label3";
 			// 
@@ -95,7 +95,7 @@
 			// 
 			AutoScaleDimensions = new System.Drawing.SizeF ( 7F, 15F );
 			AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			ClientSize = new System.Drawing.Size ( 1625, 1221 );
+			ClientSize = new System.Drawing.Size ( 1625, 1261 );
 			Controls.Add ( textBox1 );
 			Controls.Add ( ConsoleOut3 );
 			Controls.Add ( ConsoleOut2 );

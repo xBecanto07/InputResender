@@ -54,7 +54,7 @@ namespace InputResender.GUIComponents {
 			keyboardData.time = (uint)new TimeSpan ( highLevelData.CreationTime.Ticks ).TotalMilliseconds;
 			keyboardData.vkCode = (ushort)highLevelData.InputCode;
 			keyboardData.scanCode = (ushort)highLevelData.InputCode;
-			keyboardData.dwFlags = highLevelData.Pressed >= 1 ? 0u : 0x8u;
+			keyboardData.dwFlags = (uint)((highLevelData.Pressed >= 1 ? Input.KeyboardInput.CallbackFlags.KeyDown : Input.KeyboardInput.CallbackFlags.KeyUp) | Input.KeyboardInput.CallbackFlags.ValidCallbackFlags);
 			var inputUnion = new Input.InputUnion ();
 			inputUnion.ki = keyboardData;
 			return new WinLLInputData ( highLevelData.Owner, new Input ( 1, inputUnion ) );
@@ -92,7 +92,13 @@ namespace InputResender.GUIComponents {
 			return ret;
 		}
 		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null ) {
-			var inputs = pInputs.Select ( ( input ) => (Input)input.Data ).ToArray ();
+			//var inputs = pInputs.Select ( ( input ) => (Input)input.Data ).ToArray ();
+			Input[] inputs = new Input[nInputs];
+			for (int i = 0; i < nInputs; i++) {
+				inputs[i] = (Input)pInputs[i].Data;
+				inputs[i].Data.ki.ToSendFlags ();
+				inputs[i].Data.ki.ClearValidity ();
+			}
 			var ret = SendInput ( nInputs, inputs, cbSize );
 			if (ret < nInputs) ErrorList.Add ( (nameof ( SimulateInput ), new Win32Exception ()) );
 			return ret;
@@ -125,15 +131,6 @@ namespace InputResender.GUIComponents {
 
 
 
-	[Flags]
-	public enum KeyEventF : uint {
-		KeyDown = 0x0000,
-		ExtendedKey = 0x0001,
-		KeyUp = 0x0002,
-		Unicode = 0x0004,
-		Scancode = 0x0008
-	}
-
 
 	public class WinLLInputData : HInputData {
 		Input data;
@@ -155,11 +152,14 @@ namespace InputResender.GUIComponents {
 				time = time,
 				dwExtraInfo = dwExtraInfo
 			};
+			if ( !data.IsValidated () ) data.dwFlags |= (uint)Input.KeyboardInput.SendInputFlags.ValidInputFlags;
 			Input.InputUnion dataUnion = new Input.InputUnion () { ki = data } ;
 			return new WinLLInputData ( owner, new Input ( Input.TypeKEY, dataUnion ) );
 		}
 		public static WinLLInputData NewKeyboardData ( ComponentBase owner, nint vkChngCode, IntPtr dataPtr ) {
 			var data = new Input.KeyboardInput ( dataPtr );
+			if ( (VKChange)vkChngCode == VKChange.KeyUp )
+				data.dwFlags |= (uint)Input.KeyboardInput.CallbackFlags.KeyUp;
 			Input.InputUnion dataUnion = new Input.InputUnion () { ki = data };
 			var ret = new WinLLInputData ( owner, new Input ( Input.TypeKEY, dataUnion ) );
 			ret.Pressed = (VKChange)vkChngCode;
@@ -240,31 +240,78 @@ namespace InputResender.GUIComponents {
 			public uint time;
 			public IntPtr dwExtraInfo;
 
-			const uint keyDownID = (uint)(KeyEventF.KeyDown | KeyEventF.Scancode);
-			const uint keyUpID = (uint)(KeyEventF.KeyUp | KeyEventF.Scancode);
+			const uint keyDownID = (uint)(SendInputFlags.KeyDown | SendInputFlags.Scancode);
+			const uint keyUpID = (uint)(SendInputFlags.KeyUp | SendInputFlags.Scancode);
+
+			CallbackFlags callbackFlags => (CallbackFlags)dwFlags;
+			SendInputFlags sendInputFlags => (SendInputFlags)dwFlags;
 
 			public KeyboardInput (nint ptr ) {
 				vkCode = (ushort)Marshal.ReadInt32 ( ptr );
 				scanCode = (ushort)Marshal.ReadInt32 ( ptr, 4 );
 				dwFlags = (uint)Marshal.ReadInt32 ( ptr, 8 );
+				dwFlags |= (uint)CallbackFlags.ValidCallbackFlags;
 				time = (uint)Marshal.ReadInt32 ( ptr, 12 );
 				dwExtraInfo = Marshal.ReadIntPtr ( ptr, 16 );
 			}
-			public override string ToString () => $"wVK:{(KeyCode)vkCode}, wScan:{(KeyCode)scanCode}, dwFlags:{dwFlags}, time:{time}, dwEI *{dwExtraInfo}";
+			public override string ToString () => $"wVK:{(KeyCode)vkCode}, wScan:{(KeyCode)scanCode}, dwFlags:{dwFlags}{(IsValidated () ? '+' : '?')}, time:{time}, dwEI *{dwExtraInfo}";
 			public override bool Equals ( [NotNullWhen ( true )] object obj ) {
 				if ( obj == null ) return false;
 				if (!(obj is  KeyboardInput )) return false;
 				var ki = (KeyboardInput)obj;
 				return (ki.vkCode == vkCode) & (ki.scanCode == scanCode);
 			}
-		}
+			/// <summary>Used in keyboard hook callback</summary>
+			[Flags] // Copied from: http://pinvoke.net/default.aspx/Structures/KBDLLHOOKSTRUCT.html
+			public enum CallbackFlags : uint {
+				KeyDown = 0x00,
 
-		[Flags] // Copied from: http://pinvoke.net/default.aspx/Structures/KBDLLHOOKSTRUCT.html
-		public enum KeyHookFlags : uint {
-			EXTENDED = 0x01,
-			INJECTED = 0x10,
-			ALTDOWN = 0x20,
-			KeyUp = 0x80,
+				EXTENDED = 0x01,
+				INJECTED = 0x10,
+				ALTDOWN = 0x20,
+				KeyUp = 0x80,
+
+				AssignedValidity = 0x0100,
+				ValidCallbackFlags = 0x0400 | AssignedValidity
+			}
+			/// <summary>Used for SendInput</summary>
+			[Flags]
+			public enum SendInputFlags : uint {
+				KeyDown = 0x0000,
+
+				ExtendedKey = 0x0001,
+				KeyUp = 0x0002,
+				Unicode = 0x0004,
+				Scancode = 0x0008,
+
+				AssignedValidity = 0x0100,
+				ValidInputFlags = 0x0200 | AssignedValidity
+			}
+			/// <summary>Used in keyboard hook callback</summary>
+			public void ToCallbackFlags () {
+				AssertValidity ();
+				if ( (dwFlags & (uint)CallbackFlags.ValidCallbackFlags) == 0 ) return;
+				SendInputFlags flag = (SendInputFlags)dwFlags;
+				CallbackFlags nFlag = 0;
+				if ( flag.HasFlag ( SendInputFlags.ExtendedKey ) ) nFlag |= CallbackFlags.EXTENDED;
+				if ( flag.HasFlag ( SendInputFlags.KeyUp ) ) nFlag |= CallbackFlags.KeyUp;
+				dwFlags = (uint)nFlag;
+			}
+			/// <summary>Used for SendInput</summary>
+			public void ToSendFlags () {
+				AssertValidity ();
+				if ( (dwFlags & (uint)SendInputFlags.ValidInputFlags) == 0 ) return;
+				CallbackFlags flag = (CallbackFlags)dwFlags;
+				SendInputFlags nFlag = SendInputFlags.ValidInputFlags;
+				if ( flag.HasFlag ( CallbackFlags.EXTENDED ) ) nFlag |= SendInputFlags.ExtendedKey;
+				if ( flag.HasFlag ( CallbackFlags.KeyUp ) ) nFlag |= SendInputFlags.KeyUp;
+				dwFlags = (uint)nFlag;
+			}
+			public bool IsValidated () => (dwFlags & (uint)SendInputFlags.AssignedValidity) != 0;
+			public void AssertValidity () {
+				if ( !IsValidated () ) throw new DataMisalignedException ( "Flags type is not assigned and thus cannot determine format." );
+			}
+			public void ClearValidity () => dwFlags &= ~((uint)SendInputFlags.ValidInputFlags | (uint)CallbackFlags.ValidCallbackFlags);
 		}
 
 		[StructLayout ( LayoutKind.Sequential )]

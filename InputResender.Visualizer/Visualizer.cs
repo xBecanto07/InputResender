@@ -99,9 +99,9 @@ namespace InputResender.Visualizer {
 				Log ( $"{Tapper.GetType ().Name}: {Print ( cmd )} \t{Tapper.PrintState ()}" );
 				if ( ActID == 5 ) return;
 			}
-			TextWriter.Type ( cmd );
+			bool skipped = !TextWriter.Type ( cmd );
 			if ( ActID >= 6 ) {
-				Log ( $"{TextWriter.GetType ().Name}: Written {TextWriter.Text}" );
+				Log ( $"{TextWriter.GetType ().Name}: Written {TextWriter.Text} (skip={skipped})" );
 				Invoke ( () => {
 					textBox1.Text = TextWriter.Text;
 				} );
@@ -123,7 +123,7 @@ namespace InputResender.Visualizer {
 			ReleaseHook ();
 		}
 
-		private static string Print ( Input.KeyboardInput data ) => $"{Print ( data.vkCode )};{Print ( data.scanCode )};{data.dwFlags:X}";
+		private static string Print ( Input.KeyboardInput data ) => $"{Print ( data.vkCode )};{Print ( data.scanCode )};{data.dwFlags:X}{(data.IsValidated () ? '+' : '?')}";
 		private static string Print ( int code ) => $"{(KeyCode)code}({code:X2})";
 		private static string Print ( HInputEventDataHolder data ) => $"{Print ( data.InputCode )} ↓{data.ValueX:F1} Δ{data.DeltaX:F1}";
 		private static string Print ( HInputEventDataHolder[] combo ) {
