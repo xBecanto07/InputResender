@@ -5,7 +5,7 @@ namespace Components.Interfaces
 {
     public abstract class DMainAppCore : CoreBase {
 		[Flags]
-		public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputParser = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, All = 0xFFFF }
+		public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputParser = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, ShortcutWorker = 256, All = 0xFFFF }
 
 		public DEventVector EventVector { get => Fetch<DEventVector> (); }
 		public DLowLevelInput LowLevelInput { get => Fetch<DLowLevelInput> (); }
@@ -15,6 +15,7 @@ namespace Components.Interfaces
 		public DDataSigner DataSigner { get => Fetch<DDataSigner> (); }
 		public DPacketSender PacketSender { get => Fetch<DPacketSender> (); }
 		public DMainAppControls MainAppControls { get => Fetch<DMainAppControls> (); }
+		public DShortcutWorker ShortcutWorker { get => Fetch<DShortcutWorker> (); }
 
 		public DMainAppCore (
 			Func<DMainAppCore, DEventVector> CreateEventVector,
@@ -24,6 +25,7 @@ namespace Components.Interfaces
 			Func<DMainAppCore, DInputProcessor> CreateInputProcessor,
 			Func<DMainAppCore, DDataSigner> CreateDataSigner,
 			Func<DMainAppCore, DPacketSender> CreatePacketSender,
+			Func<DMainAppCore, DShortcutWorker> CreateShortcutWorker,
 			CompSelect componentMask = CompSelect.All
 			) {
 
@@ -36,6 +38,7 @@ namespace Components.Interfaces
 			CreateComponent ( CreateInputProcessor, nameof ( DInputProcessor ) );
 			CreateComponent ( CreateDataSigner, nameof ( DDataSigner ) );
 			CreateComponent ( CreatePacketSender, nameof ( DPacketSender ) );
+			CreateComponent ( CreateShortcutWorker, nameof ( DShortcutWorker ) );
 
 			if (missingComponents.Count > 0) {
 				var SB = new System.Text.StringBuilder ();

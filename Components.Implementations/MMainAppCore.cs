@@ -10,7 +10,8 @@ namespace Components.Implementations {
 			( core ) => new MInputParser ( core ),
 			( core ) => new MInputProcessor ( core ),
 			( core ) => new MDataSigner ( core ),
-			( core ) => new MPacketSender ( core ) ) {
+			( core ) => new MPacketSender ( core ),
+			( core ) => new VShortcutWorker ( core ) ) {
 		}
 
 		public override void Initialize () {

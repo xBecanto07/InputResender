@@ -15,6 +15,7 @@ namespace Components.Factories {
 				( core ) => new MInputProcessor ( core ),
 				( core ) => new MDataSigner ( core ),
 				( core ) => new MPacketSender ( core ),
+				( core ) => new VShortcutWorker ( core ),
 				selector
 				);
 			else return new VMainAppCore (
@@ -25,6 +26,7 @@ namespace Components.Factories {
 				( core ) => new VInputProcessor ( core ),
 				( core ) => new VDataSigner ( core ),
 				( core ) => new VPacketSender ( core ),
+				( core ) => new VShortcutWorker ( core ),
 				selector
 				);
 		}
