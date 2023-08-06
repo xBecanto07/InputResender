@@ -52,7 +52,7 @@ namespace Components.Interfaces
 				if ( creator == null ) missingComponents.Add ( name );
 				else {
 					var comp = creator ( this );
-					if ( !IsRegistered ( nameof ( T ) ) ) Register ( comp );
+					if ( !IsRegistered<T> () ) Register ( comp );
 				}
 			}
 		}

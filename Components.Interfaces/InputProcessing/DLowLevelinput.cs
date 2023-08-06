@@ -105,6 +105,9 @@ namespace Components.Interfaces {
 		private nint LLCallback ( int nCode, IntPtr wParam, IntPtr lParam ) {
 			MsgID++;
 			Log?.Invoke ( nCode, wParam, lParam );
+			if ( (int)wParam == 0x0101 ) {
+				;
+			}
 			bool resend = false;
 			if ( (nCode >= 0) | (EnforcePassthrough) ) {
 				var res = LLInput.ParseHookData ( Key, wParam, lParam );

@@ -6,3 +6,14 @@ User must be able to setup custom modifiers (like assigning LMB as CustomModifie
 
 To improve independence from implementation: when a method is designed to be generic ( like DPacketSender.Connect(object) ), than a string must be also accepted and this method must be able to parse such string-based representation into a valid internal object.
 For futher improvement, implement a method to "translate" input string with 'keywords' for better fit when any variant-dependent text could be visible by end-user (or even a programmer). E.g.: request for EndPoint with IPv4, IPv6, DNS or system pipe will be all very different. Component definition would register during its construction all supported keywords and would provide one of four ways how to translate them. These are: 1) replace any accourance with constant string  2) generate constant-per-translation string via given Action and than replace all accourances  3) execute Action over every accourance of given keyword in-sequence  4) use Func<string,string> with additional data following given keyword
+
+CoreBase and component registration:
+	Available indexing options:
+		General ID: unique (per core) ID returned when registration
+		Type: get pre-selected/first/random component of given type
+		Specific sub-type: as above, only more specific
+		Name: defined during registration, nameof(component) by default, might be something else
+	Specificators:
+		In-group ID: Defined during registration by user or assigned by core as ordinal number in given group (i.e. number of all components with same identification (type/name/...) )
+		Sub-name: in-group name defined by virtual getter, default null
+		Accepted type: defined by virtual getter (Type[])

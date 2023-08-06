@@ -31,7 +31,7 @@ namespace Components.Implementations {
 		}
 
 		public override int ComponentVersion => 1;
-		protected DLowLevelInput LowLevelComponent { get { return Owner.Fetch<DLowLevelInput> (); } }
+		protected DLowLevelInput LowLevelComponent { get => Owner.Fetch<DLowLevelInput> (); }
 
 		public override ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
 			var ret = new HashSet<DictionaryKey> ();

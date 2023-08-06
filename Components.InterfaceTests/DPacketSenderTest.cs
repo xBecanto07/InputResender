@@ -25,7 +25,7 @@ namespace Components.InterfaceTests {
 			resetEvent.WaitOne ();
 			Disconnect ( sender, receiver );
 
-			var logger = OwnerCore.Fetch ( nameof ( DLogger ) );
+			var logger = OwnerCore.Fetch ( typeof ( DLogger ) );
 			if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
 
 			Received.Should ().HaveCount ( 1 ).And.Contain ( data.CalcHash () );
@@ -45,7 +45,7 @@ namespace Components.InterfaceTests {
 			resetEvent.WaitOne ();
 			Disconnect ( sender, receiver );
 
-			var logger = OwnerCore.Fetch ( nameof ( DLogger ) );
+			var logger = OwnerCore.Fetch ( typeof ( DLogger ) );
 			if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
 
 			long hash = data.CalcHash ();

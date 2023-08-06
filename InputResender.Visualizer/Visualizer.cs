@@ -72,6 +72,7 @@ namespace InputResender.Visualizer {
 				}
 				var latestEvent = eventList[0];
 				Log ( $"{Core.LowLevelInput.GetType ().Name}: {latestEvent.nCode} | {latestEvent.changeCode:X} | {Print ( latestEvent.inputData )}" );
+				//var parsedLL = Core.LowLevelInput.ParseHookData ( HookInfo.HookIDs[0], latestEvent.changeCode, latestEvent.inputData );
 				if ( ActID == 1 ) return;
 			}
 			if ( ActID >= 2 ) {
@@ -83,10 +84,10 @@ namespace InputResender.Visualizer {
 				Log ( $"{Core.InputParser.GetType ().Name}: {Print ( combo )}" );
 				if ( ActID == 3 ) return;
 			}
-			if (ActID >= 5) Tapper.ProcessInput ( combo );
+			if ( ActID >= 5 ) Tapper.ProcessInput ( combo );
 			else Core.InputProcessor.ProcessInput ( combo );
 		}
-		private void ProcessedCallback (InputData cmd) {
+		private void ProcessedCallback ( InputData cmd ) {
 			if ( ActID < 5 ) {
 				Log ( $"{Core.InputProcessor.GetType ().Name}: {Print ( cmd )}" );
 				if ( ActID == 4 ) return;

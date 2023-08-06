@@ -197,6 +197,11 @@ namespace Components.Implementations {
 				LastRet.Cmnd = InputData.Command.Type;
 				LastRet.DeviceID = input[0].HookInfo.DeviceID;
 				Callback?.Invoke ( LastRet.Clone<InputData> () );
+				if ( key.key == KeyCode.Back & key.mod == ModE.Ctrl ) {
+					Callback?.Invoke ( LastRet.Clone<InputData> () );
+					Callback?.Invoke ( LastRet.Clone<InputData> () );
+					Callback?.Invoke ( LastRet.Clone<InputData> () );
+				}
 				return;
 			} else {
 				Owner.LogFcn?.Invoke ( $"No key released, skipping." );

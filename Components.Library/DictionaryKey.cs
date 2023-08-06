@@ -7,6 +7,7 @@ namespace Components.Library {
 
 		public DictionaryKey(int key) { Key = key; }
 		public static DictionaryKey Empty { get => new DictionaryKey ( 0 ); }
+		public bool Valid => Key != 0;
 
 		public override bool Equals ( object obj ) {
 			if ( obj is DictionaryKey )

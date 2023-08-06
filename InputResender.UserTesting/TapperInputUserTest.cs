@@ -2,6 +2,7 @@
 using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
+using InputResender.GUIComponents;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -66,6 +67,8 @@ namespace InputResender.UserTesting {
 		}
 
 		private void DelayedCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {
+			var lastEvent = VWinLowLevelLibs.EventList[0];
+			//Program.WriteLine ( $"Pressed: {inputData}    (parsed from: {lastEvent.nCode}|{lastEvent.changeCode}|{lastEvent.inputData})" );
 			if ( inputData == null ) return;
 			if ( Result.Passed ) return;
 			var combo = Core.InputParser.ProcessInput ( inputData );

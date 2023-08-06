@@ -12,6 +12,8 @@ namespace Components.Library {
 		private static int NextID = Random.Shared.Next ();
 		public readonly int ID;
 		public string Name { get => ID.ToShortCode (); }
+		public virtual string VariantName { get => null; }
+		public virtual Type[] AcceptedTypes { get => null; }
 
 		protected ComponentBase() {
 			CreationTime = DateTime.Now;
