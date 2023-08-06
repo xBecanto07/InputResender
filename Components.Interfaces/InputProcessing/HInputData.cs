@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 
 namespace Components.Interfaces {
+	/// <summary>High-Level version of HInputData</summary>
 	public abstract class HInputEventDataHolder : DataHolderBase {
 		public const int PressThreshold = ushort.MaxValue;
 		public HHookInfo HookInfo { get; protected set; }
@@ -22,6 +23,15 @@ namespace Components.Interfaces {
 		}
 
 		public HInputEventDataHolder ( DInputReader owner, HHookInfo hookInfo ) : base ( owner ) { HookInfo = hookInfo; }
+		public static HInputEventDataHolder KeyPress ( DInputReader owner, KeyCode key, VKChange press, int deviceID = 1 ) {
+			HHookInfo hookInfo = new HHookInfo ( owner, deviceID, press );
+			float val = 0, delta = 0;
+			switch ( press ) {
+			case VKChange.KeyDown: val = 1; delta = 1; break;
+			case VKChange.KeyUp: val = 0; delta = -1; break;
+			}
+			return new HKeyboardEventDataHolder ( owner, hookInfo, (int)key, val, delta );
+		}
 
 		public void AddHookIDs (ICollection<DictionaryKey> hooks) {
 			foreach ( var hook in hooks ) HookInfo.AddHookID ( hook );
@@ -51,7 +61,7 @@ namespace Components.Interfaces {
 		public override string ToString () => $"{HookInfo.DeviceID}.{InputCode} [{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}] Δ[{DeltaX.ToShortString ()};{DeltaY.ToShortString ()};{DeltaZ.ToShortString ()}]";
 	}
 
-
+	/// <summary>Low-Level version of HInputEventDataHolder</summary>
 	public abstract class HInputData : DataHolderBase {
 		protected HInputData ( ComponentBase owner ) : base ( owner ) {
 		}

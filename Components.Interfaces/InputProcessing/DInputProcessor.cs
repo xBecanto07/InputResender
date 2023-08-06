@@ -3,7 +3,9 @@ using static Components.Interfaces.InputData;
 
 namespace Components.Interfaces {
 	public abstract class DInputProcessor : ComponentBase<CoreBase> {
-		public DInputProcessor ( CoreBase owner ) : base ( owner ) { }
+		public DInputProcessor ( CoreBase owner ) : base ( owner ) {
+			CustomModifiers = new Dictionary<KeyCode, Modifier> ();
+		}
 
 		public struct KeyCombo {
 			public KeyCode Key;
@@ -21,19 +23,40 @@ namespace Components.Interfaces {
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(ProcessInput), typeof(void)),
+				(nameof(SetCustomModifier), typeof(void)),
+				(nameof(SequentialProcess), typeof(InputData[])),
+				(nameof(ReadModifiers), typeof(Modifier)),
 			};
 
 		public abstract void ProcessInput ( HInputEventDataHolder[] inputCombination );
 		public Action<InputData> Callback;
 
-		protected Modifier ReadModifiers ( HInputEventDataHolder[] inputCombination) {
+		private Dictionary<KeyCode, Modifier> CustomModifiers;
+		public void SetCustomModifier ( KeyCode key, Modifier customMod ) {
+			if ( CustomModifiers.ContainsKey ( key ) ) {
+				if ( customMod == Modifier.None ) CustomModifiers.Remove ( key );
+				else CustomModifiers[key] = customMod;
+			} else if ( customMod != Modifier.None ) CustomModifiers.Add ( key, customMod );
+		}
+		/// <summary>Can simplify calling of ProcessInput. When any time-dependent results are generated, those can only be captured by original callback (if was assigned beforehand).</summary>
+		public InputData[] SequentialProcess ( HInputEventDataHolder[] inputCombination ) {
+			List<InputData> ret = new List<InputData> ();
+			Action<InputData> origCallback = Callback;
+			Callback = ret.Add;
+			ProcessInput ( inputCombination );
+			Callback = origCallback;
+			return ret.ToArray ();
+		}
+
+		public Modifier ReadModifiers ( HInputEventDataHolder[] inputCombination) {
 			int Cnt = inputCombination == null ? -1 : inputCombination.Length;
 			if ( Cnt < 1 ) return Modifier.None;
 
 			Modifier mods = Modifier.None;
 			for ( int i = Cnt - 1; i >= 0; i-- ) {
 				Modifier nMod;
-				switch ( (KeyCode)inputCombination[i].InputCode ) {
+				KeyCode key = (KeyCode)inputCombination[i].InputCode;
+				switch ( key ) {
 				case KeyCode.ControlKey: nMod = Modifier.Ctrl; break;
 				case KeyCode.ShiftKey: nMod = Modifier.Shift; break;
 				case KeyCode.LControlKey: nMod = Modifier.Ctrl; break;
@@ -44,7 +67,10 @@ namespace Components.Interfaces {
 				case KeyCode.RMenu: nMod = Modifier.AltGr; break;
 				case KeyCode.LWin: nMod = Modifier.WinKey; break;
 				case KeyCode.RWin: nMod = Modifier.WinKey; break;
-				default: nMod = Modifier.None; break;
+				default:
+					if (CustomModifiers.TryGetValue ( key, out Modifier mod ) ) { nMod = mod; break; }
+					nMod = Modifier.None;
+					break;
 				}
 				if ( inputCombination[i].Pressed >= 1 ) mods |= nMod;
 				else mods &= ~nMod;

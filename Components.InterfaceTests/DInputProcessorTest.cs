@@ -14,17 +14,32 @@ namespace Components.InterfaceTests {
 		public override CoreBase CreateCoreBase () {
 			var ret = new CoreBaseMock ();
 			new MInputParser ( ret );
+			new MInputReader ( ret );
 			return ret;
 		}
 
 		[Fact]
 		public void EmptyInputToEmptyOutput () {
+			TestObject.Callback = ProcessedCallback;
 			TestObject.ProcessInput ( null );
 			Thread.Sleep ( 1 );
 			ProcessedInputs.Should ().BeEmpty ();
 		}
 		private void ProcessedCallback (InputData data) {
 			ProcessedInputs.Add ( data );
+		}
+
+		[Fact]
+		public void CustomModifierRecognized () {
+			var input = new[] {
+				HInputEventDataHolder.KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.E, VKChange.KeyDown),
+				HInputEventDataHolder.KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.D1, VKChange.KeyDown),
+				HInputEventDataHolder.KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.LShiftKey, VKChange.KeyDown)
+			};
+			TestObject.SetCustomModifier ( KeyCode.D1, InputData.Modifier.CustMod1 );
+			TestObject.ReadModifiers ( input ).Should ().Be ( InputData.Modifier.CustMod1 | InputData.Modifier.Shift );
+			TestObject.SetCustomModifier ( KeyCode.D1, InputData.Modifier.None );
+			TestObject.ReadModifiers ( input ).Should ().Be ( InputData.Modifier.Shift );
 		}
 	}
 

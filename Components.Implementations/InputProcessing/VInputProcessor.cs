@@ -21,23 +21,7 @@ namespace Components.Implementations {
 				Y = inputCombination[0].ValueY,
 				Z = inputCombination[0].ValueZ,
 			};
-			InputData.Modifier mods = InputData.Modifier.None;
-			for (int i = 0; i < Cnt; i++ ) {
-				if ( inputCombination[i].Pressed < 1 ) continue;
-				switch ((KeyCode)inputCombination[i].InputCode ) {
-				case KeyCode.ControlKey: mods |= InputData.Modifier.Ctrl; break;
-				case KeyCode.ShiftKey: mods |= InputData.Modifier.Shift; break;
-				case KeyCode.LControlKey: mods |= InputData.Modifier.Ctrl; break;
-				case KeyCode.RControlKey: mods |= InputData.Modifier.Ctrl; break;
-				case KeyCode.LShiftKey: mods |= InputData.Modifier.Shift; break;
-				case KeyCode.RShiftKey: mods |= InputData.Modifier.Shift; break;
-				case KeyCode.Alt: mods |= InputData.Modifier.Alt; break;
-				case KeyCode.RMenu: mods |= InputData.Modifier.AltGr; break;
-				case KeyCode.LWin: mods |= InputData.Modifier.WinKey; break;
-				case KeyCode.RWin: mods |= InputData.Modifier.WinKey; break;
-				}
-			}
-			ret.Modifiers = mods;
+			ret.Modifiers = ReadModifiers ( inputCombination );
 			Callback ( ret );
 		}
 	}
