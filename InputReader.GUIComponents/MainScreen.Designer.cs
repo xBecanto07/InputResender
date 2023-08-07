@@ -26,51 +26,13 @@ namespace InputResender.GUIComponents {
 			ShortcutCheckBox = new CheckBox ();
 			AddProcessorBtn = new Button ();
 			RemProcessorBtn = new Button ();
+			ModifierList = new ListBox ();
+			AddCustModBtn = new Button ();
+			RemCustModBtn = new Button ();
+			EditCustModBtn = new Button ();
+			ModifierListLabel = new Label ();
 			InputProcSelectorLabel = new Label ();
 			SuspendLayout ();
-			// 
-			// PsswdUpdateBtn
-			// 
-			PsswdUpdateBtn.Location = new Point ( 12, 12 );
-			PsswdUpdateBtn.Name = "PsswdUpdateBtn";
-			PsswdUpdateBtn.Size = new Size ( 130, 23 );
-			PsswdUpdateBtn.TabIndex = 0;
-			PsswdUpdateBtn.Text = "Change Passphrase";
-			PsswdUpdateBtn.UseVisualStyleBackColor = true;
-			PsswdUpdateBtn.Click += PsswdUpdateBtn_Click;
-			// 
-			// EPUpdateBtn
-			// 
-			EPUpdateBtn.Location = new Point ( 148, 12 );
-			EPUpdateBtn.Name = "EPUpdateBtn";
-			EPUpdateBtn.Size = new Size ( 100, 23 );
-			EPUpdateBtn.TabIndex = 1;
-			EPUpdateBtn.Text = "Update Target";
-			EPUpdateBtn.UseVisualStyleBackColor = true;
-			EPUpdateBtn.Click += EPUpdateBtn_Click;
-			// 
-			// ConsoleText
-			// 
-			ConsoleText.BackColor = Color.Black;
-			ConsoleText.Dock = DockStyle.Bottom;
-			ConsoleText.Font = new Font ( "Lucida Console", 12F, FontStyle.Regular, GraphicsUnit.Point );
-			ConsoleText.ForeColor = Color.Green;
-			ConsoleText.Location = new Point ( 0, 42 );
-			ConsoleText.Multiline = true;
-			ConsoleText.Name = "ConsoleText";
-			ConsoleText.ReadOnly = true;
-			ConsoleText.Size = new Size ( 992, 535 );
-			ConsoleText.TabIndex = 2;
-			// 
-			// InputProcSelector
-			// 
-			InputProcSelector.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-			InputProcSelector.FormattingEnabled = true;
-			InputProcSelector.Location = new Point ( 769, 13 );
-			InputProcSelector.Name = "InputProcSelector";
-			InputProcSelector.Size = new Size ( 145, 23 );
-			InputProcSelector.TabIndex = 3;
-			InputProcSelector.SelectedIndexChanged += InputProcSelector_SelectedIndexChanged;
 			// 
 			// InputProcSelectorLabel
 			// 
@@ -83,10 +45,52 @@ namespace InputResender.GUIComponents {
 			InputProcSelectorLabel.Text = "Active Input Processor:";
 			InputProcSelectorLabel.TextAlign = ContentAlignment.MiddleRight;
 			// 
+			// PsswdUpdateBtn
+			// 
+			PsswdUpdateBtn.Location = new Point ( 12, 12 );
+			PsswdUpdateBtn.Name = "PsswdUpdateBtn";
+			PsswdUpdateBtn.Size = new Size ( 125, 23 );
+			PsswdUpdateBtn.TabIndex = 0;
+			PsswdUpdateBtn.Text = "Change Passphrase";
+			PsswdUpdateBtn.UseVisualStyleBackColor = true;
+			PsswdUpdateBtn.Click += PsswdUpdateBtn_Click;
+			// 
+			// EPUpdateBtn
+			// 
+			EPUpdateBtn.Location = new Point ( 143, 12 );
+			EPUpdateBtn.Name = "EPUpdateBtn";
+			EPUpdateBtn.Size = new Size ( 100, 23 );
+			EPUpdateBtn.TabIndex = 1;
+			EPUpdateBtn.Text = "Update Target";
+			EPUpdateBtn.UseVisualStyleBackColor = true;
+			EPUpdateBtn.Click += EPUpdateBtn_Click;
+			// 
+			// ConsoleText
+			// 
+			ConsoleText.BackColor = Color.Black;
+			ConsoleText.Font = new Font ( "Lucida Console", 12F, FontStyle.Regular, GraphicsUnit.Point );
+			ConsoleText.ForeColor = Color.Green;
+			ConsoleText.Location = new Point ( 0, 42 );
+			ConsoleText.Multiline = true;
+			ConsoleText.Name = "ConsoleText";
+			ConsoleText.ReadOnly = true;
+			ConsoleText.Size = new Size ( 763, 535 );
+			ConsoleText.TabIndex = 2;
+			// 
+			// InputProcSelector
+			// 
+			InputProcSelector.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+			InputProcSelector.FormattingEnabled = true;
+			InputProcSelector.Location = new Point ( 769, 13 );
+			InputProcSelector.Name = "InputProcSelector";
+			InputProcSelector.Size = new Size ( 145, 23 );
+			InputProcSelector.TabIndex = 3;
+			InputProcSelector.SelectedIndexChanged += InputProcSelector_SelectedIndexChanged;
+			// 
 			// IsActiveCheckBox
 			// 
 			IsActiveCheckBox.AutoSize = true;
-			IsActiveCheckBox.Location = new Point ( 265, 15 );
+			IsActiveCheckBox.Location = new Point ( 386, 15 );
 			IsActiveCheckBox.Name = "IsActiveCheckBox";
 			IsActiveCheckBox.Size = new Size ( 70, 19 );
 			IsActiveCheckBox.TabIndex = 5;
@@ -97,7 +101,7 @@ namespace InputResender.GUIComponents {
 			// ShortcutCheckBox
 			// 
 			ShortcutCheckBox.AutoSize = true;
-			ShortcutCheckBox.Location = new Point ( 350, 15 );
+			ShortcutCheckBox.Location = new Point ( 462, 15 );
 			ShortcutCheckBox.Name = "ShortcutCheckBox";
 			ShortcutCheckBox.Size = new Size ( 112, 19 );
 			ShortcutCheckBox.TabIndex = 6;
@@ -133,11 +137,68 @@ namespace InputResender.GUIComponents {
 			RemProcessorBtn.UseVisualStyleBackColor = true;
 			RemProcessorBtn.Click += RemProcessorBtn_Click;
 			// 
+			// ModifierList
+			// 
+			ModifierList.FormattingEnabled = true;
+			ModifierList.ItemHeight = 15;
+			ModifierList.Location = new Point ( 769, 116 );
+			ModifierList.Name = "ModifierList";
+			ModifierList.SelectionMode = SelectionMode.MultiExtended;
+			ModifierList.Size = new Size ( 211, 349 );
+			ModifierList.TabIndex = 10;
+			// 
+			// AddCustModBtn
+			// 
+			AddCustModBtn.FlatStyle = FlatStyle.System;
+			AddCustModBtn.Location = new Point ( 769, 471 );
+			AddCustModBtn.Name = "AddCustModBtn";
+			AddCustModBtn.Size = new Size ( 60, 23 );
+			AddCustModBtn.TabIndex = 11;
+			AddCustModBtn.Text = "Add";
+			AddCustModBtn.UseVisualStyleBackColor = true;
+			AddCustModBtn.Click += AddCustModBtn_Click;
+			// 
+			// RemCustModBtn
+			// 
+			RemCustModBtn.FlatStyle = FlatStyle.System;
+			RemCustModBtn.Location = new Point ( 920, 471 );
+			RemCustModBtn.Name = "RemCustModBtn";
+			RemCustModBtn.Size = new Size ( 60, 23 );
+			RemCustModBtn.TabIndex = 12;
+			RemCustModBtn.Text = "Remove";
+			RemCustModBtn.UseVisualStyleBackColor = true;
+			RemCustModBtn.Click += RemCustModBtn_Click;
+			// 
+			// EditCustModBtn
+			// 
+			EditCustModBtn.FlatStyle = FlatStyle.System;
+			EditCustModBtn.Location = new Point ( 845, 471 );
+			EditCustModBtn.Name = "EditCustModBtn";
+			EditCustModBtn.Size = new Size ( 60, 23 );
+			EditCustModBtn.TabIndex = 13;
+			EditCustModBtn.Text = "Edit";
+			EditCustModBtn.UseVisualStyleBackColor = true;
+			EditCustModBtn.Click += EditCustModBtn_Click;
+			// 
+			// ModifierListLabel
+			// 
+			ModifierListLabel.AutoSize = true;
+			ModifierListLabel.Location = new Point ( 781, 98 );
+			ModifierListLabel.Name = "ModifierListLabel";
+			ModifierListLabel.Size = new Size ( 57, 15 );
+			ModifierListLabel.TabIndex = 14;
+			ModifierListLabel.Text = "Modifiers";
+			// 
 			// MainScreen
 			// 
 			AutoScaleDimensions = new SizeF ( 7F, 15F );
 			AutoScaleMode = AutoScaleMode.Font;
 			ClientSize = new Size ( 992, 577 );
+			Controls.Add ( ModifierListLabel );
+			Controls.Add ( EditCustModBtn );
+			Controls.Add ( RemCustModBtn );
+			Controls.Add ( AddCustModBtn );
+			Controls.Add ( ModifierList );
 			Controls.Add ( RemProcessorBtn );
 			Controls.Add ( AddProcessorBtn );
 			Controls.Add ( ShortcutCheckBox );
@@ -162,5 +223,10 @@ namespace InputResender.GUIComponents {
 		private CheckBox ShortcutCheckBox;
 		private Button AddProcessorBtn;
 		private Button RemProcessorBtn;
+		private ListBox ModifierList;
+		private Button AddCustModBtn;
+		private Button RemCustModBtn;
+		private Button EditCustModBtn;
+		private Label ModifierListLabel;
 	}
 }

@@ -1,10 +1,22 @@
 ﻿using Components.Library;
+using System.Collections.Generic;
 using static Components.Interfaces.InputData;
 
 namespace Components.Interfaces {
 	public abstract class DInputProcessor : ComponentBase<CoreBase> {
 		public DInputProcessor ( CoreBase owner ) : base ( owner ) {
-			CustomModifiers = new Dictionary<KeyCode, Modifier> ();
+			ModifiersDict = new Dictionary<KeyCode, (Modifier, bool)> () {
+				{KeyCode.ControlKey, (Modifier.Ctrl, true)},
+				{KeyCode.ShiftKey, (Modifier.Shift, true)},
+				{KeyCode.LControlKey, (Modifier.Ctrl, true)},
+				{KeyCode.RControlKey, (Modifier.Ctrl, true)},
+				{KeyCode.LShiftKey, (Modifier.Shift, true)},
+				{KeyCode.RShiftKey, (Modifier.Shift, true)},
+				{KeyCode.Alt, (Modifier.Alt, true)},
+				{KeyCode.RMenu, (Modifier.AltGr, true)},
+				{KeyCode.LWin, (Modifier.WinKey, true)},
+				{KeyCode.RWin, (Modifier.WinKey, true)},
+			};
 		}
 
 		public struct KeyCombo {
@@ -26,17 +38,22 @@ namespace Components.Interfaces {
 				(nameof(SetCustomModifier), typeof(void)),
 				(nameof(SequentialProcess), typeof(InputData[])),
 				(nameof(ReadModifiers), typeof(Modifier)),
+				(nameof(Modifiers), typeof(IReadOnlyDictionary<KeyCode, (Modifier mod, bool readOnly)>)),
 			};
 
 		public abstract void ProcessInput ( HInputEventDataHolder[] inputCombination );
 		public Action<InputData> Callback;
 
-		private Dictionary<KeyCode, Modifier> CustomModifiers;
+		private Dictionary<KeyCode, (Modifier mod, bool system)> ModifiersDict;
+		public IReadOnlyDictionary<KeyCode, (Modifier mod, bool readOnly)> Modifiers {
+			get => ModifiersDict.AsReadOnly ();
+		}
 		public void SetCustomModifier ( KeyCode key, Modifier customMod ) {
-			if ( CustomModifiers.ContainsKey ( key ) ) {
-				if ( customMod == Modifier.None ) CustomModifiers.Remove ( key );
-				else CustomModifiers[key] = customMod;
-			} else if ( customMod != Modifier.None ) CustomModifiers.Add ( key, customMod );
+			if ( ModifiersDict.ContainsKey ( key ) ) {
+				if ( ModifiersDict[key].system ) throw new InvalidOperationException ( $"{key} cannot be assigned as custom modifier because it is used by system to trigger {ModifiersDict[key].mod} modifier" );
+				if ( customMod == Modifier.None ) ModifiersDict.Remove ( key );
+				else ModifiersDict[key] = (customMod, false);
+			} else if ( customMod != Modifier.None ) ModifiersDict.Add ( key, (customMod, false) );
 		}
 		/// <summary>Can simplify calling of ProcessInput. When any time-dependent results are generated, those can only be captured by original callback (if was assigned beforehand).</summary>
 		public InputData[] SequentialProcess ( HInputEventDataHolder[] inputCombination ) {
@@ -48,7 +65,7 @@ namespace Components.Interfaces {
 			return ret.ToArray ();
 		}
 
-		public Modifier ReadModifiers ( HInputEventDataHolder[] inputCombination) {
+		public Modifier ReadModifiers ( HInputEventDataHolder[] inputCombination ) {
 			int Cnt = inputCombination == null ? -1 : inputCombination.Length;
 			if ( Cnt < 1 ) return Modifier.None;
 
@@ -56,22 +73,9 @@ namespace Components.Interfaces {
 			for ( int i = Cnt - 1; i >= 0; i-- ) {
 				Modifier nMod;
 				KeyCode key = (KeyCode)inputCombination[i].InputCode;
-				switch ( key ) {
-				case KeyCode.ControlKey: nMod = Modifier.Ctrl; break;
-				case KeyCode.ShiftKey: nMod = Modifier.Shift; break;
-				case KeyCode.LControlKey: nMod = Modifier.Ctrl; break;
-				case KeyCode.RControlKey: nMod = Modifier.Ctrl; break;
-				case KeyCode.LShiftKey: nMod = Modifier.Shift; break;
-				case KeyCode.RShiftKey: nMod = Modifier.Shift; break;
-				case KeyCode.Alt: nMod = Modifier.Alt; break;
-				case KeyCode.RMenu: nMod = Modifier.AltGr; break;
-				case KeyCode.LWin: nMod = Modifier.WinKey; break;
-				case KeyCode.RWin: nMod = Modifier.WinKey; break;
-				default:
-					if (CustomModifiers.TryGetValue ( key, out Modifier mod ) ) { nMod = mod; break; }
-					nMod = Modifier.None;
-					break;
-				}
+				if ( ModifiersDict.TryGetValue ( key, out var mod ) ) { nMod = mod.mod; break; }
+				nMod = Modifier.None;
+
 				if ( inputCombination[i].Pressed >= 1 ) mods |= nMod;
 				else mods &= ~nMod;
 			}

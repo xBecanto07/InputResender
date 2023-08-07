@@ -1,6 +1,7 @@
 ﻿using Components.Interfaces;
 using Components.Library;
 using FluentAssertions;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using Xunit;
@@ -40,6 +41,13 @@ namespace Components.InterfaceTests {
 			TestObject.ReadModifiers ( input ).Should ().Be ( InputData.Modifier.CustMod1 | InputData.Modifier.Shift );
 			TestObject.SetCustomModifier ( KeyCode.D1, InputData.Modifier.None );
 			TestObject.ReadModifiers ( input ).Should ().Be ( InputData.Modifier.Shift );
+		}
+		[Fact]
+		public void ChangingSystemModifierThrows_InvalidOperationException () {
+			Action actChange = () => TestObject.SetCustomModifier ( KeyCode.ShiftKey, InputData.Modifier.Alt );
+			Action actRemove = () => TestObject.SetCustomModifier ( KeyCode.ShiftKey, InputData.Modifier.None );
+			actChange.Should ().Throw<InvalidOperationException> ();
+			actRemove.Should ().Throw<InvalidOperationException> ();
 		}
 	}
 
