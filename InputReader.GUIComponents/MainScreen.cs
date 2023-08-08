@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Windows.Forms;
-using static System.ComponentModel.Design.ObjectSelectorEditor;
+using CompGroup = Components.Library.CoreBase.ComponentGroup;
 
 namespace InputResender.GUIComponents {
 	public partial class MainScreen : Form {
@@ -46,16 +46,35 @@ namespace InputResender.GUIComponents {
 
 		}
 
+		private CoreBase.ComponentInfo[] InputProcessors;
 		private void InputProcSelector_SelectedIndexChanged ( object sender, EventArgs e ) {
-
+			int ID = InputProcSelector.SelectedIndex;
+			if ( ID < 0 | ID >= InputProcessors.Length ) return;
+			Core.SelectNewPriority ( InputProcessors, InputProcessors[ID].Component );
 		}
-
+		private void InputProcSelector_DropDown ( object sender, EventArgs e ) => UpdateInputProcessors ();
 		private void AddProcessorBtn_Click ( object sender, EventArgs e ) {
-
+			InputProcessorFactory factory = new InputProcessorFactory ();
+			if ( factory.ShowDialog () != DialogResult.OK ) return;
+			if ( factory.SelectedCreator == null ) return;
+			if ( !factory.SelectedCreator.ShowGUI () ) return;
+			if ( factory.SelectedCreator.GetNewProcessor ( Core ) == null ) throw new NullReferenceException ( "Unable to created new input processor!" );
+			UpdateInputProcessors ();
 		}
-
 		private void RemProcessorBtn_Click ( object sender, EventArgs e ) {
-
+			int ID = InputProcSelector.SelectedIndex;
+			if ( ID < 0 | ID >= InputProcessors.Length ) return;
+			var comp = InputProcessors[ID];
+			Core.Unregister ( comp.Component );
+			UpdateInputProcessors ();
+		}
+		private void UpdateInputProcessors () {
+			var asdf = new CompGroup ( Core, CompGroup.ByType<DInputProcessor> () );
+			InputProcessors = asdf.GetInfoGroup ();
+			InputProcSelector.Items.Clear ();
+			foreach ( var processor in InputProcessors ) {
+				InputProcSelector.Items.Add ( processor.TypeTree[^1].Name );
+			}
 		}
 
 		private void AddCustModBtn_Click ( object sender, EventArgs e ) {

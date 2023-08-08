@@ -73,8 +73,8 @@ namespace Components.Interfaces {
 			for ( int i = Cnt - 1; i >= 0; i-- ) {
 				Modifier nMod;
 				KeyCode key = (KeyCode)inputCombination[i].InputCode;
-				if ( ModifiersDict.TryGetValue ( key, out var mod ) ) { nMod = mod.mod; break; }
-				nMod = Modifier.None;
+				if ( ModifiersDict.TryGetValue ( key, out var mod ) ) nMod = mod.mod;
+				else nMod = Modifier.None;
 
 				if ( inputCombination[i].Pressed >= 1 ) mods |= nMod;
 				else mods &= ~nMod;

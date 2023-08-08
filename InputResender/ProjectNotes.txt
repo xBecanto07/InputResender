@@ -17,3 +17,5 @@ CoreBase and component registration:
 		In-group ID: Defined during registration by user or assigned by core as ordinal number in given group (i.e. number of all components with same identification (type/name/...) )
 		Sub-name: in-group name defined by virtual getter, default null
 		Accepted type: defined by virtual getter (Type[])
+
+All components should be IDisposable and should have some "common name"

@@ -19,7 +19,7 @@ namespace InputResender.UserTesting {
 		public TapperInputUserTest ( StringBuilder sb ) : base ( sb ) {
 			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
 			Core = CoreFactory.CreateVMainAppCore ( DMainAppCore.CompSelect.All & (~DMainAppCore.CompSelect.InputProcessor) );
-			new VTapperInput ( Core, new DInputProcessor.KeySetup[5] { new ( "Little", KeyCode.A ), new ( "Ring", KeyCode.S ), new ( "Middle", KeyCode.D ), new ( "Index", KeyCode.F ), new ( "Thumb", KeyCode.Space ) } );
+			new VTapperInput ( Core, new KeyCode[5] { KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.F, KeyCode.Space }, InputData.Modifier.None );
 			Writer = new MTextWriter ( Core );
 			Waiter = new AutoResetEvent ( false );
 		}

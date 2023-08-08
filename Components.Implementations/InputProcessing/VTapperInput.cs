@@ -58,8 +58,7 @@ namespace Components.Implementations {
 				(KeyCode.Space, ModE.None), (KeyCode.D8, ModE.Shift), (KeyCode.D4, ModE.Shift), (KeyCode.D1, ModE.Shift)
 			}
 		};
-		readonly KeySetup[] Setup;
-		readonly HashSet<KeyCode> TriggerKeys;
+		readonly KeyCode[] TriggerKeys;
 		readonly ModE TriggerMod;
 		int Presses = 0;
 		BitField LastTapCombo = new BitField ();
@@ -73,14 +72,13 @@ namespace Components.Implementations {
 		bool WaitForRelease;
 
 		// Should allow only single modifier for all keys. Dsc is also useless. So constructor should rather be (CoreBase, KeyCode[], Modifier = None)
-		public VTapperInput ( CoreBase owner, KeySetup[] setup ) : base ( owner ) {
-			Setup = setup;
-			if ( Setup.Length < 5 ) throw new DataMisalignedException ( $"TapStrap simulator processor needs 5 keys defined!" );
-			TriggerMod = setup[0].Modifier;
-			TriggerKeys = new HashSet<KeyCode> ( 5 );
+		public VTapperInput ( CoreBase owner, KeyCode[] keys, ModE mod ) : base ( owner ) {
+			if ( keys.Length < 5 ) throw new DataMisalignedException ( $"TapStrap simulator processor needs 5 keys defined!" );
+			TriggerMod = mod;
+			TriggerKeys = new KeyCode[5];
 			for ( int i = 0; i < 5; i++ ) {
-				if ( TriggerKeys.Contains ( setup[i].Key ) ) throw new DataMisalignedException ( $"Key {setup[i].Key} cannot be used to represent two different fingers!" );
-				TriggerKeys.Add ( setup[i].Key );
+				if ( TriggerKeys.Contains ( keys[i] ) ) throw new DataMisalignedException ( $"Key {keys[i]} cannot be used to represent two different fingers!" );
+				TriggerKeys[i] = keys[i];
 			}
 		}
 
@@ -96,7 +94,7 @@ namespace Components.Implementations {
 
 		int GetID (KeyCode key) {
 			for (int i = 0; i < 5; i++)
-				if (key == Setup[i].Key) return i;
+				if (key == TriggerKeys[i]) return i;
 			return -1;
 		}
 
@@ -106,7 +104,6 @@ namespace Components.Implementations {
 			Pressed = new BitField ();
 			Released = new BitField ();
 			bool IsAnyReleased = false;
-			Owner.LogFcn?.Invoke ( $"SETUP = {Setup[0].Key} {Setup[1].Key} {Setup[2].Key} {Setup[3].Key} {Setup[4].Key} ({TriggerMod})" );
 
 			for ( int i = inputCombo.Length - 1; i >= 0; i-- ) {
 				KeyCode key = (KeyCode)inputCombo[i].InputCode;

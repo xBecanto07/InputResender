@@ -85,6 +85,7 @@ namespace InputResender.GUIComponents {
 			InputProcSelector.Name = "InputProcSelector";
 			InputProcSelector.Size = new Size ( 145, 23 );
 			InputProcSelector.TabIndex = 3;
+			InputProcSelector.DropDown += InputProcSelector_DropDown;
 			InputProcSelector.SelectedIndexChanged += InputProcSelector_SelectedIndexChanged;
 			// 
 			// IsActiveCheckBox

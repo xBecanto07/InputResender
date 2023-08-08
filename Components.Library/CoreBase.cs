@@ -130,7 +130,7 @@ namespace Components.Library {
 			return ret.ToArray ();
 		}
 
-		public void Unregister<T> (T component ) where T : ComponentBase {
+		public void Unregister ( ComponentBase component ) {
 			var info = this[component];
 			//if ( info == null ) throw new KeyNotFoundException ( "Given component is not registered!" );
 			if ( info == null ) return;

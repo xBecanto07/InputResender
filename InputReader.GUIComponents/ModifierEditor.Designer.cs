@@ -47,7 +47,6 @@
 			KeyTextBox.ReadOnly = true;
 			KeyTextBox.Size = new System.Drawing.Size ( 121, 23 );
 			KeyTextBox.TabIndex = 1;
-			KeyTextBox.TabStop = false;
 			KeyTextBox.Click += KeyTextBox_Click;
 			KeyTextBox.KeyDown += KeyTextBox_KeyDown;
 			// 

@@ -33,7 +33,7 @@ namespace InputResender.Visualizer {
 		private void Visualizer_Load ( object sender, EventArgs e ) {
 			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
 			Core = CoreFactory.CreateVMainAppCore ();
-			Tapper = new VTapperInput ( new CoreBaseMock (), new DInputProcessor.KeySetup[5] { new ( "Little", KeyCode.A ), new ( "Ring", KeyCode.S ), new ( "Middle", KeyCode.D ), new ( "Index", KeyCode.F ), new ( "Thumb", KeyCode.Space ) } );
+			Tapper = new VTapperInput ( new CoreBaseMock (), new KeyCode[5] { KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.F, KeyCode.Space }, InputData.Modifier.None );
 			TextWriter = new MTextWriter ( Core );
 
 			Core.InputProcessor.Callback = ProcessedCallback;

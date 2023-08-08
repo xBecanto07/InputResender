@@ -11,7 +11,7 @@ namespace Components.ImplementationTests {
 		public VTapperInputTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) {
 		}
 
-		public override DInputProcessor GenerateTestObject () => new VTapperInput ( OwnerCore, new DInputProcessor.KeySetup[5] { new ( "Little", KeyCode.A ), new ( "Ring", KeyCode.S ), new ( "Middle", KeyCode.D ), new ( "Index", KeyCode.F ), new ( "Thumb", KeyCode.Space ) } );
+		public override DInputProcessor GenerateTestObject () => new VTapperInput ( OwnerCore, new KeyCode[5] { KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.F, KeyCode.Space }, InputData.Modifier.None );
 
 		[Fact]
 		public void WriteHelloWorld () {
