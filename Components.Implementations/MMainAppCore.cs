@@ -11,7 +11,9 @@ namespace Components.Implementations {
 			( core ) => new MInputProcessor ( core ),
 			( core ) => new MDataSigner ( core ),
 			( core ) => new MPacketSender ( core ),
-			( core ) => new VShortcutWorker ( core ) ) {
+			( core ) => new VMainAppControls ( core ),
+			( core ) => new VShortcutWorker ( core ),
+			( core ) => new VCommandWorker ( core ) ) {
 		}
 
 		public override void Initialize () {

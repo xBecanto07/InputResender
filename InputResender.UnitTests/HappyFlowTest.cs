@@ -86,10 +86,9 @@ namespace InputResender.UnitTests {
 		public void MainProcess () {
 			Init ();
 
-			Sender.InputProcessor.Callback = ProcessedCallback;
+			Sender.CommandWorker.RegisterCallback ( ProcessedCallback );
 			HHookInfo hookInfo = new HHookInfo ( Sender.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
-			var hookIDs = Sender.InputReader.SetupHook ( hookInfo, ProcessInput, null );
-			foreach (var hookID in hookIDs ) hookInfo.AddHookID ( hookID );
+			Sender.MainAppControls.ChangeHookStatus ( hookInfo, true );
 
 			var pressHolder = Sender.InputReader.SimulateKeyInput ( hookInfo, VKChange.KeyDown, KeyCode.E );
 			var releaseHolder = Sender.InputReader.SimulateKeyInput ( hookInfo, VKChange.KeyUp, KeyCode.E );

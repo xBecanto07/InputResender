@@ -39,10 +39,12 @@ namespace Components.Interfaces {
 				(nameof(SequentialProcess), typeof(InputData[])),
 				(nameof(ReadModifiers), typeof(Modifier)),
 				(nameof(Modifiers), typeof(IReadOnlyDictionary<KeyCode, (Modifier mod, bool readOnly)>)),
+				(nameof(Callback), typeof(Action<InputData>)),
 			};
 
 		public abstract void ProcessInput ( HInputEventDataHolder[] inputCombination );
-		public Action<InputData> Callback;
+		private Action<InputData> callback;
+		public Action<InputData> Callback { set { callback = value; } protected get => callback ?? Owner.Fetch<DCommandWorker> ().Push; }
 
 		private Dictionary<KeyCode, (Modifier mod, bool system)> ModifiersDict;
 		public IReadOnlyDictionary<KeyCode, (Modifier mod, bool readOnly)> Modifiers {

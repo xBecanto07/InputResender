@@ -21,6 +21,7 @@ namespace Components.Library {
 			public int Priority;
 
 			public ComponentInfo (ComponentBase comp, DictionaryKey globID) { Component = comp; GlobalID = globID; }
+			public override string ToString () => $"{Component}({GlobalID}:{Name}:{GroupID}:{Priority})";
 		}
 
 		public class ComponentGroup {
