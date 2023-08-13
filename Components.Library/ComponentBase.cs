@@ -5,7 +5,7 @@ using OutpuHelper = Xunit.Abstractions.ITestOutputHelper;
 
 namespace Components.Library {
 	public abstract class ComponentBase {
-		private CoreBase Owner;
+		public CoreBase Owner { get; private set; }
 		public abstract int ComponentVersion { get; }
 		public readonly DateTime CreationTime;
 		public readonly IReadOnlyList<(string opCode, Type opType)> SupportedCommands;
@@ -40,7 +40,7 @@ namespace Components.Library {
 	}
 	public abstract class ComponentBase<CoreType> : ComponentBase where CoreType : CoreBase {
 		public ComponentBase (CoreType newOwner) { ChangeOwner ( newOwner ); }
-		public virtual CoreType Owner { get; protected set; }
+		public new virtual CoreType Owner { get; protected set; }
 		protected override void ChangeOwner ( CoreBase newOwner ) { Owner = (CoreType)newOwner; base.ChangeOwner ( newOwner ); }
 	}
 

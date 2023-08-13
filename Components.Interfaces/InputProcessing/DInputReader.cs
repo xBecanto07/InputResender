@@ -15,6 +15,8 @@ namespace Components.Interfaces {
 		/// <param name="hookInfo">Use given info to initialize hook(s). Fills back info about created hooks (e.g. hookIDs).</param>
 		public abstract ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB );
 		public abstract int ReleaseHook ( HHookInfo hookInfo );
+		/// <summary></summary>
+		/// <returns>Returns number of successfully simulated events</returns>
 		public abstract uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture );
 		public HInputEventDataHolder SimulateKeyInput ( HHookInfo hookInfo, VKChange action, KeyCode key ) {
 			HInputEventDataHolder ret = new HKeyboardEventDataHolder ( this, hookInfo, (int)key, action );
@@ -51,9 +53,9 @@ namespace Components.Interfaces {
 		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) {
 			if ( CallbackList.TryGetValue ( (item) => input.HookInfo < item, out var info ) ) {
 				var data = (HInputEventDataHolder)input.Clone ();
-				var ret = info.MainCB ( info.Key, data ) ? 0u : 1u;
+				info.MainCB ( info.Key, data );
 				if ( info.DelayedCB != null ) info.DelayedCB ( info.Key, data );
-				return ret;
+				return 1;
 			}
 			return 0;
 		}
