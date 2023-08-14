@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using SBld = System.Text.StringBuilder;
 
@@ -38,6 +39,7 @@ namespace Components.Library {
 			}
 			return SB.ToString ();
 		}
+		public static string ToHex ( this byte[] data ) => data == null ? "NULL" : BitConverter.ToString ( data ).Replace ( "-", null );
 		public static IntPtr ToUnmanaged (this IntPtr value) {
 			var ptr = Marshal.AllocHGlobal ( IntPtr.Size );
 			var bAr = BitConverter.GetBytes ( value );
@@ -133,5 +135,24 @@ namespace Components.Library {
 			return ret == "" ? "0" : ret;
 		}
 		public static int Crop ( this int x, int min, int max ) => x < min ? min : x > max ? max : x;
+		public static string AsString ( this MethodInfo MI ) {
+			SBld ret = new SBld ();
+			if ( MI.IsPublic ) ret.Append ( "public " );
+			else if ( MI.IsPrivate ) ret.Append ( "private " );
+			else if ( MI.IsAssembly ) ret.Append ( "internal " );
+			else if ( MI.IsFamily ) ret.Append ( "protected " );
+			else ret.Append ( "local " );
+			if ( MI.IsStatic ) ret.Append ( "static " );
+			if ( MI.IsAbstract ) ret.Append ( "abstract " );
+			if ( MI.IsVirtual ) ret.Append ( "virtual " );
+
+			ret.Append ( MI.DeclaringType.Name );
+			ret.Append ( '.' );
+			ret.Append ( MI.Name );
+			ret.Append ( '(' );
+			ret.Append ( string.Join ( ", ", MI.GetParameters ().Select ( ( p ) => $"{p.ParameterType.Name} {p.Name}" ) ) );
+			ret.Append ( ')' );
+			return ret.ToString ();
+		}
 	}
 }

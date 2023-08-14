@@ -12,6 +12,7 @@ namespace InputResender.GUIComponents {
 		private const int WH_KEYBOARD_LOW_LEVEL = 13;
 		private LowLevelKeyboardProc Callback;
 		private static VWinLowLevelLibs mainInstance;
+		private HashSet<DictionaryKey> OwnHooks;
 		const int MaxLog = 256;
 		public static List<(int nCode, VKChange changeCode, Input.KeyboardInput inputData)> EventList = new List<(int, VKChange, Input.KeyboardInput)> ( MaxLog );
 
@@ -23,7 +24,10 @@ namespace InputResender.GUIComponents {
 			EventList.Insert ( 0, (nCode, change, input) );
 		}
 
-		public VWinLowLevelLibs ( CoreBase owner ) : base ( owner ) { mainInstance = this; }
+		public VWinLowLevelLibs ( CoreBase owner ) : base ( owner ) {
+			mainInstance = this;
+			OwnHooks = new HashSet<DictionaryKey> ();
+		}
 
 		public override int ComponentVersion => 1;
 		public override int HookTypeCode => WH_KEYBOARD_LOW_LEVEL;
@@ -81,14 +85,17 @@ namespace InputResender.GUIComponents {
 				return null;
 			}
 			HookIDDict.Add ( hookKey, hook );
+			OwnHooks.Add ( hookKey );
 			hook.UpdateHookID ( hookID );
 			return new Hook[1] { hook };
 		}
 		public override bool UnhookHookEx ( Hook hookID ) {
-			if ( !HookIDDict.ContainsPair ( hookID.Key, hookID ) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
+			if ( !HookIDDict.ContainsPair ( hookID.Key, hookID ) ) throw new KeyNotFoundException ( $"Hook with key {hookID.Key} was not found!" );
+			if ( !OwnHooks.Contains ( hookID.Key ) ) throw new KeyNotFoundException ( $"Hook #{hookID.Key} is not owned by this component!" );
 			bool ret;
 			if (!(ret = UnhookWindowsHookEx ( hookID.HookID ))) ErrorList.Add ( (nameof ( UnhookHookEx ), new Win32Exception ()) );
 			HookIDDict.Remove ( hookID.Key );
+			OwnHooks.Remove ( hookID.Key );
 			return ret;
 		}
 		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null ) {
@@ -125,8 +132,22 @@ namespace InputResender.GUIComponents {
 		private static extern uint SendInput ( uint nInputs, Input[] pInputs, int cbSize );
 
 
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new VWinLowLevelLibs Owner => (VWinLowLevelLibs)base.Owner;
+			public VStateInfo ( VWinLowLevelLibs owner ) : base ( owner) {
 
+			}
 
+			protected override string[] GetHooks () {
+				int N = Owner.OwnHooks.Count;
+				string[] ret = new string[N];
+				int ID = 0;
+				foreach ( var hID in Owner.OwnHooks )
+					ret[ID++] = $"{hID} => {HookIDDict[hID]}";
+				return ret;
+			}
+		}
 	}
 
 

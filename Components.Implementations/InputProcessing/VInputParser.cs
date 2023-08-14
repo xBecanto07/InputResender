@@ -57,5 +57,19 @@ namespace Components.Implementations {
 				i--;
 			}
 		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new VInputParser Owner => (VInputParser)base.Owner;
+			public VStateInfo ( VInputParser owner ) : base ( owner ) { }
+
+			protected override string[] GetBufferedEvents () {
+				int N = Owner.eventList.Count;
+				string[] ret = new string[N];
+				for ( int i = 0; i < N; i++ )
+					ret[i] = Owner.eventList[i].ToString ();
+				return ret;
+			}
+		}
 	}
 }

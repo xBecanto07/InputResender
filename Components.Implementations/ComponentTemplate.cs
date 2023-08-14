@@ -9,6 +9,11 @@ namespace Components.Interfaces {
 		public ComponentTemplate ( CoreBase owner ) : base ( owner ) { }
 
 		public override void SomeMethod ( int param ) { }
+
+		public override StateInfo Info => new MStateInfo ( this );
+		public class MStateInfo : StateInfo {
+			public MStateInfo (ComponentTemplate template ) : base ( template ) { }
+		}
 	}
 
 	public class InterfaceTemplateTest : ComponentTestBase<ComponentTemplate> {

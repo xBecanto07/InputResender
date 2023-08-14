@@ -10,6 +10,7 @@ namespace InputResender.Services {
 			public int NetworkID;
 			public int TTL;
 			public Node ( int netID, int ttl, IPAddress ip ) { IPAddress = ip; NetworkID = netID; TTL = ttl; }
+			public override string ToString () => $"{IPAddress}[{NetworkID}#{TTL}]";
 		}
 		public class Network {
 			public Node[] Nodes;

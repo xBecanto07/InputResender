@@ -67,5 +67,14 @@ namespace Components.Library {
 			return ret;
 		}
 		IEnumerator IEnumerable.GetEnumerator () => GetEnumerator ();
+		public override string ToString () => ToString ( " | " );
+		public string ToString ( string sep ) => string.Join ( sep, PairsToString () );
+		public string[] PairsToString () {
+			string[] ret = new string[Pairs.Count];
+			int ID = 0;
+			foreach ( var pair in Pairs )
+				ret[ID++] = $"[{pair.A}] ({SetA[pair.A]}) <=> [{pair.B}] ({SetB[pair.B]})";
+			return ret;
+		}
 	}
 }

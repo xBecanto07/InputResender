@@ -21,6 +21,21 @@ namespace Components.Interfaces {
 		public abstract MsgType[] Read ( int N );
 		public abstract void Print ( Action<MsgType> act );
 		public abstract void Clear ();
+
+		public override StateInfo Info => new DStateInfo ( this );
+		public class DStateInfo : StateInfo {
+			public DStateInfo ( DLogger owner ) : base ( owner ) {
+				var msgList = owner.Read ( -1 );
+				int N = msgList.Length;
+				Messages = new string[N];
+				for (int i = 0; i < N; i++ ) {
+					Messages[i] = msgList[i];
+				}
+			}
+
+			public readonly string[] Messages;
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Messages:{BR}{string.Join ( BR, Messages )}";
+		}
 	}
 
 	public class VLogger : DLogger {

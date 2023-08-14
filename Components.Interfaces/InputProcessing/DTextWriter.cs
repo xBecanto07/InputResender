@@ -18,5 +18,17 @@ namespace Components.Interfaces {
 		public abstract void Undo ();
 		public abstract void Redo ();
 		public abstract void Clear ();
+
+		public abstract class DStateInfo : StateInfo {
+			public DStateInfo ( DTextWriter owner ) : base ( owner ) {
+				Text = owner.Text;
+			}
+
+			protected abstract string[] GetUndoList ();
+			protected abstract string[] GetRedoList ();
+			public readonly string[] UndoList, RedoList;
+			public readonly string Text;
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Text:{BR}{Text}{BR}Undo list:{BR}{string.Join ( BR, UndoList )}{BR}Redo list:{BR}{string.Join ( BR, RedoList )}";
+		}
 	}
 }

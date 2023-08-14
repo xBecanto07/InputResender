@@ -37,6 +37,18 @@ namespace Components.Library {
 			return null;
 		}
 		public T Fetch<T> ( string opCode ) => (T)Fetch ( opCode, typeof ( T ) );
+
+		public abstract StateInfo Info { get; }
+		public abstract class StateInfo {
+			protected const string BR = "\r\n";
+			public readonly ComponentBase Owner;
+			public StateInfo ( ComponentBase owner ) {
+				Owner = owner;
+				GeneralInfo = $"Version: {Owner.ComponentVersion}\r\nCreation time: {Owner.CreationTime}\r\nName: {Owner.Name}\r\nVariant: {Owner.GetType ().Name}{BR}";
+			}
+			public readonly string GeneralInfo;
+			public virtual string AllInfo () => GeneralInfo;
+		}
 	}
 	public abstract class ComponentBase<CoreType> : ComponentBase where CoreType : CoreBase {
 		public ComponentBase (CoreType newOwner) { ChangeOwner ( newOwner ); }
@@ -54,6 +66,12 @@ namespace Components.Library {
 			};
 
 		public virtual void MockMethod () { }
+
+		public override StateInfo Info => new MockStateInfo ( this );
+		public class MockStateInfo : StateInfo {
+			public MockStateInfo ( ComponentBase owner ) : base ( owner ) { }
+			public override string AllInfo () => $"{GeneralInfo}";
+		}
 	}
 	public abstract class ComponentTestBase<T> where T : ComponentBase<CoreBase> {
 		protected readonly OutpuHelper Output;
@@ -63,6 +81,7 @@ namespace Components.Library {
 		public ComponentTestBase ( OutpuHelper outputHelper ) {
 			Output = outputHelper;
 			OwnerCore = CreateCoreBase ();
+			OwnerCore.LogFcn = Output.WriteLine;
 			TestObject = GenerateTestObject ();
 			if ( TestObject == null ) throw new ArgumentNullException ( "Tested componant instance cannot be null! Please provide your tested component instance (try to use 'this')." );
 		}

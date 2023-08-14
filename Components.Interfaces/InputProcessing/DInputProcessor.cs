@@ -19,20 +19,6 @@ namespace Components.Interfaces {
 			};
 		}
 
-		public struct KeyCombo {
-			public KeyCode Key;
-			public Modifier Modifier;
-			public KeyCombo ( KeyCode key, Modifier mod = Modifier.None ) { Key = key; Modifier = mod; }
-		}
-		public struct KeySetup {
-			public string Description;
-			public KeyCombo keyCombo;
-			public KeyCode Key { get => keyCombo.Key; set => keyCombo.Key = value; }
-			public Modifier Modifier { get => keyCombo.Modifier; set => keyCombo.Modifier = value; }
-			public KeySetup ( string dsc, KeyCode key, Modifier mod = Modifier.None ) { Description = dsc; Key = key; Modifier = mod; }
-			public override string ToString () => $"({Description}:'{Key}'+{Modifier})";
-		}
-
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(ProcessInput), typeof(void)),
 				(nameof(SetCustomModifier), typeof(void)),
@@ -83,6 +69,20 @@ namespace Components.Interfaces {
 			}
 			return mods;
 		}
+
+		public abstract class DStateInfo : StateInfo {
+			public readonly string Callback;
+			public readonly string[] Modifiers;
+
+			public DStateInfo (DInputProcessor owner) : base (owner) {
+				Callback = owner.Callback.Method.AsString ();
+				Modifiers = new string[owner.Modifiers.Count];
+				int ID = 0;
+				foreach ( var mod in owner.Modifiers )
+					Modifiers[ID++] = $"{mod.Key} => {mod.Value.mod}({(mod.Value.readOnly ? "system" : "user")})";
+			}
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Modifiers:{BR}{string.Join ( BR, Modifiers )}{BR}Callback:{BR}{Callback}";
+		}
 	}
 
 	public class MInputProcessor : DInputProcessor {
@@ -99,6 +99,12 @@ namespace Components.Interfaces {
 				Key = (KeyCode)firstEvent.InputCode,
 				DeviceID = firstEvent.HookInfo.DeviceID
 			} );
+		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public VStateInfo ( MInputProcessor owner ) : base ( owner ) {
+			}
 		}
 	}
 

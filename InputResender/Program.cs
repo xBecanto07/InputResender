@@ -1,4 +1,5 @@
 using Components.Factories;
+using Components.Implementations;
 using InputResender.GUIComponents;
 
 namespace InputResender {
@@ -10,6 +11,7 @@ namespace InputResender {
 			DMainAppCoreFactory coreFactory = new DMainAppCoreFactory ();
 			coreFactory.PreferMocks = false;
 			var core = coreFactory.CreateVMainAppCore ();
+			new VInputSimulator ( core );
 
 			Application.Run ( new MainScreen ( core ) );
 		}

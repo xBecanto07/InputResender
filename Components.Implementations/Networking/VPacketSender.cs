@@ -74,7 +74,12 @@ namespace Components.Implementations {
 		}
 		public override void Recv ( byte[] data ) => Clients.Direct ( data );
 		public override void Send ( byte[] data ) {
-			Targets.ForEach ( ( ep, valA, netNode, netClient ) => netClient.Send ( data, ep ) );
+			string BR = Environment.NewLine + '\t';
+			Owner.LogFcn?.Invoke ( $"Sending data[{data.Length}]{BR}{Targets.ToString ( BR )}" );
+			Targets.ForEach ( ( ep, valA, netNode, netClient ) => {
+				netClient.LogFcn = Owner.LogFcn;
+				netClient.Send ( data, ep );
+			} );
 		}
 
 		public override string ToString () {
@@ -103,5 +108,34 @@ namespace Components.Implementations {
 		public static IPAddress IPv4 ( byte A, byte B, byte C, byte D ) => new IPAddress ( new byte[] { A, B, C, D } );
 
 		public override void Destroy () { Clients.Dispose (); Targets.Clear (); }
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new VPacketSender Owner => (VPacketSender)base.Owner;
+			public VStateInfo ( VPacketSender owner ) : base ( owner ) {
+				Clients = owner.Clients.ToString ();
+			}
+
+			public readonly string Clients;
+
+			protected override string[] GetBuffers () {
+				string[] ret = new string[Owner.PacketBuffer.Count];
+				int ID = 0;
+				foreach ( var p in Owner.PacketBuffer ) ret[ID++] = p.ToHex ();
+				return ret;
+			}
+			protected override string[] GetConnections () {
+				List<string> ret = new List<string> ();
+				Owner.Targets.ForEach ( ( keyA, valA, keyB, valB ) => {
+					ret.Add ( $" Target EP: {keyA}" );
+					ret.Add ( $"  Net info: {valA}" );
+					ret.Add ( $" Sender EP: {keyB}" );
+					ret.Add ( $"  ::{valB}" );
+					ret.Add ( "" );
+				} );
+				return ret.ToArray ();
+			}
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Clients: {Clients}";
+		}
 	}
 }

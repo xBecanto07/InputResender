@@ -14,6 +14,7 @@ namespace InputResender.Services {
 		public readonly AutoResetEvent ReceiveWaiter;
 		CancellationTokenSource cts;
 		TaskService TaskCreator;
+		public Action<string> LogFcn;
 
 		public INetClientService ( IPEndPoint ep ) {
 			EP = ep;
@@ -54,12 +55,14 @@ namespace InputResender.Services {
 		/// <param name="attemptDirect">When true, direct hand over of the message will be tried. That is if 'this' instance have a reference to the receiver object, the data will be than transmited by some methods callings without envolment of sockets or others.</param>
 		public void Send ( byte[] data, IPEndPoint ep = null, bool attemptDirect = true ) {
 			if ( ep == null ) ep = EP;
+			LogFcn?.Invoke ( $"Sending data[{data.Length}] to {ep} (direct={(attemptDirect ? "allowed" : "forbidden")}){Environment.NewLine}\t{ToString ()}" );
 			if ( attemptDirect ) {
 				foreach ( var client in RegisteredClients ) {
 					if ( !ep.Equals ( client.EP ) ) continue;
 					lock ( client.PacketBuffer ) {
 						client.PacketBuffer.Enqueue ( new Result ( (byte[])data.Clone () ) );
 					}
+					LogFcn?.Invoke ( $"Direct assigning data into ({client})'s queue as item #{client.PacketBuffer.Count}" );
 					client.ReceiveWaiter.Set ();
 					return;
 				}
@@ -167,6 +170,7 @@ namespace InputResender.Services {
 		}
 
 		protected override void InnerSend ( byte[] data, IPEndPoint EP ) {
+			LogFcn?.Invoke ( $"Sending data[{data.Length}] over socket to {EP}" );
 			UdpClient.Send ( data, data.Length, EP );
 		}
 	}

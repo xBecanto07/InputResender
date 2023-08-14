@@ -5,6 +5,7 @@ using System.Threading;
 namespace Components.Implementations {
 	public class VInputReader_KeyboardHook : DInputReader {
 		private Task inputHandler;
+		private string TaskState = "Not started";
 		readonly AutoResetEvent waiter;
 		bool Continue = true;
 		Dictionary<DictionaryKey, HLHookInfo> HookSet;
@@ -80,16 +81,38 @@ namespace Components.Implementations {
 			return willResend;
 		}
 		private void CallbackParaTask () {
+			TaskState = "Waiting for initialization";
 			while ( waiter == null ) Thread.Sleep ( 1 );
 			while ( true ) {
+				TaskState = "Waiting for signal";
 				waiter.WaitOne ();
 				if ( !Continue ) break;
 				foreach ( var hook in HookSet.Values ) {
 					if ( hook.MessageQueue.Count < 1 ) continue;
+					TaskState = "Pushing data";
 					var msg = hook.MessageQueue.Dequeue ();
 					if ( hook.DelayedCB != null ) hook.DelayedCB ( msg.Item1, msg.Item2 );
 				}
 			}
+			TaskState = "Stopped";
+		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new VInputReader_KeyboardHook Owner => (VInputReader_KeyboardHook)base.Owner;
+			public VStateInfo (VInputReader_KeyboardHook owner) : base (owner) {
+				TaskState = owner.TaskState;
+			}
+
+			public readonly string TaskState;
+			protected override string[] GetHookList () {
+				string[] ret = new string[Owner.HookSet.Count];
+				int ID = 0;
+				foreach ( var hook in Owner.HookSet )
+					ret[ID++] = $"{hook.Key} => {hook.Value.hook}>>({hook.Value.MainCallback.Method.AsString ()}|{hook.Value.DelayedCB.Method.AsString ()})[{hook.Value.MessageQueue.Count}]";
+				return ret;
+			}
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Task state: {TaskState}";
 		}
 	}
 }

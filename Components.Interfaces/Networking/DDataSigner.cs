@@ -27,6 +27,15 @@ namespace Components.Interfaces
         public abstract bool TestIntegrity ( byte[] data );
         /// <summary>Passing <see langword="null"/> generates IV by random. Generated IV should also be usable as a key.</summary>
         public abstract byte[] GenerateIV ( byte[] data = null );
+
+		public override StateInfo Info => new DStateInfo ( this );
+		public class DStateInfo : StateInfo {
+			public DStateInfo ( DDataSigner owner ) : base ( owner ) {
+				Key = ((DDataSigner)Owner).Key.ToHex ();
+			}
+			public string Key;
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Key: {Key}";
+		}
 	}
 
 	public class MDataSigner : DDataSigner {

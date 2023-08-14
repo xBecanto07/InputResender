@@ -1,6 +1,7 @@
 ﻿using Components.Library;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using static Components.Interfaces.InputData;
 
 namespace Components.Interfaces {
@@ -17,6 +18,14 @@ namespace Components.Interfaces {
 		public abstract void RegisterCallback ( Action<InputData> callback );
 		public abstract void UnregisterCallback ( Action<InputData> callback );
 		public abstract void Push ( InputData data );
+		public abstract class DStateInfo : StateInfo {
+			public DStateInfo ( DCommandWorker owner ) : base ( owner ) {
+				Callbacks = PrintCallbacks ();
+			}
+			public readonly string[] Callbacks;
+			protected abstract string[] PrintCallbacks ();
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Callbacks:{BR}{string.Join ( BR, Callbacks )}";
+		}
 	}
 
 	public class VCommandWorker : DCommandWorker {
@@ -56,5 +65,18 @@ namespace Components.Interfaces {
 			if ( !Callbacks.Contains ( callback ) ) Callbacks.Add ( callback );
 		}
 		public override void UnregisterCallback ( Action<InputData> callback ) => Callbacks.Remove ( callback );
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public VStateInfo ( VCommandWorker owner ) : base ( owner ) { }
+
+			protected override string[] PrintCallbacks () {
+				var targ = (VCommandWorker)Owner;
+				int N = targ.Callbacks.Count;
+				string[] ret = new string[N];
+				for ( int i = 0; i < N; i++ ) ret[i] = targ.Callbacks[i].Method.AsString ();
+				return ret;
+			}
+		}
 	}
 }

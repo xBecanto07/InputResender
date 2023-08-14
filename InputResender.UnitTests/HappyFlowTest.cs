@@ -5,6 +5,7 @@ using Components.Library;
 using FluentAssertions;
 using System.Text;
 using Xunit;
+using OutpuHelper = Xunit.Abstractions.ITestOutputHelper;
 
 namespace InputResender.UnitTests {
 	public abstract class DHappyFlowTest<AppCore> where AppCore : DMainAppCore {
@@ -12,13 +13,17 @@ namespace InputResender.UnitTests {
 		protected List<InputData> SentInput, ReceivedInput;
 		protected byte[] Key, IV;
 		protected AutoResetEvent receivedEvent;
+		protected readonly OutpuHelper Output;
 
-		public DHappyFlowTest() {
+		public DHappyFlowTest( OutpuHelper outputHelper ) {
+			Output = outputHelper;
 			receivedEvent = new AutoResetEvent ( false );
 			SentInput = new List<InputData>();
 			ReceivedInput = new List<InputData>();
 			Sender = GenerateAppCore ();
+			Sender.LogFcn = Output.WriteLine;
 			Receiver = GenerateAppCore ();
+			Receiver.LogFcn = Output.WriteLine;
 		}
 
 		protected abstract AppCore GenerateAppCore ();
@@ -107,12 +112,14 @@ namespace InputResender.UnitTests {
 	}
 
 	public class MHappyFlowTest : DHappyFlowTest<MMainAppCore> {
+		public MHappyFlowTest ( OutpuHelper outputHelper ) : base ( outputHelper ) { } 
 		protected override MMainAppCore GenerateAppCore () => new MMainAppCore ();
 	}
 
 	public class VHappyFlowTest : DHappyFlowTest<VMainAppCore> {
 		DMainAppCoreFactory CoreFactory;
 
+		public VHappyFlowTest ( OutpuHelper outputHelper ) : base ( outputHelper ) { }
 		protected override VMainAppCore GenerateAppCore () {
 			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
 			var ret = CoreFactory.CreateVMainAppCore ( DMainAppCore.CompSelect.All & ~DMainAppCore.CompSelect.LLInput );

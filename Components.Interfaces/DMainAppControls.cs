@@ -5,6 +5,8 @@ using Components.Library;
 
 namespace Components.Interfaces {
 	public abstract class DMainAppControls : ComponentBase<DMainAppCore> {
+		public const string PsswdRegEx = "[\\x20-\\x7E]{5,}";
+		public const string IP4EPRegEx = "([\\d]{1,3}\\.[\\d]{1,3}\\.[\\d]{1,3}\\.[\\d]{1,3}):([\\d]{1,5})";
 		protected DMainAppControls ( DMainAppCore newOwner ) : base ( newOwner ) {
 		}
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
@@ -20,10 +22,22 @@ namespace Components.Interfaces {
 		public abstract bool Receiving { get; set; }
 		public abstract Action<InputData> ReceiveCallback { set; }
 		public Action<string> Log { get; set; }
+
+		public abstract class DStateInfo : StateInfo {
+			public DStateInfo ( DMainAppControls owner ) : base ( owner ) {
+				HookShouldResend = owner.HookShouldResend.ToString ();
+				Receiving = owner.Receiving.ToString ();
+				RecvCallback = GetRecvCallback ();
+			}
+			public readonly string HookShouldResend, Receiving, RecvCallback;
+			protected abstract string GetRecvCallback ();
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Hook Resending: {HookShouldResend}{BR}Receiving: {Receiving}{BR}Callback:{BR}{RecvCallback}";
+		}
 	}
 
 	public class VMainAppControls : DMainAppControls {
 		protected IPEndPoint TargetEP;
+		bool receiving = false;
 
 		public VMainAppControls ( DMainAppCore newOwner ) : base ( newOwner ) {
 		}
@@ -45,11 +59,26 @@ namespace Components.Interfaces {
 		}
 
 		public override bool Receiving {
-			get => throw new NotImplementedException ();
-			set => throw new NotImplementedException ();
+			get => receiving;
+			set {
+				receiving = value;
+				if ( value ) {
+					Owner.PacketSender.ReceiveAsync ( PrivRecvCallback );
+				}
+			}
 		}
+		private bool PrivRecvCallback ( byte[] data) {
+			if ( !receiving ) return false;
+			byte[] packet = Owner.DataSigner.Encrypt ( data );
+			if ( lastInputData == null ) lastInputData = new InputData ( this );
+			lastInputData = (InputData)lastInputData.Deserialize ( data );
+			recvCallback?.Invoke ( lastInputData );
+			return true;
+		}
+		InputData lastInputData;
+		Action<InputData> recvCallback = null;
 
-		public override Action<InputData> ReceiveCallback { set => throw new NotImplementedException (); }
+		public override Action<InputData> ReceiveCallback { set { recvCallback = value ?? Owner.CommandWorker.Push; } }
 		public override void ChangeHookStatus ( HHookInfo hookInfo, bool active ) {
 				if ( active ) {
 					var hookIDs = Owner.InputReader.SetupHook ( hookInfo, HookFastCallback, HookCallback );
@@ -65,6 +94,15 @@ namespace Components.Interfaces {
 		private void HookCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {
 			var inputCombination = Owner.InputParser.ProcessInput ( inputData );
 			Owner.InputProcessor.ProcessInput ( inputCombination );
+		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new VMainAppControls Owner => (VMainAppControls)base.Owner;
+			public VStateInfo ( VMainAppControls owner ) : base ( owner ) {
+
+			}
+			protected override string GetRecvCallback () => Owner.recvCallback == null ? "No callback" : Owner.recvCallback.Method.AsString ();
 		}
 	}
 }

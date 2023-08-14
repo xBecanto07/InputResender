@@ -72,6 +72,18 @@ namespace Components.Interfaces {
 			ErrorList.Clear ();
 		}
 		public abstract nint GetMessageExtraInfoPtr ();
+
+		public abstract class DStateInfo : StateInfo {
+			protected DStateInfo ( DLowLevelInput owner ) : base ( owner ) {
+				List<string> errors = new List<string> ();
+				Hooks = GetHooks ();
+				owner.PrintErrors ( errors.Add );
+				Errors = errors.ToArray ();
+			}
+			public readonly string[] Errors, Hooks;
+			protected abstract string[] GetHooks ();
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Hooks:{BR}{string.Join ( BR, Hooks )}{BR}Errors:{BR}{string.Join ( BR, Errors )}";
+		}
 	}
 
 
@@ -126,5 +138,6 @@ namespace Components.Interfaces {
 		public override bool Equals ( object obj ) => GetHashCode () == obj.GetHashCode ();
 		public override int GetHashCode () => Key.GetHashCode () ^ HookID.GetHashCode () ^ HLCallback.GetHashCode () ^ Owner.GetHashCode ();
 		public override string ToString () => $"Hook #{Key} of {HookID:X}";
+		public string ToDetailedString () => $"Hook #{Key} of {HookID:X} >> {HLCallback.Method.AsString ()}{(Log != null ? " Logged" : "")}{(EnforcePassthrough ? " Must process" : "")}";
 	}
 }

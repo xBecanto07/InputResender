@@ -88,5 +88,26 @@ namespace Components.Interfaces {
 
 			return false;
 		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new MTextWriter Owner => (MTextWriter)base.Owner;
+			public VStateInfo ( MTextWriter owner ) : base ( owner ) { }
+			protected override string[] GetRedoList () {
+				string[] ret = new string[Owner.RedoList.Count];
+				int ID = 0;
+				foreach ( var act in Owner.RedoList )
+					ret[ID++] = act;
+				return ret;
+
+			}
+			protected override string[] GetUndoList () {
+				string[] ret = new string[Owner.UndoList.Count];
+				int ID = 0;
+				foreach ( var act in Owner.UndoList )
+					ret[ID++] = act;
+				return ret;
+			}
+		}
 	}
 }

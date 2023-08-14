@@ -11,9 +11,9 @@ namespace Components.Interfaces {
 				(nameof(Send), typeof(void)),
 				(nameof(Recv), typeof(void)),
 				(nameof(ReceiveAsync), typeof(void)),
-				(nameof(EPList), typeof(IReadOnlyCollection<IReadOnlyCollection<object>>)),
-				(nameof(Connections), typeof(int)),
-				(nameof(Errors), typeof(IReadOnlyCollection<(string msg, Exception e)>)),
+				("get_"+nameof(EPList), typeof(IReadOnlyCollection<IReadOnlyCollection<object>>)),
+				("get_"+nameof(Connections), typeof(int)),
+				("get_"+nameof(Errors), typeof(IReadOnlyCollection<(string msg, Exception e)>)),
 				(nameof(OwnEP), typeof(object)),
 				(nameof(Destroy), typeof(void))
 			};
@@ -29,6 +29,40 @@ namespace Components.Interfaces {
 		public abstract void Recv ( byte[] data );
 		public abstract void ReceiveAsync ( Func<byte[], bool> callback );
 		public abstract void Destroy ();
+
+		public abstract class DStateInfo : StateInfo {
+			protected DStateInfo ( DPacketSender owner ) : base ( owner ) {
+				Connections = GetConnections ();
+				Buffers = GetBuffers ();
+				EPList = new string[owner.EPList.Count];
+				int ID = 0;
+				var SB = new System.Text.StringBuilder ();
+				foreach (var eps in owner.EPList ) {
+					SB.Clear ();
+					int N = eps.Count;
+					int sID = 0;
+
+					foreach ( var ep in eps.Reverse () ) {
+						for ( int i = 0; i < sID; i++ ) SB.Append ( "|-\t" );
+						SB.AppendLine ( ep.ToString () );
+					}
+
+					EPList[ID++] = SB.ToString ();
+				}
+
+				ID = 0;
+				Errors = new string[owner.Errors.Count];
+				foreach ( var e in owner.Errors )
+					Errors[ID++] = $"{e.msg} ({e.e.Message})";
+			}
+			protected abstract string[] GetConnections ();
+			protected abstract string[] GetBuffers ();
+			public readonly string[] Buffers;
+			public readonly string[] Connections;
+			public readonly string[] EPList;
+			public readonly string[] Errors;
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}EP List:{BR}{string.Join ( BR, EPList )}{BR}Connections:{BR}{string.Join ( BR, Connections )}{BR}Buffer:{BR}{string.Join ( BR, Buffers )}{BR}Errors:{BR}{string.Join ( BR, Errors )}";
+		}
 	}
 
 	/// <summary>Thread unsafe!</summary>
@@ -69,6 +103,33 @@ namespace Components.Interfaces {
 		public override void Destroy () {
 			ConnList.Clear (); MsgQueue.Clear ();
 			Callback = null; MsgQueue = null; ConnList = null;
+		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new MPacketSender Owner => (MPacketSender)base.Owner;
+			public VStateInfo ( MPacketSender owner ) : base ( owner ) {
+				LocalCallback = Owner.Callback.Method.AsString ();
+			}
+
+			public string LocalCallback;
+
+			protected override string[] GetConnections () {
+				int N = Owner.ConnList.Count;
+				string[] ret = new string[N];
+				for ( int i = 0; i < N; i++ )
+					ret[i] = $"MPacketSender {{{Owner.ConnList[i].Name}}}";
+				return ret;
+			}
+			protected override string[] GetBuffers () {
+				int N = Owner.MsgQueue.Count;
+				string[] ret = new string[N];
+				int ID = 0;
+				foreach ( var msg in Owner.MsgQueue )
+					ret[ID++] = msg.ToHex ();
+				return ret;
+			}
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Callback:{BR}{LocalCallback}";
 		}
 	}
 }

@@ -31,6 +31,8 @@ namespace InputResender.GUIComponents {
 			RemCustModBtn = new Button ();
 			EditCustModBtn = new Button ();
 			ModifierListLabel = new Label ();
+			EPListLabel = new Label ();
+			VisualizerBtn = new Button ();
 			InputProcSelectorLabel = new Label ();
 			SuspendLayout ();
 			// 
@@ -142,7 +144,7 @@ namespace InputResender.GUIComponents {
 			// 
 			ModifierList.FormattingEnabled = true;
 			ModifierList.ItemHeight = 15;
-			ModifierList.Location = new Point ( 769, 116 );
+			ModifierList.Location = new Point ( 769, 173 );
 			ModifierList.Name = "ModifierList";
 			ModifierList.SelectionMode = SelectionMode.MultiExtended;
 			ModifierList.Size = new Size ( 211, 349 );
@@ -151,7 +153,7 @@ namespace InputResender.GUIComponents {
 			// AddCustModBtn
 			// 
 			AddCustModBtn.FlatStyle = FlatStyle.System;
-			AddCustModBtn.Location = new Point ( 769, 471 );
+			AddCustModBtn.Location = new Point ( 769, 528 );
 			AddCustModBtn.Name = "AddCustModBtn";
 			AddCustModBtn.Size = new Size ( 60, 23 );
 			AddCustModBtn.TabIndex = 11;
@@ -162,7 +164,7 @@ namespace InputResender.GUIComponents {
 			// RemCustModBtn
 			// 
 			RemCustModBtn.FlatStyle = FlatStyle.System;
-			RemCustModBtn.Location = new Point ( 920, 471 );
+			RemCustModBtn.Location = new Point ( 920, 528 );
 			RemCustModBtn.Name = "RemCustModBtn";
 			RemCustModBtn.Size = new Size ( 60, 23 );
 			RemCustModBtn.TabIndex = 12;
@@ -173,7 +175,7 @@ namespace InputResender.GUIComponents {
 			// EditCustModBtn
 			// 
 			EditCustModBtn.FlatStyle = FlatStyle.System;
-			EditCustModBtn.Location = new Point ( 845, 471 );
+			EditCustModBtn.Location = new Point ( 845, 528 );
 			EditCustModBtn.Name = "EditCustModBtn";
 			EditCustModBtn.Size = new Size ( 60, 23 );
 			EditCustModBtn.TabIndex = 13;
@@ -184,17 +186,38 @@ namespace InputResender.GUIComponents {
 			// ModifierListLabel
 			// 
 			ModifierListLabel.AutoSize = true;
-			ModifierListLabel.Location = new Point ( 781, 98 );
+			ModifierListLabel.Location = new Point ( 781, 155 );
 			ModifierListLabel.Name = "ModifierListLabel";
 			ModifierListLabel.Size = new Size ( 57, 15 );
 			ModifierListLabel.TabIndex = 14;
 			ModifierListLabel.Text = "Modifiers";
+			// 
+			// EPListLabel
+			// 
+			EPListLabel.AutoSize = true;
+			EPListLabel.Location = new Point ( 769, 64 );
+			EPListLabel.Name = "EPListLabel";
+			EPListLabel.Size = new Size ( 38, 15 );
+			EPListLabel.TabIndex = 15;
+			EPListLabel.Text = "EPList";
+			// 
+			// VisualizerBtn
+			// 
+			VisualizerBtn.Location = new Point ( 905, 42 );
+			VisualizerBtn.Name = "VisualizerBtn";
+			VisualizerBtn.Size = new Size ( 75, 23 );
+			VisualizerBtn.TabIndex = 16;
+			VisualizerBtn.Text = "Visualizer";
+			VisualizerBtn.UseVisualStyleBackColor = true;
+			VisualizerBtn.Click += VisualizerBtn_Click;
 			// 
 			// MainScreen
 			// 
 			AutoScaleDimensions = new SizeF ( 7F, 15F );
 			AutoScaleMode = AutoScaleMode.Font;
 			ClientSize = new Size ( 992, 577 );
+			Controls.Add ( VisualizerBtn );
+			Controls.Add ( EPListLabel );
 			Controls.Add ( ModifierListLabel );
 			Controls.Add ( EditCustModBtn );
 			Controls.Add ( RemCustModBtn );
@@ -229,5 +252,7 @@ namespace InputResender.GUIComponents {
 		private Button RemCustModBtn;
 		private Button EditCustModBtn;
 		private Label ModifierListLabel;
+		private Label EPListLabel;
+		private Button VisualizerBtn;
 	}
 }

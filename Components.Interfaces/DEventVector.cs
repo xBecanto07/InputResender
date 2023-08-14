@@ -13,6 +13,15 @@ namespace Components.Interfaces {
 		public abstract void SetupCallback ( string eventName, Action callback );
 		public abstract void ReleaseCallback ( string eventName );
 		public abstract void RaiseEvent ( string eventName );
+
+		public abstract class DStateInfo : StateInfo {
+			public DStateInfo ( DEventVector owner ) : base ( owner ) {
+				Callbacks = PrintCallbacks ();
+			}
+			public readonly string[] Callbacks;
+			protected abstract string[] PrintCallbacks ();
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Callbacks:{BR}{string.Join ( BR, Callbacks )}";
+		}
 	}
 
 	public class MEventVector : DEventVector {
@@ -24,5 +33,20 @@ namespace Components.Interfaces {
 		public override void RaiseEvent ( string eventName ) { if ( events.TryGetValue ( eventName, out var fcn ) ) fcn (); }
 		public override void ReleaseCallback ( string eventName ) => events.Remove ( eventName );
 		public override void SetupCallback ( string eventName, Action callback ) => events.Add ( eventName, callback );
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public VStateInfo ( MEventVector owner ) : base ( owner ) { }
+
+			protected override string[] PrintCallbacks () {
+				var targ = (MEventVector)Owner;
+				int N = targ.events.Count;
+				string[] ret = new string[N];
+				int ID = 0;
+				foreach ( var e in targ.events )
+					ret[ID++] = $"{e.Key} => {e.Value.Method.AsString}";
+				return ret;
+			}
+		}
 	}
 }

@@ -111,5 +111,20 @@ namespace Components.Interfaces {
 		}
 
 		public override nint GetMessageExtraInfoPtr () => nint.Zero;
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new MLowLevelInput Owner => (MLowLevelInput)base.Owner;
+			public VStateInfo ( MLowLevelInput owner ) : base ( owner ) {
+			}
+
+			protected override string[] GetHooks () {
+				string[] ret = new string[Owner.HookList.Count];
+				int ID = 0;
+				foreach ( var hook in Owner.HookList )
+					ret[ID++] = $"{hook.Key} => {hook.Value}";
+				return ret;
+			}
+		}
 	}
 }

@@ -24,5 +24,10 @@ namespace Components.Implementations {
 			ret.Modifiers = ReadModifiers ( inputCombination );
 			Callback ( ret );
 		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public VStateInfo (VInputProcessor owner):base ( owner ) { }
+		}
 	}
 }

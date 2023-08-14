@@ -15,6 +15,15 @@ namespace Components.Interfaces {
 
 		public abstract HInputEventDataHolder[] ParseCommand ( InputData data );
 		public abstract int Simulate ( params HInputEventDataHolder[] data );
+
+		public override StateInfo Info => new DStateInfo ( this );
+		public class DStateInfo : StateInfo {
+			public readonly bool AllowingRecapture;
+			public DStateInfo ( DInputSimulator owner ) : base ( owner ) {
+				AllowingRecapture = owner.AllowRecapture;
+			}
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Recapture={AllowingRecapture}";
+		}
 	}
 
 	public abstract class SDInputCommandParser : SubComponentBase<DInputSimulator, InputData.Command> {

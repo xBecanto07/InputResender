@@ -23,5 +23,14 @@ namespace Components.Interfaces {
 		public abstract bool Exec ( InputData inputData );
 		public abstract void Register ( KeyCode key, ModE mod, Action callback, string description );
 		public abstract void Unregister ( KeyCode key, ModE mod, Action callback );
+
+		public abstract class DStateInfo : StateInfo {
+			public DStateInfo ( DShortcutWorker owner ) : base ( owner ) {
+				Shortcuts = GetShortcuts ();
+			}
+			public readonly string[] Shortcuts;
+			protected abstract string[] GetShortcuts ();
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Shartcuts:{BR}{string.Join ( BR, Shortcuts )}";
+		}
 	}
 }

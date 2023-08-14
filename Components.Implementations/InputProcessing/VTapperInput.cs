@@ -205,5 +205,24 @@ namespace Components.Implementations {
 				return;
 			}
 		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public readonly string[] TriggerKeys;
+			public readonly string TriggerModifier;
+			public readonly string ActState;
+			public readonly string LastReturn;
+
+			public VStateInfo ( VTapperInput owner ) : base ( owner ) {
+				int N = TriggerKeys.Length;
+				TriggerKeys = new string[N];
+				for (int i = 0; i < N; i++ )
+					TriggerKeys[i] = owner.TriggerKeys[i].ToString ();
+				TriggerModifier = owner.TriggerMod.ToString ();
+				ActState = $"{owner.Presses}x{owner.LastTapCombo}({owner.State})";
+				LastReturn = $"{owner.LastRet} ({owner.LastPress.ToLongTimeString ()})";
+			}
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Trigger Modifiers: {TriggerModifier}{BR}Trigger keys:{BR}\t{string.Join ( BR + '\t', TriggerKeys )}{BR}Act State: {ActState}{BR}Last Returned: {LastReturn}";
+		}
 	}
 }

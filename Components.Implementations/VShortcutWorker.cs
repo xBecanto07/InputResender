@@ -47,5 +47,22 @@ namespace Components.Implementations {
 				}
 			return ret;
 		}
+
+		public override StateInfo Info => new VStateInfo ( this );
+		public class VStateInfo : DStateInfo {
+			public new VShortcutWorker Owner => (VShortcutWorker)base.Owner;
+			public VStateInfo (VShortcutWorker owner) : base ( owner ) { }
+
+			protected override string[] GetShortcuts () {
+				List<string> ret = new List<string> ();
+				foreach ( var modSCs in Owner.CallbackDict ) {
+					foreach ( var CBs in modSCs.Value) {
+						foreach ( var CB in CBs.Value )
+							ret.Add ( $"({CB.Modifier}, {CB.Key}) => {CB.Action.Method.AsString ()} ({CB.Description})" );
+					}
+				}
+				return ret.ToArray ();
+			}
+		}
 	}
 }
