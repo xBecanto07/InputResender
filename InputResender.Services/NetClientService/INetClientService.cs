@@ -1,274 +1,180 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Sockets;
-using SBld = System.Text.StringBuilder;
+using Components.Library;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using ClientType = InputResender.Services.INetClientService.ClientType;
-using System.Diagnostics;
 
 namespace InputResender.Services {
-	public abstract class INetClientService : IDisposable {
-		private static List<INetClientService> RegisteredClients = new List<INetClientService> ();
-		public readonly IPEndPoint EP;
-		private Queue<Result> PacketBuffer;
+	public class INetClientServiceGroup : IDisposable {
+		protected readonly BlockingCollection<MessageResult> PacketBuffer;
 		public int Available { get => PacketBuffer.Count; }
-		public abstract ClientType ServiceType { get; }
-		public readonly AutoResetEvent ReceiveWaiter;
-		CancellationTokenSource cts;
-		TaskService TaskCreator;
-		public Action<string> LogFcn;
+		protected readonly CancellationTokenSource cts;
+		protected readonly HashSet<INetClientService> clients;
+		public bool Listening { get; private set; }
+		public int Count { get => clients.Count; }
 
-		public INetClientService ( IPEndPoint ep ) {
-			EP = ep;
-			PacketBuffer = new Queue<Result> ();
-			ReceiveWaiter = new AutoResetEvent ( false );
-			RegisteredClients.Add ( this );
-			TaskCreator = new TaskService ( TaskCreatorAct );
-			TaskCreator.Start ();
-			cts = new CancellationTokenSource ();
+		public INetClientServiceGroup () {
+			PacketBuffer = new ();
+			cts = new ();
+			clients = new ();
 		}
 		public void Dispose () {
 			Stop ();
-			InnerDispose ();
-			TaskCreator.Stop ();
-			TaskCreator.Dispose ();
-			RegisteredClients.Remove ( this );
-			PacketBuffer.Clear ();
-			PacketBuffer = null;
-			ReceiveWaiter.Dispose ();
 			cts.Dispose ();
+			//cts = null;
+			PacketBuffer.Dispose ();
+			//PacketBuffer = null;
+			clients.Clear ();
+			//clients = null;
 		}
 
-		public Task<Result> RecvAsync () => Task.Run ( WaitForRecv );
-		public Result WaitForRecv () {
-			do {
-				lock ( PacketBuffer ) {
-					if ( PacketBuffer.Count < 1 ) continue;
-					if ( cts.IsCancellationRequested ) return new Result ( Result.Type.Interrupted );
-					ReceiveWaiter.Reset ();
-					return PacketBuffer.Dequeue ();
-				}
-			} while ( ReceiveWaiter.WaitOne () );
-			return new Result ( Result.Type.Error ); ;
+		public MessageResult WaitForRecv ( CancellationToken cancelToken ) {
+			Listen ();
+			return PacketBuffer.Take ( cancelToken );
 		}
-		/// <summary>Send data to a given EP</summary>
-		/// <param name="data">Binary data to be sent</param>
-		/// <param name="ep">Target IP End point, where the data should be sent to. When null, own EP from 'this' will be used.</param>
-		/// <param name="attemptDirect">When true, direct hand over of the message will be tried. That is if 'this' instance have a reference to the receiver object, the data will be than transmited by some methods callings without envolment of sockets or others.</param>
-		public void Send ( byte[] data, IPEndPoint ep = null, bool attemptDirect = true ) {
-			if ( ep == null ) ep = EP;
-			LogFcn?.Invoke ( $"Sending data[{data.Length}] to {ep} (direct={(attemptDirect ? "allowed" : "forbidden")}){Environment.NewLine}\t{ToString ()}" );
-			if ( attemptDirect ) {
-				foreach ( var client in RegisteredClients ) {
-					if ( !ep.Equals ( client.EP ) ) continue;
-					lock ( client.PacketBuffer ) {
-						client.PacketBuffer.Enqueue ( new Result ( (byte[])data.Clone () ) );
-					}
-					LogFcn?.Invoke ( $"Direct assigning data into ({client})'s queue as item #{client.PacketBuffer.Count}" );
-					client.ReceiveWaiter.Set ();
-					return;
+
+		public bool Send ( byte[] data, object ep = null, bool attemptDirect = true ) {
+			lock ( cts ) {
+				foreach ( var client in clients ) {
+					if ( client.Send ( data, ep, attemptDirect ) ) return true;
 				}
+				return false;
 			}
-			InnerSend ( data, ep );
 		}
 
-		public void Start () {
-			if ( PacketBuffer == null ) throw new ObjectDisposedException ( nameof ( INetClientService ) );
-			TaskCreator.Signal ( false );
+		public void Listen () {
+			lock ( cts ) {
+				if ( PacketBuffer == null ) throw new ObjectDisposedException ( nameof ( INetClientService ) );
+				if ( Listening ) return;
+				Listening = true;
+				foreach ( var client in clients ) client.StartListen ( Callback, cts.Token );
+			}
 		}
 		public void Stop () {
-			cts.Cancel ();
-		}
-		protected abstract Result InnerRecv ( CancellationToken ct );
-		protected abstract void InnerDispose ();
-		protected abstract void InnerSend ( byte[] data, IPEndPoint EP );
-
-		public override string ToString () => $"NetClient ({ServiceType}) on {EP} with {Available} packets.";
-
-		private void TaskCreatorAct (TaskService context, ManualResetEvent initWaiter ) {
-			context.State = "Starting";
-			while (true) {
-				initWaiter.Set ();
-				context.State = "Waiting for signal";
-				context.WaitSignal ( false );
-				if (context.ShouldStop) {
-					context.State = "Stopping after CTS stop request";
-					return;
-				}
-
-				context.State = "Waiting for receive";
-				Result data = InnerRecv ( cts.Token );
-				if ( cts.IsCancellationRequested ) break;
-				PushResult ( data );
-
-				context.Signal ( true );
+			lock ( cts ) {
+				cts.Cancel ();
+				foreach ( var client in clients ) client.WaitClose ();
 			}
 		}
-		private void PushResult ( Result data ) {
-			switch ( data.ResultType ) {
-			case Result.Type.Received:
-			case Result.Type.Direct:
-				lock ( PacketBuffer ) {
-					data.PushTrace ( $"Received data ({data.ResultType})" );
-					PacketBuffer.Enqueue ( data );
-					ReceiveWaiter.Set ();
+		public bool AddClient ( Func<INetClientService[]> creator ) {
+			lock ( cts ) {
+				var obj = creator ();
+				if ( obj == null ) return false;
+				foreach ( var client in obj ) {
+					if ( client == null ) continue;
+					clients.Add ( client );
+					if ( Listening ) client.StartListen ( Callback, cts.Token );
 				}
-				break;
-			case Result.Type.Interrupted:
-				break;
-			case Result.Type.Closed:
-				break;
-			default: break;
+				return true;
+			}
+		}
+		public bool RemoveClient (INetClientService client) {
+			lock ( cts ) {
+				if ( !clients.Remove ( client ) ) return false;
+				client.WaitClose ();
+				return true;
 			}
 		}
 
-		public struct Result {
-			public static int MsgCnt = 0;
-			public int MsgID;
-			public enum Type { Received, Interrupted, Closed, Direct, Error }
-			public Type ResultType;
-			public List<(string, StackTrace)> Origin;
-			public byte[] Data;
-			public Result ( byte[] data, bool isDirect = false ) { Data = data; ResultType = isDirect ? Type.Direct : Type.Received; MsgID = MsgCnt++; Origin = new List<(string, StackTrace)> (); PushTrace ( "Creating valid result" ); }
-			public Result ( Type errType ) { Data = null; ResultType = errType; MsgID = MsgCnt++; Origin = new List<(string, StackTrace)> (); PushTrace ( $"Creating error ({errType}) result" ); }
-			public void PushTrace ( string context ) => Origin?.Add ( (context, new StackTrace ()) );
-		}
+		public override string ToString () => $"NetClientGroup ({clients.Count} clients) with {Available} packets.";
 
+		public void Callback ( MessageResult result ) {
+			if ( result == null ) return;
+			PacketBuffer.Add ( result );
+		}
+	}
+
+	public interface INetClientService {
 		public enum ClientType { Unknown, UDP }
+		bool Send ( byte[] data, object ep, bool attemptDirect = true, object viaEP = null );
+		void StartListen ( Action<MessageResult> callback, CancellationToken cancelToken );
+		void WaitClose ( bool lockRequested = true );
+		ClientType ServiceType { get; }
+		object EP { get; }
+
 		public static INetClientService Create ( ClientType type, IPEndPoint EP ) {
-			switch ( type ) {
-			case ClientType.UDP: return new UDPClientService ( EP );
-			default: return null;
-			}
+			return type switch {
+				ClientType.UDP => new UDPClientService ( EP ),
+				_ => null,
+			};
 		}
 	}
 
 	public class UDPClientService : INetClientService {
-		public override ClientType ServiceType => ClientType.UDP;
-		protected UdpClient UdpClient;
+		public ClientType ServiceType => ClientType.UDP;
+		public object EP => new IPEndPoint (localEP.Address, localEP.Port);
+		private UdpClient UdpClient;
+		private readonly IPEndPoint localEP;
+		private readonly IPAddress localNetwork;
+		Task recvTask;
+		private Action<MessageResult> currentCallback;
 
-		public UDPClientService ( IPEndPoint ep ) : base ( ep ) {
-			UdpClient = new UdpClient ( ep );
+		public UDPClientService ( IPEndPoint ep ) {
+			localEP = ep;
+			localNetwork = ep.Address.GetNetworkAddr ();
+			UdpClient = new UdpClient ( localEP );
 		}
 
-		protected override void InnerDispose () {
-			Stop ();
-			UdpClient.Dispose ();
-			UdpClient = null;
-		}
-		protected override Result InnerRecv ( CancellationToken ct ) {
-			try {
-				var recvResult = UdpClient.ReceiveAsync ( ct ).GetAwaiter ().GetResult ();
-
-				if ( recvResult.Buffer != null ) {
-					return new Result ( recvResult.Buffer );
-				} else if ( ct.IsCancellationRequested ) return new Result ( Result.Type.Closed );
-			} catch ( Exception e ) {
-				if ( ct.IsCancellationRequested ) return new Result ( Result.Type.Closed );
-				else if ( e.Message.Contains ( "WSACancelBlockingCall" ) ) return new Result ( Result.Type.Interrupted );
-				else return new Result ( Result.Type.Error );
-			}
-			return new Result ( Result.Type.Error );
-		}
-
-		protected override void InnerSend ( byte[] data, IPEndPoint EP ) {
-			LogFcn?.Invoke ( $"Sending data[{data.Length}] over socket to {EP}" );
-			UdpClient.Send ( data, data.Length, EP );
-		}
-	}
-
-	public class TCPClientService : INetClientService {
-		public override ClientType ServiceType => ClientType.Unknown;
-		public TCPClientService ( IPEndPoint ep ) : base ( ep ) {
-		}
-
-		protected override void InnerDispose () => throw new NotImplementedException ();
-		protected override Result InnerRecv ( CancellationToken ct ) => throw new NotImplementedException ();
-		protected override void InnerSend ( byte[] data, IPEndPoint EP ) => throw new NotImplementedException ();
-	}
-
-	public class NetClientList : IDisposable {
-		private readonly List<INetClientService> ClientList;
-		private readonly List<Task<INetClientService.Result>> RecvList;
-		public int Count { get => ClientList.Count; }
-		public bool Active { get; private set; }
-		private AutoResetEvent Signal;
-		private INetClientService.Result DirectMessage;
-
-		public NetClientList () {
-			Active = false;
-			Signal = new AutoResetEvent ( false );
-			ClientList = new List<INetClientService> ();
-			RecvList = new List<Task<INetClientService.Result>> ();
-		}
-
-		public INetClientService Add ( IPEndPoint ep, ClientType type = ClientType.Unknown ) {
-			if ( type == ClientType.Unknown ) type = ClientType.UDP;
-			var client = INetClientService.Create ( type, ep );
-			if ( client == null ) throw new NotSupportedException ( $"Client type {type} seems to not be supported by the service factory!" );
-			ClientList.Add ( client );
-			RecvList.Add ( null );
-			if ( Active ) client.Start ();
-			Direct ( new INetClientService.Result () { ResultType = INetClientService.Result.Type.Interrupted } );
-			return client;
-		}
-		public bool Remove ( IPEndPoint ep, ClientType type = ClientType.Unknown ) {
-			if ( type == ClientType.Unknown ) type = ClientType.UDP;
-			int N = ClientList.Count;
-			for ( int i = 0; i < N; i++ ) {
-				if ( ClientList[i].EP != ep ) continue;
-				if ( ClientList[i].ServiceType != type ) continue;
-				ClientList[i].Dispose ();
-				ClientList.RemoveAt ( i );
-				RecvList[i].Dispose ();
-				RecvList.RemoveAt ( i );
-				Direct ( new INetClientService.Result () { ResultType = INetClientService.Result.Type.Interrupted } );
-				return true;
-			}
-			return false;
-		}
-		public (Task<INetClientService.Result> task, INetClientService client) WaitAny () {
-			int N = ClientList.Count;
-			for (int i = 0; i < N; i++ ) {
-				if ( RecvList[i] == null ) RecvList[i] = ClientList[i].RecvAsync ();
-			}
-
-
-
-			List<Task<INetClientService.Result>> tasks = new( RecvList ) {
-				Task.Run ( () => {
-					while ( true ) {
-						Signal.WaitOne ();
-						if ( DirectMessage.ResultType == INetClientService.Result.Type.Direct )
-							return DirectMessage;
+		public bool Send ( byte[] data, object ep, bool attemptDirect = true, object viaEP = null ) {
+			if ( ep is not IPEndPoint ) return false;
+			IPEndPoint targ = ep as IPEndPoint;
+			if ( attemptDirect && targ.Address.Equals ( localEP.Address ) && targ.Port == localEP.Port ) {
+				lock ( this ) {
+					if ( currentCallback != null ) {
+						currentCallback ( new ( data, ep, localEP, true ) );
+						return true;
 					}
-				} )
-			};
-			int ID = Task.WaitAny ( tasks.ToArray () );
-			if ( ID == N ) return (tasks[ID], null);
-			RecvList[ID] = null;
-			return (tasks[ID], ClientList[ID]);
+				}
+			}
+			var targNet = targ.Address.GetNetworkAddr ();
+			if ( targNet.Equals ( localNetwork ) ) {
+				if ( viaEP is not IPEndPoint ) return false;
+				IPEndPoint via = viaEP as IPEndPoint;
+				targNet = via.Address.GetNetworkAddr ();
+				if ( !targNet.Equals ( localNetwork ) ) return false;
+			}
+			lock ( this ) {
+				UdpClient ??= new ( localEP );
+				int sent = UdpClient.Send ( data, targ );
+				return sent > 0;
+			}
 		}
-		public void Interrupt () { foreach ( var client in ClientList ) client.Stop (); Active = false; }
-		public void Start () { foreach ( var client in ClientList ) client.Start (); Active = true; }
-		public void Direct ( byte[] data ) => Direct ( new INetClientService.Result ( data, true ) );
-		public void Direct ( INetClientService.Result data) {
-			DirectMessage = data;
-			Thread.MemoryBarrier ();
-			Signal.Set ();
+		public void StartListen ( Action<MessageResult> callback, CancellationToken cancelToken ) {
+			lock ( this ) {
+				if ( recvTask != null ) WaitClose ( false );
+				UdpClient ??= new ( localEP );
+				currentCallback = callback;
+				recvTask = Task.Run ( () => RecvTask (), cancelToken );
+				cancelToken.Register ( () => WaitClose ( true ) );
+			}
 		}
-		public void Dispose () {
-			Active = false;
-			foreach ( var client in ClientList ) client.Dispose ();
-			foreach ( var task in RecvList ) task.Dispose ();
-			ClientList.Clear ();
-			RecvList.Clear ();
+		public void WaitClose ( bool lockRequested = true ) {
+			if ( lockRequested ) {
+				lock ( this ) { Exec (); }
+			} else Exec ();
+			void Exec () {
+				if ( recvTask != null ) {
+					UdpClient.Close ();
+					recvTask.Wait ();
+					recvTask.Dispose ();
+					recvTask = null;
+					UdpClient.Dispose ();
+				}
+			}
 		}
-		public override string ToString () {
-			SBld SB = new SBld ();
-			SB.AppendLine ( $"NetClient List [{Count}]: {(Active ? "Active" : "Stopped")}" );
-			for ( int i = 0; i < ClientList.Count; i++ )
-				SB.AppendLine ( $"  {i} : {ClientList[i]}" );
-			return SB.ToString ();
+		private void RecvTask () {
+			IPEndPoint distEP = new IPEndPoint ( IPAddress.Any, 0 );
+			while ( true ) {
+				var data = UdpClient.Receive ( ref distEP );
+				MessageResult result = new ( data, distEP, localEP, distEP == localEP );
+				currentCallback ( result );
+			}
 		}
-		public void Foreach (Action<INetClientService> act) => ClientList.ForEach ( act );
+
+		public override string ToString () => $"UDP Client for ({localEP}) - {(recvTask == null ? "closed" : "listening")}";
 	}
 }

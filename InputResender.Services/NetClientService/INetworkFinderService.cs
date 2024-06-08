@@ -1,12 +1,14 @@
 ﻿using Components.Library;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
 namespace InputResender.Services {
-	public class NetworkFinderService {
+	public class NetworkFinderService : IEnumerable<NetworkFinderService.Network> {
 		public class Node {
 			public IPAddress IPAddress;
+			public int ListeningPort;
 			public int NetworkID;
 			public int TTL;
 			public Node ( int netID, int ttl, IPAddress ip ) { IPAddress = ip; NetworkID = netID; TTL = ttl; }
@@ -33,6 +35,7 @@ namespace InputResender.Services {
 		public int NetworkCnt { get { if ( networks == null ) RefreshBuffer (); return networks.Length; } }
 		public Network this[int id] { get { if ( networks == null ) RefreshBuffer (); return networks[id.Crop ( 0, networks.Length )]; } }
 
+		public IPEndPoint EP (int TTL, int network) { Node node = this[network][TTL]; return new IPEndPoint ( node.IPAddress, node.ListeningPort ); }
 		public IPEndPoint[][] AddressesToEPs ( Network[] addresses, int port ) {
 			int N = addresses.Length;
 			IPEndPoint[][] ret = new IPEndPoint[N][];
@@ -81,5 +84,11 @@ namespace InputResender.Services {
 			}
 			return networks[0].LastNode;
 		}
+
+		public IEnumerator<Network> GetEnumerator() {
+			int N = NetworkCnt;
+			for ( int i = 0; i < N; i++ ) yield return networks[i];
+		}
+		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
 	}
 }
