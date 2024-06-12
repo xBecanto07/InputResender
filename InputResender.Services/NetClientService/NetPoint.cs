@@ -6,6 +6,7 @@ using System.Net.Sockets;
 
 namespace InputResender.Services {
 	public interface INetPoint {
+		string DscName { get; set; }
 		string Address { get; }
 		int Port { get; }
 		string NetworkAddress { get; }
@@ -54,6 +55,7 @@ namespace InputResender.Services {
 			ep = new IPEndPoint ( addr, port );
 		}
 
+		public string DscName { get; set; }
 		public string Address => ep.Address.ToString ();
 		public int Port { get => ep.Port; private set => ep.Port = value; }
 		public int PrefixLength { get; private set; } = 24;

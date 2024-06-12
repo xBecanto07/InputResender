@@ -1,4 +1,9 @@
-﻿namespace InputResender.Services {
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace InputResender.Services {
 	public class TaskService : IDisposable {
 		private readonly Action<TaskService, ManualResetEvent> Fcn;
 		private readonly List<string> StateList;

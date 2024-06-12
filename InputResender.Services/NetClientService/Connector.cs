@@ -27,15 +27,19 @@ namespace InputResender.Services.NetClientService {
 				Interlocked.MemoryBarrierProcessWide ();
 				Signal.Set ();
 			}
-			public NetworkConnection.NetworkInfo Wait () {
-				Signal.WaitOne ();
+			public NetworkConnection.NetworkInfo Wait ( CancellationToken? ct ) {
+				int res;
+				if ( ct == null ) res = Signal.WaitOne () ? 0 : 1;
+				else res = WaitHandle.WaitAny ( new WaitHandle[] { Signal, ct.Value.WaitHandle } );
+
+				if ( res == 1 ) throw new OperationCanceledException ();
 				return Connection;
 			}
 		}
 
 		private static Dictionary<INetPoint, Requester> ActiveAttempts = new ();
 
-		public static NetworkConnection.NetworkInfo Connect ( ANetDevice<EPT> dev, ANetDeviceLL<EPT> devLL, EPT targ, NetworkConnection.MessageSender sender ) {
+		public static NetworkConnection.NetworkInfo Connect ( ANetDevice<EPT> dev, ANetDeviceLL<EPT> devLL, EPT targ, NetworkConnection.MessageSender sender, CancellationToken? ct ) {
 			if ( dev == null ) throw new ArgumentNullException ( nameof ( dev ) );
 			if ( targ == null ) throw new ArgumentNullException ( nameof ( targ ) );
 			if ( dev.EP == null ) throw new InvalidOperationException ( "Device not bound" );
@@ -51,7 +55,7 @@ namespace InputResender.Services.NetClientService {
 
 			devLL.OnReceive += OnReceive;
 			devLL.Send ( packet.Data, packet.TargetEP as EPT );
-			return req.Wait ();
+			return req.Wait ( ct );
 		}
 
 		private static bool OnReceive ( NetMessagePacket msg ) {

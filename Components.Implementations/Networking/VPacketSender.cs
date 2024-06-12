@@ -66,18 +66,19 @@ namespace Components.Implementations {
 			ReceiverTask = Task.Run ( () => {
 				while ( true ) {
 					if ( Clients.Count == 0 ) return;
-					var recv = Clients.WaitAny ();
+					throw new NotImplementedException ();
+					/*var recv = Clients.WaitAny ();
 					var res = recv.task.Result;
-					if ( !callback ( recv.task.Result.Data ) ) return;
+					if ( !callback ( recv.task.Result.Data ) ) return;*/
 				}
 			} );
 		}
-		public override void Recv ( byte[] data ) => Clients.Direct ( data );
+		public override void Recv ( byte[] data ) => throw new NotImplementedException (); // Clients.Direct ( data,  );
 		public override void Send ( byte[] data ) {
 			string BR = Environment.NewLine + '\t';
 			Owner.LogFcn?.Invoke ( $"Sending data[{data.Length}]{BR}{Targets.ToString ( BR )}" );
 			Targets.ForEach ( ( ep, valA, netNode, netClient ) => {
-				netClient.LogFcn = Owner.LogFcn;
+				//netClient.LogFcn = Owner.LogFcn;
 				netClient.Send ( data, ep );
 			} );
 		}

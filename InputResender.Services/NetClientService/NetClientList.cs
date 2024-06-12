@@ -6,13 +6,11 @@ using Components.Library;
 namespace InputResender.Services {
 	public class NetClientList : INetClientServiceGroup {
 		public bool Active { get => Listening; }
-		private readonly BidirectionalSignalerLightweight Signal;
 		private string cName;
-		public string CommonName { get => cName; set { cName = value; Signal.CommonName = value; } }
+		public string CommonName { get => cName; set { cName = value; } }
 		public virtual MessageResult.SignalBackSelector WhenSignalBack { get; set; } = MessageResult.SignalBackSelector.Immediately;
 
 		public NetClientList (string name = "NoName") {
-			Signal = new ( CommonName );
 			CommonName = name;
 		}
 

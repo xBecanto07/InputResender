@@ -41,14 +41,32 @@ namespace InputResender.Services {
 	}
 
 	public abstract class ANetDeviceLL<T> where T : INetPoint {
+		public enum ErrorType { None, Unknown, InvalidData, InvalidTarget, Unbound }
 		public T LocalEP { get; }
-		public abstract bool Send ( byte[] data, T ep );
+		public bool Send ( byte[] data, T ep ) {
+			var err = InnerSend ( data, ep );
+			if ( err != ErrorType.None ) {
+				LastError = err;
+				return false;
+			} else return true;
+		}
+		private ErrorType LastError = ErrorType.None;
+		public ErrorType GetLastError () { var ret = LastError; LastError = ErrorType.None; return ret; }
+		protected abstract ErrorType InnerSend ( byte[] data, T ep );
 
-		private List<Func<NetMessagePacket, bool>> Receivers;
+
+		protected ANetDeviceLL ( T ep ) {
+			if ( ep == null ) throw new ArgumentNullException ( nameof ( ep ) );
+			LocalEP = ep;
+		}
+
+		private List<Func<NetMessagePacket, bool>> Receivers = new ();
 		public event Func<NetMessagePacket, bool> OnReceive {
 			add => Receivers.Insert ( 0, value );
 			remove => Receivers.Remove ( value );
 		}
+
+		public override string ToString () => $"{GetType ().Name}({LocalEP}){(LastError != ErrorType.None ? $"[{LastError}]" : "")}";
 	}
 
 #if USE_TCP

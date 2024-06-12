@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Net;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using SBld = System.Text.StringBuilder;
@@ -153,6 +154,30 @@ namespace Components.Library {
 			ret.Append ( string.Join ( ", ", MI.GetParameters ().Select ( ( p ) => $"{p.ParameterType.Name} {p.Name}" ) ) );
 			ret.Append ( ')' );
 			return ret.ToString ();
+		}
+		public static IPAddress GetNetworkAddr ( this IPAddress IP, int prefix = -1 ) {
+			if ( IP == null ) return null;
+			if ( prefix < 0 ) prefix = IP.AddressFamily switch {
+				System.Net.Sockets.AddressFamily.InterNetwork => 24,
+				System.Net.Sockets.AddressFamily.InterNetworkV6 => 48,
+				_ => 0,
+			};
+			byte[] bAr = IP.GetAddressBytes ();
+			for ( int i = 0; i < bAr.Length; i++ ) {
+				bAr[i] &= prefix switch {
+					0 => 0,
+					1 => 0x80,
+					2 => 0xC0,
+					3 => 0xE0,
+					4 => 0xF0,
+					5 => 0xF8,
+					6 => 0xFC,
+					7 => 0xFE,
+					_ => 0xff,
+				};
+				prefix >>= 3;
+			}
+			return new IPAddress ( bAr );
 		}
 	}
 }
