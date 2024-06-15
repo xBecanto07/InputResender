@@ -30,13 +30,15 @@ namespace InputResender.Services {
 		void Bind ( INetPoint ep );
 		void Close ();
 		NetworkConnection Connect ( INetPoint ep, MessageHandler recvAct, int timeout = 1000 );
+		IReadOnlyDictionary<INetPoint, NetworkConnection> ActiveConnections { get; }
+		bool IsConnected ( INetPoint ep );
 		void AcceptAsync ( Action<NetworkConnection> callback, System.Threading.CancellationToken ct );
 		INetPoint EP { get; }
 		void UnregisterConnection ( NetworkConnection connection );
 		/// <summary>Checks, if this device is using same resources as <paramref name="device"/></summary>
 		/// <returns>True when internal client is shared. False when at least one is null or are different.</returns>
 		bool SharedWith ( INetDevice device ) => Equals ( device );
-		//event EventHandler<NetworkConnection> OnConnectionClosed;
+		/// <summary>Raised just before closing the device.</summary>
 		event Action<INetDevice, INetPoint> OnClosed;
 	}
 
@@ -55,8 +57,9 @@ namespace InputResender.Services {
 		protected abstract ErrorType InnerSend ( byte[] data, T ep );
 
 
-		protected ANetDeviceLL ( T ep ) {
+		protected ANetDeviceLL ( T ep, Func<NetMessagePacket, bool> receiver ) {
 			if ( ep == null ) throw new ArgumentNullException ( nameof ( ep ) );
+			Receivers.Add ( receiver );
 			LocalEP = ep;
 		}
 
@@ -64,6 +67,13 @@ namespace InputResender.Services {
 		public event Func<NetMessagePacket, bool> OnReceive {
 			add => Receivers.Insert ( 0, value );
 			remove => Receivers.Remove ( value );
+		}
+
+		protected INetDevice.ProcessResult ReceiveMsg ( NetMessagePacket msg ) {
+			foreach ( var receiver in Receivers )
+				if ( receiver ( msg ) )
+					return INetDevice.ProcessResult.Accepted;
+			return INetDevice.ProcessResult.Skiped;
 		}
 
 		public override string ToString () => $"{GetType ().Name}({LocalEP}){(LastError != ErrorType.None ? $"[{LastError}]" : "")}";

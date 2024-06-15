@@ -1,9 +1,4 @@
-﻿#define USE_UDP
-#if !USE_UDP
-#define USE_TCP
-#endif
-
-using System;
+﻿using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Collections.Generic;
@@ -12,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace InputResender.Services {
-#if USE_UDP
 	public class UDPDevice : INetDevice {
 		//private  UdpClient Client;
 		private IPNetPoint ipEP;
@@ -22,6 +16,9 @@ namespace InputResender.Services {
 		private volatile ManualResetEvent Closing;
 		private readonly List<SignalMessage> SignalMessages = new ();
 
+
+		public IReadOnlyDictionary<INetPoint, NetworkConnection> ActiveConnections => throw new NotImplementedException ();
+		public bool IsConnected ( INetPoint ep ) => throw new NotImplementedException ();
 		public INetPoint EP => ipEP;
 		/// <inheritdoc/>
 		public string DeviceName { get; set; } = string.Empty;
@@ -230,5 +227,4 @@ namespace InputResender.Services {
 			}
 		}
 	}
-#endif
 }

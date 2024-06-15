@@ -96,7 +96,8 @@ namespace InputResender.Services {
 
 			var msg = NetMessagePacket.CreateSignal ( INetDevice.SignalMsgType.Disconnect, LocalDevice.EP, TargetEP );
 			Sender ( msg );
-			if ( caller != Sender ) LocalDevice.UnregisterConnection ( this );
+			if ( caller != Sender && LocalDevice.IsConnected ( TargetEP ) )
+				LocalDevice.UnregisterConnection ( this );
 			if ( OnReceive != null ) {
 				foreach ( var handler in OnReceive.GetInvocationList () ) {
 					OnReceive -= (INetDevice.MessageHandler)handler;

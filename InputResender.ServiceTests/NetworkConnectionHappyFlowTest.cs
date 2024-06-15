@@ -55,6 +55,10 @@ namespace InputResender.ServiceTests {
 			// Request connection from devA to devB
 			var connAB = devA.Connect ( EPs[1], null ); // Pass null callback since we will do synchronous receive
 
+			devA.ActiveConnections.Should ().ContainKey ( EPs[1] ).And.HaveCount ( 1 );
+			devA.ActiveConnections[EPs[1]].Should ().BeSameAs ( connAB );
+			devB.ActiveConnections.Should ().ContainKey ( EPs[0] ).And.HaveCount ( 1 );
+
 			// Send test message from devA to devB
 			/* - NetworkConnection.Send (byte[])
 			   - InMemDevice:INetDevice.Send (NetMessagePacket, INetPoint)
@@ -95,6 +99,14 @@ namespace InputResender.ServiceTests {
 			connAB.TargetEP.Should ().BeNull ();
 			connBA.LocalDevice.Should ().BeNull ();
 			connBA.TargetEP.Should ().BeNull ();
+			devA.ActiveConnections.Should ().BeEmpty ();
+			devB.ActiveConnections.Should ().BeEmpty ();
+
+			// Close the devices
+			devA.Close ();
+			devB.Close ();
+			devA.EP.Should ().BeNull ();
+			devB.EP.Should ().BeNull ();
 		}
 	}
 

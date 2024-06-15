@@ -3,17 +3,23 @@ using System.Collections.Generic;
 
 namespace InputResender.Services.NetClientService.InMemNet {
 	public class InMemDevice : ANetDevice<InMemNetPoint> {
-		protected override ANetDeviceLL<InMemNetPoint> BindLL ( InMemNetPoint ep ) {
+		protected override ANetDeviceLL<InMemNetPoint> boundedLLDevice => BoundedInMemDeviceLL;
+		public InMemDeviceLL BoundedInMemDeviceLL { get; private set; }
+
+		protected override void BindLL ( InMemNetPoint ep ) {
 			var ret = new InMemDeviceLL ( ep, ReceiveMsg );
 			ep.Bind ( this );
-			return ret;
+			BoundedInMemDeviceLL = ret;
 		}
 
-		protected override INetDevice.ProcessResult LogRecvError ( NetMessagePacket msg, string dsc, INetDevice.ProcessResult err = INetDevice.ProcessResult.Skiped ) {
-			var ret = base.LogRecvError ( msg, dsc, err );
-			if ( ret == INetDevice.ProcessResult.Skiped )
-				throw new InvalidOperationException ( $"Error on {nameof ( InMemDevice )} '{this}': Message {msg.SourceEP}=>{msg.TargetEP} not accepted: {dsc}" );
-			return ret;
+		protected override bool LogRecvError ( NetMessagePacket msg, string dsc ) {
+			base.LogRecvError ( msg, dsc );
+			throw new InvalidOperationException ( $"Error on {nameof ( InMemDevice )} '{this}': Message {msg.SourceEP}=>{msg.TargetEP} not accepted: {dsc}" );
+		}
+
+		protected override void InnerClose () {
+			locEP.Close ( this );
+			BoundedInMemDeviceLL = null;
 		}
 
 		/*private InMemNetPoint locEP;
@@ -119,8 +125,19 @@ namespace InputResender.Services.NetClientService.InMemNet {
 	}
 
 	public class InMemDeviceLL : ANetDeviceLL<InMemNetPoint> {
-		readonly INetDevice.MessageHandler Receiver;
-		public InMemDeviceLL ( InMemNetPoint ep, INetDevice.MessageHandler receiver ) : base ( ep ) { Receiver = receiver; }
+		public InMemDeviceLL ( InMemNetPoint ep, Func<NetMessagePacket, bool> receiver ) : base ( ep, receiver ) { }
+
+		public INetDevice.ProcessResult ReceiveMsg ( NetMessagePacket msg ) {
+			if ( msg == null ) throw new ArgumentNullException ( nameof ( msg ) );
+			if ( msg.TargetEP != LocalEP ) throw new InvalidOperationException ( "TargetEP of given message is not this device" );
+
+			// Break reference to 1) allow modification of original data, 2) to prevent modification of data after it was sent and 3) to simulate network behavior
+			byte[] recvBuff = new byte[msg.Data.Length];
+			msg.Data.CopyTo ( recvBuff, 0 );
+			NetMessagePacket recvMsg = new ( recvBuff, targetEP: msg.TargetEP, sourceEP: msg.SourceEP );
+
+			return base.ReceiveMsg ( recvMsg );
+		}
 
 		protected override ErrorType InnerSend ( byte[] data, InMemNetPoint ep ) {
 			// Since all steps and instances are known for InMemDevices, don't return error but throw exception
@@ -129,13 +146,15 @@ namespace InputResender.Services.NetClientService.InMemNet {
 			if ( ep.ListeningDevice == null ) throw new InvalidOperationException ( "Remote device is not listening" );
 			if ( LocalEP == null ) throw new InvalidOperationException ( "Not bound" );
 
-			NetMessagePacket msg = new ( data, LocalEP, ep );
-			var status = Receiver ( msg );
+			/*NetMessagePacket msg = new ( data, LocalEP, ep );
+			var status = ReceiveMsg ( msg );
 			switch ( status ) {
 			case INetDevice.ProcessResult.Accepted: return ANetDeviceLL<InMemNetPoint>.ErrorType.None;
 			case INetDevice.ProcessResult.Confirmed: return ANetDeviceLL<InMemNetPoint>.ErrorType.None;
 			default: throw new InvalidOperationException ( $"Message not accepted: {status}" );
-			}
+			}*/
+			bool sent = ep.SendHere ( data, LocalEP );
+			return sent ? ErrorType.None : ErrorType.Unknown;
 
 			/*if ( locEP == null ) throw new InvalidOperationException ( "Not bound" );
 
