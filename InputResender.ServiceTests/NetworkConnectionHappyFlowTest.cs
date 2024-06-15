@@ -64,7 +64,7 @@ namespace InputResender.ServiceTests {
 			   - InMemDevice:INetDevice.Send (NetMessagePacket, INetPoint)
 			   - NetworkConnection.AcceptMessage (NetMessagePacket) */
 			connAB.Send ( msgA ).Should ().BeTrue ();
-			var msgFromA = connBA.Receive (); // With non-memory devices some delay is expected here, maybe add timeout to the Receive method?
+			var msgFromA = connBA.Receive ( 250 ); // With non-memory devices some delay is expected here, maybe add timeout to the Receive method?
 			msgFromA.Should ().NotBeNull ();
 			msgFromA.Data.Should ().BeEquivalentTo ( msgA ).And.NotBeSameAs ( msgA );
 			msgFromA.Error.Should ().Be ( INetDevice.NetworkError.None );
@@ -78,7 +78,7 @@ namespace InputResender.ServiceTests {
 
 			// Send a different test message from devB to devA
 			connBA.Send ( msgB );
-			var msgFromB = connAB.Receive ();
+			var msgFromB = connAB.Receive ( 250 );
 			msgFromB.Data.Should ().BeEquivalentTo ( msgB ).And.NotBeSameAs ( msgB );
 			msgFromB.Error.Should ().Be ( INetDevice.NetworkError.None );
 			msgFromB.SourceEP.Should ().Be ( EPs[1] );

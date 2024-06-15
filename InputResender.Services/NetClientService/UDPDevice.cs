@@ -5,9 +5,70 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using InputResender.Services.NetClientService;
 
 namespace InputResender.Services {
-	public class UDPDevice : INetDevice {
+	public class UDPDevice : ANetDevice<IPNetPoint> {
+		public UDPDeviceLL LLDevice { get; private set; }
+		protected override ANetDeviceLL<IPNetPoint> boundedLLDevice => LLDevice;
+
+		protected override void BindLL ( IPNetPoint ep ) {
+			if ( LLDevice != null ) throw new InvalidOperationException ( "Already bound" );
+			LLDevice = new UDPDeviceLL ( ep, ReceiveMsg );
+		}
+
+		protected override void InnerClose () {
+			if ( LLDevice == null ) return;
+			LLDevice.Close ();
+			LLDevice = null;
+		}
+	}
+
+	public class UDPDeviceLL : ANetDeviceLL<IPNetPoint> {
+		private UdpClient Client;
+		private Task RecvTask;
+
+		public UDPDeviceLL ( IPNetPoint ep, Func<NetMessagePacket, bool> receiver ) : base ( ep, receiver ) {
+			Client = new UdpClient ( ep.LowLevelEP () );
+			RecvTask = Task.Run ( RecvLoop );
+		}
+
+		private void RecvLoop () {
+			IPEndPoint? remoteEP = new ( IPAddress.Any, 0 );
+			byte[] data;
+			while ( true ) {
+				try {
+					data = Client.Receive ( ref remoteEP );
+				} catch ( SocketException e ) {
+					if ( e.SocketErrorCode == SocketError.Interrupted ) break;
+					else throw;
+				}
+				if ( data == null ) break;
+				var msg = new NetMessagePacket ( data, LocalEP, new IPNetPoint ( remoteEP ) );
+				ReceiveMsg ( msg );
+			}
+		}
+
+		protected override ErrorType InnerSend ( byte[] data, IPNetPoint ep ) {
+			if ( Client == null ) throw new InvalidOperationException ( "Client is closed" );
+			if ( ep == null ) throw new ArgumentNullException ( nameof ( ep ) );
+			if ( data == null ) throw new ArgumentNullException ( nameof ( data ) );
+			if ( ep is not IPNetPoint ) throw new ArgumentException ( $"{nameof ( ep )} is not of type {nameof ( IPNetPoint )}" );
+			int sent = Client.Send ( data, data.Length, ep.LowLevelEP () );
+			return sent == data.Length ? ErrorType.None : ErrorType.Unknown;
+		}
+
+		public void Close () {
+			Client.Close ();
+			Client.Dispose ();
+			Client = null;
+			RecvTask.Wait ();
+			RecvTask.Dispose ();
+			RecvTask = null;
+		}
+	}
+
+	/*public class UDPDevice : INetDevice {
 		//private  UdpClient Client;
 		private IPNetPoint ipEP;
 		private UDPDeviceLL LLDevice;
@@ -226,5 +287,5 @@ namespace InputResender.Services {
 				}
 			}
 		}
-	}
+	}*/
 }

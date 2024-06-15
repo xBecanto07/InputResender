@@ -63,10 +63,20 @@ namespace InputResender.Services {
 		}
 
 		/// <summary>Synchronous non-blocking message receiver. Will return null if there are no messages to receive.</summary>
-		public NetMessagePacket Receive () {
-			lock ( watingMessages ) {
+		/// <param name="timeout">Time in milliseconds to wait for a message. If set to 0, will return immediately. If set to -1, will wait indefinitely.</param>
+		public NetMessagePacket Receive ( int timeout = 0 ) {
+			/*lock ( watingMessages ) {
 				if ( watingMessages.Count < 1 ) return null;
 				return watingMessages.Dequeue ();
+			}*/
+			if ( timeout < 0 ) timeout = int.MaxValue;
+			var start = DateTime.Now;
+			while ( true ) {
+				lock ( watingMessages ) {
+					if ( watingMessages.Count > 0 ) return watingMessages.Dequeue ();
+				}
+				double diff = (DateTime.Now - start).TotalMilliseconds;
+				if ( diff > timeout ) return null;
 			}
 		}
 
