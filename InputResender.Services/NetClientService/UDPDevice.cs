@@ -22,6 +22,12 @@ namespace InputResender.Services {
 			LLDevice.Close ();
 			LLDevice = null;
 		}
+
+		protected virtual void Waiter ( NetMessagePacket msg, bool sentStatus ) {
+			if (sentStatus && msg.SignalType == INetDevice.SignalMsgType.Disconnect) {
+				Thread.Sleep ( 1 );
+			}
+		}
 	}
 
 	public class UDPDeviceLL : ANetDeviceLL<IPNetPoint> {
@@ -55,6 +61,7 @@ namespace InputResender.Services {
 			if ( data == null ) throw new ArgumentNullException ( nameof ( data ) );
 			if ( ep is not IPNetPoint ) throw new ArgumentException ( $"{nameof ( ep )} is not of type {nameof ( IPNetPoint )}" );
 			int sent = Client.Send ( data, data.Length, ep.LowLevelEP () );
+			//Thread.Sleep ( 1 );
 			return sent == data.Length ? ErrorType.None : ErrorType.Unknown;
 		}
 

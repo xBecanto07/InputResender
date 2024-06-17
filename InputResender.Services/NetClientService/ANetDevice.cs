@@ -21,6 +21,8 @@ namespace InputResender.Services.NetClientService {
 		protected EPT locEP { get; private set; }
 		protected abstract ANetDeviceLL<EPT> boundedLLDevice { get; }
 		protected abstract void BindLL ( EPT ep );
+		/// <summary>This method is called right after sending message. It can be used to attempt securing some higher level continuity.</summary>
+		protected virtual void Waiter ( NetMessagePacket msg, bool sentStatus ) { }
 
 		protected virtual bool LogRecvError ( NetMessagePacket msg, string dsc ) {
 			LastErrors.Add ( (msg, dsc) );
@@ -64,12 +66,13 @@ namespace InputResender.Services.NetClientService {
 			OpenConnRequests.Add ( targInMemEP, connRequest );
 			var connInfo = connRequest.Wait ( new CancellationTokenSource ( timeout ).Token );
 			Connections.Add ( targInMemEP, connInfo );
+			OpenConnRequests.Remove ( targInMemEP );
 			return connInfo.Connection;
 		}
 		public void UnregisterConnection ( NetworkConnection connection ) {
 			if ( connection == null ) throw new ArgumentNullException ( nameof ( connection ) );
 			if ( connection.TargetEP is not EPT targEP ) throw new ArgumentException ( $"{nameof ( connection )} is not of type {nameof ( EPT )}" );
-			if ( !Connections.TryGetValue ( targEP, out var connInfo ) ) throw new InvalidOperationException ( "Connection not found" );
+			if ( !Connections.TryGetValue ( targEP, out var connInfo ) ) throw new InvalidOperationException ( $"Connection to {targEP} not found" );
 			if ( connInfo.Connection != connection ) throw new InvalidOperationException ( "Connection mismatch" );
 
 			Connections.Remove ( targEP );
@@ -82,7 +85,9 @@ namespace InputResender.Services.NetClientService {
 			if ( msg == null ) return false;
 			if ( msg.TargetEP == null ) return false;
 			if ( msg.SourceEP != EP ) return false;
-			return boundedLLDevice.Send ( msg.Data, msg.TargetEP as EPT );
+			var res = boundedLLDevice.Send ( msg.Data, msg.TargetEP as EPT );
+			Waiter ( msg, res );
+			return res;
 		}
 
 		protected bool ReceiveMsg ( NetMessagePacket msg ) {

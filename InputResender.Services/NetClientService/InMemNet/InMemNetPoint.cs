@@ -19,6 +19,8 @@ namespace InputResender.Services.NetClientService.InMemNet {
 		public string NetworkAddress => $"IMN#{ID}";
 		/// <inheritdoc />
 		public int PrefixLength => 24;
+		/// <inheritdoc />
+		public string FullNetworkPath => GetKey ( ID, _port );
 
 		private InMemNetPoint ( int id, int port ) {
 			ID = id;

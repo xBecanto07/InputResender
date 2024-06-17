@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 
 
 namespace InputResender.Services {
@@ -106,6 +107,7 @@ namespace InputResender.Services {
 
 			var msg = NetMessagePacket.CreateSignal ( INetDevice.SignalMsgType.Disconnect, LocalDevice.EP, TargetEP );
 			Sender ( msg );
+			Thread.Sleep ( 1 );
 			if ( caller != Sender && LocalDevice.IsConnected ( TargetEP ) )
 				LocalDevice.UnregisterConnection ( this );
 			if ( OnReceive != null ) {

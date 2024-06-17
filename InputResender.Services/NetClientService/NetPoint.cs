@@ -10,6 +10,7 @@ namespace InputResender.Services {
 		string Address { get; }
 		int Port { get; }
 		string NetworkAddress { get; }
+		string FullNetworkPath { get; }
 		int PrefixLength { get; }
 
 		public static INetPoint NextAvailable<T> ( string addr = null ) where T : INetPoint => NextAvailable<T> ( 0, addr )[0];
@@ -60,6 +61,7 @@ namespace InputResender.Services {
 		public int Port { get => ep.Port; private set => ep.Port = value; }
 		public int PrefixLength { get; private set; } = 24;
 		public string NetworkAddress => ep.Address.GetNetworkAddr ( PrefixLength ).ToString ();
+		public string FullNetworkPath => $"{NetworkAddress}:{Port}";
 		public IPEndPoint LowLevelEP () => new ( ep.Address, ep.Port );
 		public override bool Equals ( object obj ) => obj is IPNetPoint point && ep.Equals ( point.ep );
 		public override int GetHashCode () => HashCode.Combine ( ep );
