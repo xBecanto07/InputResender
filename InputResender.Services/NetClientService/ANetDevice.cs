@@ -64,10 +64,15 @@ namespace InputResender.Services.NetClientService {
 
 			var connRequest = Connector<EPT>.Connect ( this, boundedLLDevice, targInMemEP, Send );
 			OpenConnRequests.Add ( targInMemEP, connRequest );
-			var connInfo = connRequest.Wait ( new CancellationTokenSource ( timeout ).Token );
-			Connections.Add ( targInMemEP, connInfo );
-			OpenConnRequests.Remove ( targInMemEP );
-			return connInfo.Connection;
+			try {
+				var connInfo = connRequest.Wait ( new CancellationTokenSource ( timeout ).Token );
+				Connections.Add ( targInMemEP, connInfo );
+				OpenConnRequests.Remove ( targInMemEP );
+				return connInfo.Connection;
+			} catch ( Exception e ) {
+				OpenConnRequests.Remove ( targInMemEP );
+				throw;
+			}
 		}
 		public void UnregisterConnection ( NetworkConnection connection ) {
 			if ( connection == null ) throw new ArgumentNullException ( nameof ( connection ) );

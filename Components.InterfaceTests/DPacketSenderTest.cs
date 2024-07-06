@@ -1,6 +1,7 @@
 ﻿using Components.Interfaces;
 using Components.Library;
 using FluentAssertions;
+using InputResender.Services;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -8,49 +9,48 @@ using Xunit;
 using Xunit.Abstractions;
 
 namespace Components.InterfaceTests {
-	public abstract class DPacketSenderTest<EP> : ComponentTestBase<DPacketSender> {
+	public abstract class DPacketSenderTest<TestObjT> : ComponentTestBase<TestObjT> where TestObjT : DPacketSender {
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
 		protected List<long> Received = new List<long> ();
 		protected AutoResetEvent resetEvent = new AutoResetEvent (false);
 		bool TestFinished = false;
 
+		protected abstract IEnumerable<object> GetLocalPoint ( TestObjT testObj, int port );
+
 		public DPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
-		[Fact]
-		public void SendReceive () {
+		[Theory]
+		[InlineData ( 1 )]
+		[InlineData ( 3 )]
+		public void SendRecvTest (int reps ) {
+			//UDPDeviceLL.OnMessage += Output.WriteLine;
+
 			byte[] data = SetupTest ( out var sender, out var receiver );
-			Connect ( sender, receiver );
-			receiver.ReceiveAsync ( SimpleCallback );
-			sender.Send ( data );
-			resetEvent.WaitOne ();
-			Disconnect ( sender, receiver );
+			var aEPIter = GetLocalPoint ( sender, 0 ).GetEnumerator ();
+			var bEPIter = GetLocalPoint ( receiver, 0 ).GetEnumerator ();
+			Output.WriteLine ( $"Starting test with {reps} repetitions, A: {sender}, B: {receiver}" );
+			while ( true ) {
+				if ( !aEPIter.MoveNext () ) break;
+				if ( !bEPIter.MoveNext () ) break;
+				Output.WriteLine ( $"Testing {aEPIter.Current} -> {bEPIter.Current}" );
+				Connect ( sender, receiver, aEPIter.Current, bEPIter.Current );
+				receiver.ReceiveAsync ( SimpleCallback );
+				for ( int i = 0; i < reps; i++ ) {
+					Output.WriteLine ( $"Sending message #{i}" );
+					receiver.ReceiveAsync ( SimpleCallback );
+					sender.Send ( data );
+				}
+				Disconnect ( sender, receiver, aEPIter.Current, bEPIter.Current );
 
-			var logger = OwnerCore.Fetch ( typeof ( DLogger ) );
-			if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
+				var logger = OwnerCore.Fetch ( typeof ( DLogger ) );
+				if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
+				long hash = data.CalcHash ();
+				Received.Should ().HaveCount ( reps ).And.OnlyContain ( val => val == hash );
+				receiver.Errors.Should ().BeEmpty ();
+				Output.WriteLine ( $"Finished {aEPIter.Current} -> {bEPIter.Current}" );
 
-			Received.Should ().HaveCount ( 1 ).And.Contain ( data.CalcHash () );
-			receiver.Errors.Should ().BeEmpty ();
-		}
-
-		[Fact]
-		public void SendMultiple () {
-			byte[] data = SetupTest ( out var sender, out var receiver );
-			Connect ( sender, receiver );
-			receiver.ReceiveAsync ( SimpleCallback );
-			sender.Send ( data );
-			resetEvent.WaitOne ();
-			sender.Send ( data );
-			resetEvent.WaitOne ();
-			sender.Send ( data );
-			resetEvent.WaitOne ();
-			Disconnect ( sender, receiver );
-
-			var logger = OwnerCore.Fetch ( typeof ( DLogger ) );
-			if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
-
-			long hash = data.CalcHash ();
-			Received.Should ().HaveCount ( 3 ).And.Equal ( hash, hash, hash );
-			receiver.Errors.Should ().BeEmpty ();
+				Received.Clear ();
+			}
 		}
 
 		protected bool SimpleCallback ( byte[] data) {
@@ -65,29 +65,35 @@ namespace Components.InterfaceTests {
 			return ret;
 		}
 
-		protected virtual byte[] SetupTest (out DPacketSender sender, out DPacketSender receiver) {
+		protected virtual byte[] SetupTest (out TestObjT sender, out TestObjT receiver ) {
 			Received.Clear ();
 			sender = GenerateTestObject ();
 			receiver = GenerateTestObject ();
 			return GenData ( 32 );
 		}
 
-		protected void Connect ( DPacketSender A, DPacketSender B ) {
-			A.Connect ( B.OwnEP ( 0, 0 ) );
-			B.Connect ( A.OwnEP ( 0, 0 ) );
+		protected void Connect ( TestObjT A, TestObjT B, object aEP, object bEP ) {
+			A.Connect ( bEP );
+			//B.Connect ( aEP ); // Connection is establish both ways
 			A.Connections.Should ().Be ( 1 );
 			B.Connections.Should ().Be ( 1 );
+			A.IsEPConnected ( bEP ).Should ().BeTrue ();
+			B.IsEPConnected ( aEP ).Should ().BeTrue ();
 		}
-		protected void Disconnect ( DPacketSender A, DPacketSender B ) {
-			A.Disconnect ( B.OwnEP ( 0, 0 ) );
-			B.Disconnect ( A.OwnEP ( 0, 0 ) );
+		protected void Disconnect ( TestObjT A, TestObjT B, object aEP, object bEP ) {
+			A.Disconnect ( bEP );
 			A.Connections.Should ().Be ( 0 );
 			B.Connections.Should ().Be ( 0 );
+			A.IsEPConnected ( bEP ).Should ().BeFalse ();
+			B.IsEPConnected ( aEP ).Should ().BeFalse ();
 		}
 	}
 
 	public class MPacketSenderTest : DPacketSenderTest<MPacketSender> {
 		public MPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
-		public override DPacketSender GenerateTestObject () => new MPacketSender ( OwnerCore );
+		public override MPacketSender GenerateTestObject () => new MPacketSender ( OwnerCore );
+		protected override IEnumerable<MPacketSender> GetLocalPoint ( MPacketSender testObj, int port ) {
+			yield return testObj;
+		}
 	}
 }

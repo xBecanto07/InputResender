@@ -8,7 +8,7 @@ namespace InputResender.Services {
 	public class NetworkFinderService : IEnumerable<NetworkFinderService.Network> {
 		public class Node {
 			public IPAddress IPAddress;
-			public int ListeningPort;
+			//public int ListeningPort;
 			public int NetworkID;
 			public int TTL;
 			public Node ( int netID, int ttl, IPAddress ip ) { IPAddress = ip; NetworkID = netID; TTL = ttl; }
@@ -29,13 +29,26 @@ namespace InputResender.Services {
 			public Node this[int id] => Nodes[id.Crop(0, Nodes.Length)];
 		}
 
+		public List<INetPoint[]> ToList ( int port ) {
+			int N = NetworkCnt;
+			List<INetPoint[]> ret = new ( N );
+			for ( int i = 0; i < N; i++ ) {
+				int C = this[i].Count;
+				ret.Add ( new INetPoint[C] );
+				for ( int a = 0; a < C; a++ ) {
+					ret[i][a] = new IPNetPoint ( this[i][a].IPAddress, port );
+				}
+			}
+			return ret;
+		}
+
 		public IPEndPoint[][] GetAllEPs ( int port ) => AddressesToEPs ( FindNetworks (), port );
 		protected Network[] networks = null;
 
 		public int NetworkCnt { get { if ( networks == null ) RefreshBuffer (); return networks.Length; } }
 		public Network this[int id] { get { if ( networks == null ) RefreshBuffer (); return networks[id.Crop ( 0, networks.Length )]; } }
 
-		public IPEndPoint EP (int TTL, int network) { Node node = this[network][TTL]; return new IPEndPoint ( node.IPAddress, node.ListeningPort ); }
+		//public IPEndPoint EP (int TTL, int network) { Node node = this[network][TTL]; return new IPEndPoint ( node.IPAddress, node.ListeningPort ); }
 		public IPEndPoint[][] AddressesToEPs ( Network[] addresses, int port ) {
 			int N = addresses.Length;
 			IPEndPoint[][] ret = new IPEndPoint[N][];
@@ -51,7 +64,7 @@ namespace InputResender.Services {
 
 		/// <summary>WARNING! Only very basic implementation!</summary>
 		public void RefreshBuffer () {
-			List<Network> ret = new List<Network> ();
+			List<Network> ret = new ();
 			var interfaces = NetworkInterface.GetAllNetworkInterfaces ();
 			foreach ( var inf in interfaces ) {
 				var info = inf.GetIPProperties ();

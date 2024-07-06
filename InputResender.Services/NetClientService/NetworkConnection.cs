@@ -155,7 +155,7 @@ namespace InputResender.Services {
 		static INetDevice.SignalMsgType ParseSignalMessage ( byte[] data ) {
 			if ( data == null || data.Length != INetDevice.SignalMsgSize ) return INetDevice.SignalMsgType.None;
 			if ( data[0] != 0xAA ) return INetDevice.SignalMsgType.None;
-			if (Enum.TryParse<INetDevice.SignalMsgType> ( data[1].ToString (), out var msgType )) return msgType;
+			if ( Enum.TryParse<INetDevice.SignalMsgType> ( data[1].ToString (), out var msgType ) ) return msgType;
 			else return INetDevice.SignalMsgType.None;
 
 			/*var msgType = (INetDevice.SignalMsgType)data[1];
@@ -182,6 +182,13 @@ namespace InputResender.Services {
 			msgData[1] = (byte)msgType;
 			for ( int i = 2; i < INetDevice.SignalMsgSize; i++ ) msgData[i] = 0xFF;
 			return new ( msgData, dst, src );
+		}
+
+		public override string ToString () {
+			System.Text.StringBuilder SB = new ();
+			SB.Append ( $"{SourceEP}->{TargetEP}({SignalType}/{Error})@{TimeStamp.ToString ( "m:ss:fff" )}[{Data.Length}]" );
+			foreach ( var b in Data ) SB.Append ( $" {b:X2}" );
+			return SB.ToString ();
 		}
 	}
 

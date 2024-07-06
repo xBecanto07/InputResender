@@ -33,15 +33,20 @@ namespace InputResender.Services.NetClientService {
 			DeviceLL.Send ( packet.Data, packet.TargetEP as EPT );
 
 			int res;
-			if ( ct == null ) res = Signal.WaitOne () ? 0 : 1;
+			if ( ct == null ) res = Signal.WaitOne ( TimeSpan.FromMinutes ( 10 ) ) ? 0 : 1;
 			else res = WaitHandle.WaitAny ( new WaitHandle[] { Signal, ct.Value.WaitHandle } );
 			DeviceLL.OnReceive -= OnReceive;
 
-			if ( res == 1 ) throw new OperationCanceledException ();
+			if ( res == 1 ) {
+				lock (ActiveAttempts) {
+					// Any message won't be received now and needs to be removed manually to allow another attempt
+					ActiveAttempts.Remove ( Target );
+				}
+				throw new OperationCanceledException ( $"Connection request to {Target} timed out ({(ct == null ? "no success notification" : "cancelled")})" );
+			}
 			Signal.Dispose ();
 			return Connection;
 		}
-
 
 		private static Dictionary<EPT, Connector<EPT>> ActiveAttempts = new ();
 

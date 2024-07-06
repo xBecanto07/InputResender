@@ -94,7 +94,7 @@ namespace InputResender.ServiceTests {
 		protected static int Port = 65123;
 		protected override INetClientService GetTestObject () {
 			IPEndPoint EP = new IPEndPoint ( IPAddress.Loopback, Port++ );
-			return INetClientService.Create ( INetClientService.ClientType.UDP, EP );
+			return INetClientService.Create ( ClientType.UDP, EP );
 		}
 	}
 }

@@ -15,7 +15,9 @@ namespace Components.Interfaces {
 				("get_"+nameof(Connections), typeof(int)),
 				("get_"+nameof(Errors), typeof(IReadOnlyCollection<(string msg, Exception e)>)),
 				(nameof(OwnEP), typeof(object)),
-				(nameof(Destroy), typeof(void))
+				(nameof(Destroy), typeof(void)),
+				(nameof(IsEPConnected), typeof(bool)),
+				(nameof(IsPacketSenderConnected), typeof(bool))
 			};
 
 		public abstract IReadOnlyCollection<IReadOnlyCollection<object>> EPList { get; }
@@ -29,6 +31,14 @@ namespace Components.Interfaces {
 		public abstract void Recv ( byte[] data );
 		public abstract void ReceiveAsync ( Func<byte[], bool> callback );
 		public abstract void Destroy ();
+		public abstract bool IsEPConnected ( object ep );
+		/// <summary>Returns true if at least one connection to any of target EPs is active</summary>
+		public bool IsPacketSenderConnected (DPacketSender packetSender) {
+			foreach ( var eps in packetSender.EPList )
+				foreach ( var ep in eps )
+					if ( IsEPConnected ( ep ) ) return true;
+			return false;
+		}
 
 		public abstract class DStateInfo : StateInfo {
 			protected DStateInfo ( DPacketSender owner ) : base ( owner ) {
@@ -78,9 +88,22 @@ namespace Components.Interfaces {
 		public override int Connections => ConnList.Count;
 		public override IReadOnlyCollection<IReadOnlyCollection<MPacketSender>> EPList { get => new []{ this }.AsReadonly2D (); }
 		public override IReadOnlyCollection<(string msg, Exception e)> Errors { get => new List<(string msg, Exception e)> ().AsReadOnly (); }
+		public override bool IsEPConnected ( object ep ) => ConnList.Contains ( ep );
 
-		public override void Connect ( object ep ) => ConnList.Add ( (MPacketSender)ep );
-		public override void Disconnect ( object ep ) => ConnList.Remove ( (MPacketSender)ep );
+		public override void Connect ( object ep ) {
+			if ( ep is not MPacketSender mpSender ) throw new InvalidCastException ( $"Unexpected object type: {ep.GetType ().Name}." );
+			if ( mpSender == this ) throw new InvalidOperationException ( "Cannot connect to self" );
+			if ( ConnList.Contains ( mpSender ) ) throw new InvalidOperationException ( $"Already connected to {mpSender.Name}" );
+			if ( mpSender.ConnList.Contains ( this ) ) throw new InvalidOperationException ( $"{mpSender.Name} is already connected to this" );
+
+			ConnList.Add ( mpSender );
+			mpSender.ConnList.Add ( this );
+		}
+		public override void Disconnect ( object ep ) {
+			if ( ep is not MPacketSender mpSender ) throw new InvalidCastException ( $"Unexpected object type: {ep.GetType ().Name}." );
+			if ( !ConnList.Remove ( mpSender ) ) throw new InvalidOperationException ( $"No active connection to {ep}" );
+			if ( !mpSender.ConnList.Remove ( this ) ) throw new InvalidOperationException ( $"{mpSender.Name} is not connected to this" );
+		}
 		public override void ReceiveAsync ( Func<byte[], bool> callback ) {
 			Callback = callback;
 			while ( MsgQueue.Count > 0 ) {

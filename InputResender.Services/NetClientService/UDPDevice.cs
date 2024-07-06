@@ -34,24 +34,31 @@ namespace InputResender.Services {
 		private UdpClient Client;
 		private Task RecvTask;
 
+		//public static event Action<string> OnMessage;
+
 		public UDPDeviceLL ( IPNetPoint ep, Func<NetMessagePacket, bool> receiver ) : base ( ep, receiver ) {
 			Client = new UdpClient ( ep.LowLevelEP () );
 			RecvTask = Task.Run ( RecvLoop );
+			Task.Delay ( 1 ).Wait ();
 		}
 
 		private void RecvLoop () {
 			IPEndPoint? remoteEP = new ( IPAddress.Any, 0 );
 			byte[] data;
+			//OnMessage?.Invoke ( $"Listening on {this} ({Client.Client.LocalEndPoint})" );
 			while ( true ) {
 				try {
 					data = Client.Receive ( ref remoteEP );
 				} catch ( SocketException e ) {
+					//OnMessage?.Invoke ( $"Error on {this}: {e.Message}" );
 					if ( e.SocketErrorCode == SocketError.Interrupted ) break;
 					else throw;
 				}
 				if ( data == null ) break;
 				var msg = new NetMessagePacket ( data, LocalEP, new IPNetPoint ( remoteEP ) );
-				ReceiveMsg ( msg );
+				//OnMessage?.Invoke ( $"Received on {this}: {msg}" );
+				var status = ReceiveMsg ( msg );
+				//OnMessage?.Invoke ( $"Processed ({status}) on {this}: {msg}" );
 			}
 		}
 
@@ -60,6 +67,7 @@ namespace InputResender.Services {
 			if ( ep == null ) throw new ArgumentNullException ( nameof ( ep ) );
 			if ( data == null ) throw new ArgumentNullException ( nameof ( data ) );
 			if ( ep is not IPNetPoint ) throw new ArgumentException ( $"{nameof ( ep )} is not of type {nameof ( IPNetPoint )}" );
+			//OnMessage?.Invoke ( $"Sent on {this}: {new NetMessagePacket ( data, LocalEP, ep )}" );
 			int sent = Client.Send ( data, data.Length, ep.LowLevelEP () );
 			//Thread.Sleep ( 1 );
 			return sent == data.Length ? ErrorType.None : ErrorType.Unknown;

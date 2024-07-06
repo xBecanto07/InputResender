@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Net.NetworkInformation;
 using System.Net;
-using Protocol = InputResender.Services.INetClientService.ClientType;
+using Protocol = InputResender.Services.ClientType;
 
 namespace InputResender.Services {
 	public static class NetStatsServise {

@@ -5,6 +5,8 @@ using System.Net;
 using System.Net.Sockets;
 
 namespace InputResender.Services {
+	public enum ClientType { Unknown, UDP }
+
 	public interface INetPoint {
 		string DscName { get; set; }
 		string Address { get; }
@@ -13,15 +15,15 @@ namespace InputResender.Services {
 		string FullNetworkPath { get; }
 		int PrefixLength { get; }
 
-		public static INetPoint NextAvailable<T> ( string addr = null ) where T : INetPoint => NextAvailable<T> ( 0, addr )[0];
+		public static INetPoint NextAvailable<T> ( int wantedPort, string addr = null ) where T : INetPoint => NextAvailable<T> ( 0, wantedPort, addr )[0];
 
-		public static INetPoint[] NextAvailable<T> ( int N, string addr = null ) where T : INetPoint {
+		public static INetPoint[] NextAvailable<T> ( int N, int wantedPort, string addr = null ) where T : INetPoint {
 			var ar = new INetPoint[N];
-			NextAvailable<T> ( ar, addr );
+			NextAvailable<T> ( ar, wantedPort, addr );
 			return ar;
 		}
 
-		public static void NextAvailable<T> ( INetPoint[] ar, string addr = null ) where T : INetPoint {
+		public static void NextAvailable<T> ( INetPoint[] ar, int wantedPort, string addr = null ) where T : INetPoint {
 			if ( ar == null ) throw new ArgumentNullException ( nameof ( ar ) );
 			if ( ar.Length == 0 ) return;
 
@@ -32,9 +34,9 @@ namespace InputResender.Services {
 
 			} else if ( typeof ( T ) == typeof ( IPNetPoint ) ) {
 				if ( !IPAddress.TryParse ( addr, out IPAddress ip ) ) ip = IPAddress.Loopback;
-				NetStatsServise.PrepareNextPort ( N, 10000, INetClientService.ClientType.UDP );
+				NetStatsServise.PrepareNextPort ( N, wantedPort, ClientType.UDP );
 				for ( int i = 0; i < N; i++ ) {
-					int port = NetStatsServise.FindNextPort ( 10000, INetClientService.ClientType.UDP );
+					int port = NetStatsServise.FindNextPort ( wantedPort, ClientType.UDP );
 					ar[i] = new IPNetPoint ( ip, port );
 				}
 

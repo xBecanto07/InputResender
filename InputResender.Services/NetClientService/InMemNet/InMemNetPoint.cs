@@ -22,13 +22,22 @@ namespace InputResender.Services.NetClientService.InMemNet {
 		/// <inheritdoc />
 		public string FullNetworkPath => GetKey ( ID, _port );
 
-		private InMemNetPoint ( int id, int port ) {
+		private InMemNetPoint ( int id, int port, bool reserve = true ) {
 			ID = id;
 			_port = port;
-			lock ( ReservedPoints ) {
-				if ( !ReservedPoints.ContainsKey ( GetKey (id, port) ) )
-					ReservedPoints.Add ( GetKey ( id, port ), this );
+			if (reserve) {
+				lock ( ReservedPoints ) {
+					if ( !ReservedPoints.ContainsKey ( GetKey ( id, port ) ) )
+						ReservedPoints.Add ( GetKey ( id, port ), this );
+					// Maybe it should warn, that other netpoint already reserved this address?
+				}
 			}
+		}
+
+		public static InMemNetPoint CreateNonreserverd ( int id, int port ) {
+			if ( id < 0 ) throw new ArgumentOutOfRangeException ( nameof ( id ) );
+			if ( port < 1 || port > 65535 ) throw new ArgumentOutOfRangeException ( nameof ( port ) );
+			return new InMemNetPoint ( id, port, false );
 		}
 
 		public void Bind ( InMemDevice device ) {

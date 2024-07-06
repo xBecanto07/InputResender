@@ -13,8 +13,8 @@ public class NetworkConnectionHappyFlowTest {
     public static INetPoint[] GetNetPoints ( string type, int cnt ) {
         INetPoint[] ret;
         switch ( type ) {
-        case nameof ( InMemNetPoint ): ret = INetPoint.NextAvailable<InMemNetPoint> ( cnt ); break;
-        case nameof ( IPNetPoint ): ret = INetPoint.NextAvailable<IPNetPoint> ( cnt ); break;
+        case nameof ( InMemNetPoint ): ret = INetPoint.NextAvailable<InMemNetPoint> ( cnt, 1000 ); break;
+        case nameof ( IPNetPoint ): ret = INetPoint.NextAvailable<IPNetPoint> ( cnt, 1000 ); break;
         default: throw new System.ArgumentException ( $"Type {type} is not supported" );
         }
 

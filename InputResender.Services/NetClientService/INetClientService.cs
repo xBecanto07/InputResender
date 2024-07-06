@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ClientType = InputResender.Services.INetClientService.ClientType;
+using ClientType = InputResender.Services.ClientType;
 
 namespace InputResender.Services {
 	public class INetClientServiceGroup : IDisposable {
@@ -89,7 +89,6 @@ namespace InputResender.Services {
 	}
 
 	public interface INetClientService {
-		public enum ClientType { Unknown, UDP }
 		bool Send ( byte[] data, object ep, bool attemptDirect = true, object viaEP = null );
 		void StartListen ( Action<MessageResult> callback, CancellationToken cancelToken );
 		void WaitClose ( bool lockRequested = true );
