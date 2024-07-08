@@ -37,7 +37,12 @@ namespace InputResender.Services {
 		//public static event Action<string> OnMessage;
 
 		public UDPDeviceLL ( IPNetPoint ep, Func<NetMessagePacket, bool> receiver ) : base ( ep, receiver ) {
-			Client = new UdpClient ( ep.LowLevelEP () );
+			var llEP = ep.LowLevelEP ();
+			try {
+				Client = new UdpClient ( llEP );
+			} catch ( Exception e ) {
+				throw new Exception ( $"Problem starting UDPClient on {llEP}: {e.Message}", e );
+			}
 			RecvTask = Task.Run ( RecvLoop );
 			Task.Delay ( 1 ).Wait ();
 		}

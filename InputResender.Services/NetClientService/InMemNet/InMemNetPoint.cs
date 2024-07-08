@@ -59,6 +59,17 @@ namespace InputResender.Services.NetClientService.InMemNet {
 		private static string GetAddress (int id) => $"IMN#{id}";
 		private static string GetKey (int id, int port) => $"{GetAddress ( id )}:{port}";
 		public override string ToString () => GetKey ( ID, _port ) + (string.IsNullOrWhiteSpace ( DscName ) ? "" : $" ({DscName})");
+		public static bool TryParse ( string ss, out InMemNetPoint IMEP ) {
+			IMEP = null;
+			if ( string.IsNullOrWhiteSpace ( ss ) ) return false;
+			if ( !ss.StartsWith ( "IMN#" ) ) return false;
+			int sep = ss.IndexOf ( ':' );
+			if ( sep < 0 ) return false;
+			if ( !int.TryParse ( ss[4..sep], out int id ) ) return false;
+			if ( !int.TryParse ( ss[(sep + 1)..], out int port ) ) return false;
+			IMEP = new InMemNetPoint ( id, port, false );
+			return true;
+		}
 
 		public bool SendHere ( byte[] data, InMemNetPoint senderEP ) {
 			if ( ListeningDevice == null ) throw new InvalidOperationException ( $"Not listening" );

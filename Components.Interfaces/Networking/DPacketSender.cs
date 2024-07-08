@@ -11,7 +11,7 @@ namespace Components.Interfaces {
 				(nameof(Send), typeof(void)),
 				(nameof(Recv), typeof(void)),
 				(nameof(ReceiveAsync), typeof(void)),
-				("get_"+nameof(EPList), typeof(IReadOnlyCollection<IReadOnlyCollection<object>>)),
+				("get_"+nameof(EPList), typeof(IReadOnlyList<IReadOnlyList<object>>)),
 				("get_"+nameof(Connections), typeof(int)),
 				("get_"+nameof(Errors), typeof(IReadOnlyCollection<(string msg, Exception e)>)),
 				(nameof(OwnEP), typeof(object)),
@@ -20,7 +20,7 @@ namespace Components.Interfaces {
 				(nameof(IsPacketSenderConnected), typeof(bool))
 			};
 
-		public abstract IReadOnlyCollection<IReadOnlyCollection<object>> EPList { get; }
+		public abstract IReadOnlyList<IReadOnlyList<object>> EPList { get; }
 		public abstract IReadOnlyCollection<(string msg, Exception e)> Errors { get; }
 		public abstract int Connections { get; }
 		public abstract object OwnEP ( int TTL, int network );
@@ -32,6 +32,7 @@ namespace Components.Interfaces {
 		public abstract void ReceiveAsync ( Func<byte[], bool> callback );
 		public abstract void Destroy ();
 		public abstract bool IsEPConnected ( object ep );
+		public abstract event Action<string, Exception> OnError;
 		/// <summary>Returns true if at least one connection to any of target EPs is active</summary>
 		public bool IsPacketSenderConnected (DPacketSender packetSender) {
 			foreach ( var eps in packetSender.EPList )
@@ -83,10 +84,11 @@ namespace Components.Interfaces {
 
 		public MPacketSender ( CoreBase owner ) : base ( owner ) { }
 
+		public override event Action<string, Exception> OnError { add { } remove { } }
 		public override int ComponentVersion => 1;
 		public override MPacketSender OwnEP ( int TTL, int network ) => this;
 		public override int Connections => ConnList.Count;
-		public override IReadOnlyCollection<IReadOnlyCollection<MPacketSender>> EPList { get => new []{ this }.AsReadonly2D (); }
+		public override IReadOnlyList<IReadOnlyList<MPacketSender>> EPList { get => new []{ this }.AsReadonly2D (); }
 		public override IReadOnlyCollection<(string msg, Exception e)> Errors { get => new List<(string msg, Exception e)> ().AsReadOnly (); }
 		public override bool IsEPConnected ( object ep ) => ConnList.Contains ( ep );
 

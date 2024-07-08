@@ -36,7 +36,7 @@ namespace InputResender.Services {
 				int C = this[i].Count;
 				ret.Add ( new INetPoint[C] );
 				for ( int a = 0; a < C; a++ ) {
-					ret[i][a] = new IPNetPoint ( this[i][a].IPAddress, port );
+					ret[i][a] = new IPNetPoint ( this[i][a].IPAddress, port ) { DscName = $"{this[i].Name}({this[i][a].TTL})" };
 				}
 			}
 			return ret;

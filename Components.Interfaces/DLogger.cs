@@ -21,6 +21,7 @@ namespace Components.Interfaces {
 		public abstract MsgType[] Read ( int N );
 		public abstract void Print ( Action<MsgType> act );
 		public abstract void Clear ();
+		public abstract event Action<string> OnLog;
 
 		public override StateInfo Info => new DStateInfo ( this );
 		public class DStateInfo : StateInfo {
@@ -43,6 +44,12 @@ namespace Components.Interfaces {
 		protected readonly int MaxMsgs;
 		protected ulong msgID = 0;
 
+		private event Action<string> OnLogLocal;
+		public override event Action<string> OnLog {
+			add { OnLogLocal += value; }
+			remove { OnLogLocal -= value; }
+		}
+
 		public VLogger ( CoreBase newOwner, int maxMessages = 64 ) : base ( newOwner ) {
 			MaxMsgs = maxMessages;
 			MsgList = new List<MsgType> ( MaxMsgs );
@@ -56,6 +63,7 @@ namespace Components.Interfaces {
 				MsgType msgStr = CreateLogMsg ( msg, msgID++ );
 				if ( MsgList.Count >= MaxMsgs ) MsgList.RemoveAt ( MaxMsgs - 1 );
 				MsgList.Insert ( 0, msgStr );
+				OnLogLocal?.Invoke ( msgStr );
 			}
 		}
 

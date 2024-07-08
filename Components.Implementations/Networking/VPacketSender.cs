@@ -28,9 +28,13 @@ namespace Components.Implementations {
 		private Func<byte[], bool> Receiver;
 		private List<INetPoint[]> NetList;
 
-		public VPacketSender ( CoreBase owner, int port = -1 ) : base ( owner ) {
+		private event Action<string, Exception> OnErrorLocal;
+		public override event Action<string, Exception> OnError { add => OnErrorLocal += value; remove => OnErrorLocal -= value; }
+
+		public VPacketSender ( CoreBase owner, int port = -1, Action<string, Exception> onErrorSub = null ) : base ( owner ) {
 			if ( !Owner.IsRegistered ( nameof ( DLogger ) ) ) new VLogger ( Owner );
 			errors = new List<(string msg, Exception e)> ();
+			if ( onErrorSub != null ) OnError += onErrorSub;
 			Port = port < 0 ? DefPort++ : port;
 			NetList = new NetList ().ToList ( Port );
 			NetList.Insert ( 0, INetPoint.NextAvailable<InMemNetPoint> ( 1, Port, DefPort.ToString () ) );
@@ -44,7 +48,12 @@ namespace Components.Implementations {
 				foreach ( var node in network ) {
 					// Skip if already added
 					if ( Clients.OwnedDevices.Keys.Any ( ep => node.Equals ( ep ) ) ) continue;
-					Clients.AddEP ( node );
+					Owner.Fetch<DLogger> ().Log ( $"Trying to add {node} '{node.DscName}' as a valid local EP" );
+					try {
+						Clients.AddEP ( node );
+					} catch ( Exception e ) {
+						PrintError ( $"Failed to add {node} as a valid local EP", e );
+					}
 				}
 			}
 			Clients.AcceptAcync ( OnNewConnection );
@@ -53,11 +62,15 @@ namespace Components.Implementations {
 		private void OnNewConnection (NetworkConnection conn) {
 			conn.OnReceive += LocalReceiver;
 		}
+		private void PrintError (string msg, Exception e) {
+			errors.Add ( (msg, e) );
+			OnErrorLocal?.Invoke ( msg, e );
+		}
 
 		public override int ComponentVersion => 1;
 		public override int Connections => Clients.Connections.Count;
 		public override IReadOnlyCollection<(string msg, Exception e)> Errors => errors.AsReadOnly ();
-		public override IReadOnlyCollection<IReadOnlyCollection<INetPoint>> EPList => NetList.AsReadOnly ();
+		public override IReadOnlyList<IReadOnlyList<INetPoint>> EPList => NetList.AsReadOnly ();
 		public override bool IsEPConnected ( object ep ) => ep is INetPoint iep ? Clients.Connections.ContainsKey ( iep ) : false;
 
 		public override INetPoint OwnEP ( int TTL, int network = 0 ) => NetList[network][TTL];
@@ -75,7 +88,7 @@ namespace Components.Implementations {
 				}
 			}
 			
-			if ( conn == null ) errors.Add ( ("Failed to connect", null) );
+			if ( conn == null ) PrintError ( "Failed to connect", null );
 			//else ActiveConns.Add ( epObj, conn );
 			conn.OnReceive += LocalReceiver;
 		}
@@ -92,6 +105,11 @@ namespace Components.Implementations {
 		private INetPoint ParseEP ( object epObj ) {
 			if ( epObj is INetPoint INP ) return INP;
 			if ( epObj is IPEndPoint IP ) return new IPNetPoint ( IP );
+			if ( epObj is string sEP ) {
+				if ( InMemNetPoint.TryParse ( sEP, out var IMEP ) ) return IMEP;
+				if ( IPAddress.TryParse ( sEP, out var IPAddr ) ) return new IPNetPoint ( IPAddr, Port );
+				if ( IPNetPoint.TryParse ( sEP, out var IPP ) ) return IPP;
+			}
 			throw new InvalidCastException ( $"Unexpected object type: {epObj.GetType ().Name}. Currently supported: {nameof ( INetPoint )}, {nameof ( IPEndPoint )}." );
 		}
 

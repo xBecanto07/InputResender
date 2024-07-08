@@ -68,6 +68,13 @@ namespace InputResender.Services {
 		public override bool Equals ( object obj ) => obj is IPNetPoint point && ep.Equals ( point.ep );
 		public override int GetHashCode () => HashCode.Combine ( ep );
 		public override string ToString () => ep.ToString ();
+		public static bool TryParse ( string ss, out IPNetPoint IPP ) {
+			IPP = null;
+			if ( string.IsNullOrWhiteSpace ( ss ) ) return false;
+			if ( !IPEndPoint.TryParse ( ss, out IPEndPoint ep ) ) return false;
+			IPP = new IPNetPoint ( ep );
+			return true;
+		}
 		public static bool operator == ( IPNetPoint left, IPNetPoint right ) {
 			if ( left is null ) return right is null;
 			return left.Equals ( right );

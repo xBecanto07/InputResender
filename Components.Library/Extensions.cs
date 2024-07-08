@@ -115,7 +115,7 @@ namespace Components.Library {
 			for ( int i = 0; i < N; i++ ) ret[i] = Array.AsReadOnly ( ar[i] );
 			return Array.AsReadOnly ( ret );
 		}
-		public static IReadOnlyCollection<IReadOnlyCollection<T>> AsReadonly2D<T> ( this T[] ar ) => new IReadOnlyCollection<T>[1] { Array.AsReadOnly ( ar ) };
+		public static IReadOnlyList<IReadOnlyList<T>> AsReadonly2D<T> ( this T[] ar ) => new IReadOnlyList<T>[1] { Array.AsReadOnly ( ar ) };
 
 		public static T[][] ToArray2D<T> (this List<List<T>> data) {
 			int N = data.Count;
