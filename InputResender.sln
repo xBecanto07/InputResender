@@ -21,7 +21,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Components.InterfaceTests",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.UnitTests", "InputResender.UnitTests\InputResender.UnitTests.csproj", "{49FBD467-3BD5-41D2-B7C7-FA541EF84FC8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.GUIComponentTests", "InputResender.GUIComponentTests\InputResender.GUIComponentTests.csproj", "{FB6A507A-507A-4035-8465-6F697AFD9221}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.OSDependentTests.Windows", "InputResender.GUIComponentTests\InputResender.OSDependentTests.Windows.csproj", "{FB6A507A-507A-4035-8465-6F697AFD9221}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.Services", "InputResender.Services\InputResender.Services.csproj", "{3EEFF6A1-A12D-4676-AFDE-56EA90266520}"
 EndProject
@@ -35,7 +35,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Components.Factories", "Com
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.Visualizer", "InputResender.Visualizer\InputResender.Visualizer.csproj", "{FCB47BF0-9C2E-47FF-B2F7-CBAE80EB54CC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InputResender.Cmd", "InputResender.Cmd\InputResender.Cmd.csproj", "{5DC422D1-1217-4A4D-8E6F-559EED6C9768}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.SandboxCmd", "InputResender.Cmd\InputResender.SandboxCmd.csproj", "{5DC422D1-1217-4A4D-8E6F-559EED6C9768}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InputResender.OSDependent.Windows", "InputResender.OSDependent.Windows\InputResender.OSDependent.Windows.csproj", "{77C17755-8DC9-4DF1-A920-405E84AFAACF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -251,6 +253,18 @@ Global
 		{5DC422D1-1217-4A4D-8E6F-559EED6C9768}.Release|x64.Build.0 = Release|Any CPU
 		{5DC422D1-1217-4A4D-8E6F-559EED6C9768}.Release|x86.ActiveCfg = Release|Any CPU
 		{5DC422D1-1217-4A4D-8E6F-559EED6C9768}.Release|x86.Build.0 = Release|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|x64.Build.0 = Debug|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|x86.Build.0 = Debug|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Release|x64.ActiveCfg = Release|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Release|x64.Build.0 = Release|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Release|x86.ActiveCfg = Release|Any CPU
+		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

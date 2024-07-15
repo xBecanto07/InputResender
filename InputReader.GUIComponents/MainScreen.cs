@@ -9,7 +9,7 @@ using CompGroup = Components.Library.CoreBase.ComponentGroup;
 namespace InputResender.GUIComponents {
 	public partial class MainScreen : Form {
 		protected DMainAppCore Core;
-		protected IPEndPoint TargetEP;
+		//protected IPEndPoint TargetEP;
 		protected ComponentVisualizer Visualizer;
 
 		protected struct ModifierInfo {

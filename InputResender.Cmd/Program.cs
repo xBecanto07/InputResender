@@ -1,5 +1,4 @@
 ﻿using Components.Implementations;
-using Components.ImplementationTests;
 using Components.Interfaces;
 using Components.Library;
 using InputResender.Services;
@@ -21,27 +20,24 @@ public class Program {
 
 		Console.WriteLine ( "Program started ..." );
 		while (true) {
-			if ( !ProcessLine () ) break;
+			if ( !ProcessLine ( Console.ReadLine (), Console.WriteLine ) ) break;
 		}
 
 		Console.WriteLine ( "Press any key to exit" );
 		Console.ReadKey ();
 	}
 
-	private static bool ProcessLine () {
-		string[] args = new string[16];
-		for ( int i = 0; i < 16; i++ ) args[i] = string.Empty;
-		string[] strings = Console.ReadLine ().Split ( ' ' );
-		Array.Copy ( strings, args, strings.Length );
-		if ( args[0] == "" ) return true;
+	private static bool ProcessLine (string line, Action<string> WriteLine) {
+		ArgParser parser = new ( line, WriteLine );
+		if ( parser.ArgC == 0 ) return true;
 
-		switch ( args[0] ) {
+		switch (parser.String(0, "Command") ) {
 		case "start": try {
-				packetSender ??= new ( core, -1, ( msg, e ) => Console.WriteLine ( $"{msg}{Environment.NewLine}{e.Message}{Environment.NewLine}{e.StackTrace}" ) );
+				packetSender ??= new ( core, -1, ( msg, e ) => WriteLine ( $"{msg}{Environment.NewLine}{e.Message}{Environment.NewLine}{e.StackTrace}" ) );
 				PrintNetworks ( packetSender );
-				Console.WriteLine ( "Started PacketSender with following networks ..." );
+				WriteLine ( "Started PacketSender with following networks ..." );
 			} catch ( Exception e ) {
-				Console.WriteLine ( $"Error when starting: {e.Message}{Environment.NewLine}{e.StackTrace}" );
+				WriteLine ( $"Error when starting: {e.Message}{Environment.NewLine}{e.StackTrace}" );
 				if ( packetSender != null ) packetSender.Destroy ();
 				packetSender = null;
 			}
@@ -49,39 +45,41 @@ public class Program {
 		case "exit": return false;
 		case "networks": PrintNetworks ( packetSender ); return true;
 		case "connect":
-			if ( args[1].Length < 4 ) { Console.WriteLine ( "Missing argument" ); return true; } else {
+			if ( parser.String ( 1, "Target EP", 4 ) == null ) return true;
+			else {
 				try {
-					packetSender.Connect ( args[1] );
-					Console.WriteLine ( "Connected" );
+					packetSender.Connect ( parser.String ( 1, null ) );
+					WriteLine ( "Connected" );
 					return true;
 				} catch ( Exception e ) {
-					Console.WriteLine ( $"Error when connecting: {e.Message}{Environment.NewLine}{e.StackTrace}" );
+					WriteLine ( $"Error when connecting: {e.Message}{Environment.NewLine}{e.StackTrace}" );
 					return true;
 				}
 			}
 		case "recvStart":
 			packetSender.ReceiveAsync ( ( data ) => {
-				Console.WriteLine ( $"Received {data.Length} bytes ({System.Text.Encoding.UTF8.GetString ( data )}" );
+				WriteLine ( $"Received {data.Length} bytes ({System.Text.Encoding.UTF8.GetString ( data )}" );
 				return true;
 			} );
-			Console.WriteLine ( "Started receiving" );
+			WriteLine ( "Started receiving" );
 			return true;
 		case "recvStop":
 			packetSender.ReceiveAsync ( null );
-			Console.WriteLine ( "Stopped receiving" );
+			WriteLine ( "Stopped receiving" );
 			return true;
 		case "send":
-			if ( args[1].Length < 4 ) { Console.WriteLine ( "Missing argument" ); return true; } else {
+			if ( parser.String (1, "Message", 3) == null ) return true;
+			else {
 				try {
-					packetSender.Send ( System.Text.Encoding.UTF8.GetBytes ( args[1] ) );
-					Console.WriteLine ( "Sent" );
+					packetSender.Send ( System.Text.Encoding.UTF8.GetBytes ( parser.String ( 1, null ) ) );
+					WriteLine ( "Sent" );
 					return true;
 				} catch ( Exception e ) {
-					Console.WriteLine ( $"Error when sending: {e.Message}{Environment.NewLine}{e.StackTrace}" );
+					WriteLine ( $"Error when sending: {e.Message}{Environment.NewLine}{e.StackTrace}" );
 					return true;
 				}
 			}
-		default: Console.WriteLine ( "Unknown command" ); return true;
+		default: WriteLine ( "Unknown command" ); return true;
 		}
 	}
 
@@ -92,14 +90,5 @@ public class Program {
 			for (int j = 0; j < network.Count; j++ )
 				Console.WriteLine ( $"  TTL {j} = {network[j].Address}:{network[j].Port}" );
 		}
-	}
-}
-
-class Outputer : ITestOutputHelper {
-	public void WriteLine ( string message ) {
-		System.Console.WriteLine ( message );
-	}
-	public void WriteLine ( string format, params object[] args ) {
-		System.Console.WriteLine ( format, args );
 	}
 }

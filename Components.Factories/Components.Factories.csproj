@@ -8,7 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
     <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
-    <ProjectReference Include="..\InputReader.GUIComponents\InputResender.GUIComponents.csproj" />
+    <ProjectReference Include="..\InputResender.OSDependent.Windows\InputResender.OSDependent.Windows.csproj" />
   </ItemGroup>
 
 </Project>
