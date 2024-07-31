@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
+using System.Security.Cryptography;
 
-namespace InputResender.Services;
+namespace Components.Library;
 public class ArgParser {
 	private class Arg {
 		public int Position;
@@ -27,7 +28,7 @@ public class ArgParser {
 
 				}
 
-				if ( pos == N - 1) {
+				if ( pos == N - 1 ) {
 					if ( readingName ) Name = line[start..];
 					else Value = line[start..];
 					return;
@@ -66,7 +67,7 @@ public class ArgParser {
 
 			int start = i;
 			Arg nextArg = new ( args, ref i, Args.Count );
-			if (string.IsNullOrEmpty(nextArg.Name)) {
+			if ( string.IsNullOrEmpty ( nextArg.Name ) ) {
 				i = start;
 				nextArg = new ( args, ref i, Args.Count );
 				throw new ArgumentException ( $"Unexpected character '{args[i]}' at {i}." );
@@ -84,6 +85,24 @@ public class ArgParser {
 		}
 	}
 
+	public string Line ( int start = 0 ) {
+		System.Text.StringBuilder SB = new ();
+
+		for ( int i = start; i < ArgC; i++ ) {
+			SB.Append ( Args[i].Name );
+			string val = Args[i].Value;
+			if ( !string.IsNullOrEmpty ( val ) ) {
+				SB.Append ( '=' );
+				if ( val.Contains ( ' ' ) ) SB.Append ( $"'{val}'" );
+				else if ( val.Contains ( '=' ) ) SB.Append ( $"'{val}'" );
+				else SB.Append ( val );
+				SB.Append ( val );
+			}
+			SB.Append ( ' ' );
+		}
+		return SB.ToString ();
+	}
+
 	public int ArgC => Args.Count;
 	private Arg this[int id] => (id >= ArgC | id < -ArgC) ? null : Args[id];
 	private Arg this[string key] {
@@ -96,16 +115,10 @@ public class ArgParser {
 			if ( dsc != null ) Output ( $"Argument '{key}' not found. {dsc}" );
 			return null;
 		}
-		if ( string.IsNullOrEmpty ( arg.Value ) ) {
-			int next = arg.Position + 1;
-			if ( next >= ArgC || !string.IsNullOrEmpty ( Args[next].Value ) || Args[next].Name.StartsWith ( '-' ) ) {
-				Output ( $"Argument '{key}' has no value. {dsc}" );
-				return null;
-			}
 
-			arg.Value = Args[next].Name;
-			Args.RemoveAt ( next );
-			for ( int i = next; i < ArgC; i++ ) Args[i].Position--;
+		if ( !GetSepValue ( arg ) ) {
+			Output ( $"Argument '{key}' has no value. {dsc}" );
+			return null;
 		}
 		return arg.Value;
 	}
@@ -116,6 +129,19 @@ public class ArgParser {
 			return null;
 		}
 		return arg.Name;
+	}
+
+	private bool GetSepValue ( Arg arg ) {
+		if ( !string.IsNullOrEmpty ( arg.Value ) ) return true;
+		int next = arg.Position + 1;
+		if ( next >= ArgC || !string.IsNullOrEmpty ( Args[next].Value ) || Args[next].Name.StartsWith ( '-' ) ) {
+			return false;
+		}
+
+		arg.Value = Args[next].Name;
+		Args.RemoveAt ( next );
+		for ( int i = next; i < ArgC; i++ ) Args[i].Position--;
+		return true;
 	}
 
 	private T? Parse<T> ( string arg, object id, string dsc, Func<string, T> parser ) where T : struct {
@@ -151,5 +177,15 @@ public class ArgParser {
 		}
 		return ret;
 	}
+	public bool Present ( int id ) => Args.Any ( arg => arg.Position == id );
 	public bool Present ( string key ) => Args.Any ( arg => arg.Name == key );
+
+	public bool HasValue ( int id, bool tryLoadValue ) => HasValue ( this[id], tryLoadValue );
+	public bool HasValue ( string key, bool tryLoadValue ) => HasValue ( this[key], tryLoadValue );
+	private bool HasValue ( Arg arg, bool tryLoadValue ) {
+		if ( arg == null ) return false;
+		if ( !string.IsNullOrEmpty ( arg.Value ) ) return true;
+		if ( !tryLoadValue ) return false;
+		return GetSepValue ( arg );
+	}
 }

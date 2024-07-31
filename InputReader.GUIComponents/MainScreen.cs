@@ -1,13 +1,14 @@
 ﻿using Components.Interfaces;
 using Components.Library;
+using InputResender.Services;
 using System;
-using System.Collections.Generic;
-using System.Net;
 using System.Windows.Forms;
 using CompGroup = Components.Library.CoreBase.ComponentGroup;
 
 namespace InputResender.GUIComponents {
 	public partial class MainScreen : Form {
+		private readonly ICommandProcessor CmdProcessor;
+		private readonly Action<string> StdOut;
 		protected DMainAppCore Core;
 		//protected IPEndPoint TargetEP;
 		protected ComponentVisualizer Visualizer;
@@ -20,23 +21,25 @@ namespace InputResender.GUIComponents {
 			public override string ToString () => $"{Key} --> {Modifier}{(Locked ? " (Locked)" : "")}";
 		}
 
-		public MainScreen ( DMainAppCore core ) {
+		public void Error (Exception ex) {
+			StdOut?.Invoke ( ex.Message );
+			throw ex;
+		}
+
+		public MainScreen ( ICommandProcessor cmdProc, DMainAppCore core, Action<string> stdout ) {
 			Core = core;
+			CmdProcessor = cmdProc;
+			StdOut = stdout;
+			if ( stdout == null ) throw new ArgumentNullException ( nameof ( stdout ) );
+			if ( core == null ) Error (new ArgumentNullException ( nameof ( core ) ) );
+			if ( cmdProc == null ) Error ( new ArgumentNullException ( nameof ( cmdProc ) ) );
+
 			InitializeComponent ();
 			Core.MainAppControls.Log = WriteLine;
 			UpdateModifiers ();
 
-			var SB = new System.Text.StringBuilder ();
-			foreach ( var net in Core.PacketSender.EPList ) {
-				foreach ( var EP in net ) {
-					string ss = EP.ToString ();
-					if ( ss.StartsWith ( "127.0.0.1" ) ) continue;
-					if ( ss.StartsWith ( "::1" ) ) continue;
-					if ( ss.Contains ( "localhost" ) ) continue;
-					SB.AppendLine ( EP.ToString () );
-				}
-			}
-			EPListLabel.Text = SB.ToString ();
+
+			EPListLabel.Text = cmdProc.ProcessLine ( "network hostlist", true ).Message;
 		}
 
 		public void WriteLine ( string line ) {
