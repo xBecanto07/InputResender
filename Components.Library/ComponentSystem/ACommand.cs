@@ -14,13 +14,20 @@ public abstract class ACommand {
 	protected readonly Dictionary<int, bool> requiredPositionals = new ();
 	protected readonly Dictionary<string, ACommand> subCommands = new ();
 	public abstract string Description { get; }
-	public abstract string Help { get; }
+	public virtual string CallName { get => BasicCallName (); }
+	public virtual string Help { get => BasicHelp (); }
+
+	protected string BasicCallName () =>
+		(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First ();
+	protected string BasicHelp () => CallName + 
+		(subCommands.Count > 0 ? " (" + string.Join ( "|", subCommands.Keys ) + ")" : string.Empty);
 
 	/// <summary>Used to access help of parent command. If null, it's considered the root command. When not command 'history' is not known, it is recommended to provide constructor to your command accepting string parameter and passing it to base constructor.</summary>
 	public ACommand ( string parentHelp ) => parentCommandHelp = parentHelp ?? string.Empty;
 
-	protected static void RegisterSubCommand ( ACommand owner, string name, ACommand nwCmd ) {
+	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd, string name = null ) {
 		if ( owner == null ) throw new ArgumentNullException ( nameof ( owner ) );
+		if ( string.IsNullOrEmpty ( name ) ) name = nwCmd.commandNames.First ();
 		if ( owner.subCommands.ContainsKey (name) ) owner.subCommands[name] = nwCmd;
 		else {
 			if ( nwCmd == null ) return;

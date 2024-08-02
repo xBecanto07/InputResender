@@ -1,7 +1,6 @@
 ﻿using System;
-using Components.Library;
 
-namespace InputResender.Commands; 
+namespace Components.Library; 
 internal class BasicCommands : ACommand<CommandResult> {
 	override public string Description => "Basic commands.";
 	override public string Help => $"{parentCommandHelp} ({string.Join ( "|", commandNames )})";
@@ -15,6 +14,7 @@ internal class BasicCommands : ACommand<CommandResult> {
 		Clear = clear;
 		Exit = exit;
 
+		commandNames.Add ( "safemode" );
 		commandNames.Add ( "help" );
 		commandNames.Add ( "print" );
 		commandNames.Add ( "info" );
@@ -38,6 +38,13 @@ internal class BasicCommands : ACommand<CommandResult> {
 		} else if ( act == "exit" ) {
 			Exit ();
 			return new CommandResult ( "exit" );
+		} else if ( act == "safemode" ) {
+			string val = args.String ( argID + 1, "Value" );
+			switch ( val.ToLower () ) {
+			case "on": case "t": case "1": context.SafeMode = true; return new CommandResult ( "Safe mode on." );
+			case "off": case "f": case "0": context.SafeMode = false; return new CommandResult ( "Safe mode off." );
+			default: return new CommandResult ( $"Unknown value '{val}'." );
+			}
 		} else {
 			return new CommandResult ( $"Unknown action '{act}'." );
 		}

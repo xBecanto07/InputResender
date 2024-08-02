@@ -4,10 +4,13 @@ using System.Collections.Generic;
 namespace Components.Library;
 public interface ICommandProcessor {
 	void AddCommand ( ACommand cmd );
+	/// <summary>Find a command based on a callname. This command is passed to callback function. If this function returns null, no more processing is done. If some reference is returned, it will be either added or replaced in 1st level command list. Removing command is not supported since no use-case has been provided.</summary>
 	void ModifyCommand ( string line, Func<ACommand, ACommand> modifyFcn );
 	CommandResult ProcessLine ( string line, bool verbose = false );
 	CommandResult ProcessLine<T> ( string line, out T result, bool verbose = false ) where T : CommandResult;
 	string Help ();
+
+	bool SafeMode { get; set; }
 
 	void SetVar ( string name, object var );
 	T GetVar<T> ( string name );
@@ -18,6 +21,8 @@ public class CommandProcessor : ICommandProcessor {
 	private Action<string> WriteLine;
 	private Dictionary<string, object> Vars = new ();
 
+	public bool SafeMode { get; set; } = false;
+
 	public CommandProcessor ( Action<string> writeLine ) {
 		WriteLine = writeLine;
 	}
@@ -27,7 +32,7 @@ public class CommandProcessor : ICommandProcessor {
 		SupportedCommands.Add ( cmd );
 	}
 
-	/// <summary>Find a command based on a callname. This command is passed to callback function. If this function returns null, no more processing is done. If some reference is returned, it will be either added or replaced in 1st level command list. Removing command is not supported since no use-case has been provided.</summary>
+	/// <inheritdoc />
 	public void ModifyCommand ( string line, Func<ACommand, ACommand> modifyFcn ) {
 		ArgParser args = new ( line, WriteLine );
 		var parCmd = ACommand.Search ( args, SupportedCommands );
@@ -64,7 +69,14 @@ public class CommandProcessor : ICommandProcessor {
 		var cmd = ACommand.Search ( args, SupportedCommands );
 		if ( cmd == null ) return new ErrorCommandResult ( null, new ArgumentException ( $"Command '{args.String ( 0, "Command" )}' not found." ) );
 
-		return cmd.Execute ( this, args );
+		if ( !SafeMode ) return cmd.Execute ( this, args );
+		else {
+			try {
+				return cmd.Execute ( this, args );
+			} catch ( Exception e ) {
+				return new ErrorCommandResult ( null, e );
+			}
+		}
 	}
 
 	// Currently no support for scope, so all variables are considered global.
