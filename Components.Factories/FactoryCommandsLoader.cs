@@ -1,17 +1,24 @@
 ﻿using Components.Interfaces.Commands;
 using Components.Library;
+using InputResender.Commands;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Components.Factories; 
 public class FactoryCommandsLoader : ACommandLoader {
 	protected override string CmdGroupName => "compfactory";
 	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => new Func<ACommand>[] {
+		() => new CoreManagerCommand (),
 		() => new ComponentCommandLoader ()
 	};
+	protected override IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => new List<(string, Func<ACommand, ACommand>)> {
+		( "core", ( ACommand parent ) => {
+			if ( parent is CoreManagerCommand cmdCore )
+				RegisterSubCommand ( cmdCore, new CoreCreatorCommand () );
+			return null;
+		})
+	};
+
 	/*public override string Description => "Loads commands controling the component factory";
 	public override string Help => $"{parentCommandHelp} {commandNames.First ()}";
 

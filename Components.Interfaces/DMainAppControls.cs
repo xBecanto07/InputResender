@@ -10,13 +10,15 @@ namespace Components.Interfaces {
 		protected DMainAppControls ( DMainAppCore newOwner ) : base ( newOwner ) {
 		}
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
-				(nameof(ChangePassword), typeof(void)),
-				(nameof(ChangeTarget), typeof(void)),
+				//(nameof(ChangePassword), typeof(void)),
+				//(nameof(ChangeTarget), typeof(void)),
 				(nameof(ChangeHookStatus), typeof(bool)),
 				(nameof(HookShouldResend), typeof(bool)),
 			};
-		public abstract void ChangePassword (string password );
-		public abstract void ChangeTarget ( string EPss );
+		// password add <psswd>
+		//public abstract void ChangePassword (string password );
+		// target set <IP4:Port>
+		//public abstract void ChangeTarget ( string EPss );
 		public abstract void ChangeHookStatus ( HHookInfo hookInfo, bool active );
 		public abstract bool HookShouldResend { set; protected get; }
 		public abstract bool Receiving { get; set; }
@@ -45,18 +47,18 @@ namespace Components.Interfaces {
 		public override int ComponentVersion => 1;
 		public override bool HookShouldResend { set; protected get; }
 
-		public override void ChangePassword ( string password ) {
+		/*public override void ChangePassword ( string password ) {
 			Owner.DataSigner.Key = Owner.DataSigner.GenerateIV ( System.Text.Encoding.UTF8.GetBytes ( password ) );
 			Log ( $"Password changed to {Owner.DataSigner.Key.CalcHash ().ToShortCode ()}{Environment.NewLine}" );
-		}
-		public override void ChangeTarget ( string EPss ) {
+		}*/
+		/*public override void ChangeTarget ( string EPss ) {
 			if ( IPEndPoint.TryParse ( EPss, out var newEP ) ) {
 				if ( TargetEP != null ) Owner.PacketSender.Disconnect ( TargetEP );
 				TargetEP = newEP;
 				Owner.PacketSender.Connect ( TargetEP );
 				Log ( $"Changed target to {TargetEP}{Environment.NewLine}" );
 			} else Log ( $"Cannot parse {Log} into a valid IP End Point!" );
-		}
+		}*/
 
 		public override bool Receiving {
 			get => receiving;

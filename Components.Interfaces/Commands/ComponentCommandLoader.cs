@@ -6,5 +6,8 @@ public class ComponentCommandLoader : ACommandLoader {
 
 	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => new Func<ACommand>[] {
 		() => new NetworkManagerCommand (),
+		() => new PasswordManagerCommand (),
+		() => new TargetManagerCommand (),
+		() => new HookCallbackManagerCommand (),
 	};
 }

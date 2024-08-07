@@ -2,6 +2,7 @@
 using RetT = Components.Library.ClassCommandResult<Components.Interfaces.DMainAppCore>;
 using Components.Implementations;
 using System.Linq;
+using InputResender.Commands;
 
 namespace Components.Factories;
 public class CoreCreatorCommand : ACommand<RetT> {
@@ -16,7 +17,7 @@ public class CoreCreatorCommand : ACommand<RetT> {
 
     override protected RetT ExecIner ( ICommandProcessor context, ArgParser args, int argID = 1 ) {
         var Core = DMainAppCoreFactory.CreateDefault ( ( c ) => new VInputSimulator ( c ) );
-        context.SetVar ( "ActCore", Core );
+        context.SetVar ( CoreManagerCommand.ActiveCoreVarName, Core );
         return new RetT ( Core, "Core created." );
     }
 }

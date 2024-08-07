@@ -16,5 +16,6 @@ public class MainSandboxApp {
 		Core.MainAppControls.Log = WriteLine;
 	}
 
-	public void ChangeTarget ( string targ ) => Core.MainAppControls.ChangeTarget ( targ );
+	public void ChangeTarget ( string targ ) => throw new NotImplementedException ();
+	//CmdProcessor.ProcessLine ( $"target set {res.Text}" );
 }

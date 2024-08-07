@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Components.Library; 
-internal class BasicCommands : ACommand<CommandResult> {
+public class BasicCommands : ACommand<CommandResult> {
 	override public string Description => "Basic commands.";
 	override public string Help => $"{parentCommandHelp} ({string.Join ( "|", commandNames )})";
 
@@ -20,6 +20,7 @@ internal class BasicCommands : ACommand<CommandResult> {
 		commandNames.Add ( "info" );
 		commandNames.Add ( "clear" );
 		commandNames.Add ( "exit" );
+		commandNames.Add ( "loadall" );
 	}
 
 	override protected CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID = 1 ) {
@@ -45,6 +46,8 @@ internal class BasicCommands : ACommand<CommandResult> {
 			case "off": case "f": case "0": context.SafeMode = false; return new CommandResult ( "Safe mode off." );
 			default: return new CommandResult ( $"Unknown value '{val}'." );
 			}
+		} else if ( act == "loadall" ) {
+			return context.LoadAllCommands ();
 		} else {
 			return new CommandResult ( $"Unknown action '{act}'." );
 		}

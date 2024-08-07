@@ -54,7 +54,7 @@ public abstract class ACommandLoader : ACommand {
 			if ( loader.NewSubCommands != null ) {
 				foreach ( var subCmdAdder in loader.NewSubCommands ) {
 					if ( subCmdAdder.Item2 == null ) continue;
-					if ( !commands.ContainsKey ( subCmdAdder.Item1 ) )
+					if ( !subCommands.ContainsKey ( subCmdAdder.Item1 ) )
 						subCommands.Add ( subCmdAdder.Item1, subCmdAdder.Item2 );
 				}
 			}

@@ -5,6 +5,7 @@ using Components.Interfaces;
 using InputResender.Services;
 using InputResender.Commands;
 using Components.Interfaces.Commands;
+using Components.Factories;
 
 namespace InputResender;
 internal static class Program {
@@ -20,12 +21,14 @@ internal static class Program {
 
 		cmdProcessor = new ( Console.WriteLine );
 		cmdProcessor.AddCommand ( new BasicCommands ( Console.WriteLine, Console.Clear, () => throw new NotImplementedException () ) );
-		cmdProcessor.AddCommand ( new CoreManagerCommand () );
+		/*cmdProcessor.AddCommand ( new CoreManagerCommand () );
 		cmdProcessor.AddCommand ( new NetworkManagerCommand () );
-		cmdProcessor.AddCommand ( new GUICommands () );
+		cmdProcessor.AddCommand ( new GUICommands () );*/
+		cmdProcessor.AddCommand ( new FactoryCommandsLoader () );
 
 		var startCommands = Config.FetchAutoCommands ( Config.AutostartName );
 		foreach ( var cmd in startCommands ) {
+			Console.WriteLine ( $"$> {cmd}" );
 			cmdProcessor.ProcessLine ( cmd );
 		}
 

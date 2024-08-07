@@ -7,8 +7,11 @@ using System.Collections.Generic;
 namespace InputResender; 
 internal static class Config {
 	private static string homePath = AppDomain.CurrentDomain.BaseDirectory;
-	private readonly static Dictionary<string, string[]> autoCommands = new ();
-	private static string autostartName;
+	private static string SavePath = Path.Combine ( HomePath, "config.xml" );
+	private readonly static Dictionary<string, string[]> autoCommands = new () {
+		{"initCmds", new string[] { "loadall", "safemode on" } }
+	};
+	private static string autostartName = "initCmds";
 
 	public static string AutostartName { get => autostartName; set { autostartName = value; Save (); } }
 	public static string HomePath { get => homePath; set { homePath = value; Save (); } }
@@ -21,6 +24,11 @@ internal static class Config {
 	}
 	public static void AddAutoCommand ( string key, IEnumerable<string> commands ) =>
 		autoCommands[key] = commands.ToArray ();
+
+	private static void SetHomePath ( string path = null ) {
+
+		homePath = path;
+	}
 
 
 	public static void Save () {
@@ -41,11 +49,14 @@ internal static class Config {
 				key.AppendChild ( cmd );
 			}
 		}
+
+		doc.Save ( SavePath );
 	}
+
 	public static void Load ( string path = null ) {
 		if ( string.IsNullOrEmpty ( path ) ) path = Path.Combine ( homePath, "config.xml" );
 
-		if ( File.Exists ( path)) {
+		if ( File.Exists ( path ) ) {
 			if ( Path.GetExtension ( path ) != ".xml" )
 				throw new ArgumentException ( "Invalid file extension." );
 			homePath = Path.GetDirectoryName ( path );
@@ -53,14 +64,15 @@ internal static class Config {
 			homePath = path;
 			path = Path.Combine ( homePath, "config.xml" );
 		}
+		SavePath = path;
 
-		if (!File.Exists ( path ) ) {
+		if (!File.Exists ( homePath ) ) {
 			// Create default config
 			Save ();
 			return;
 		} else {
 			XmlDocument doc = new ();
-			doc.Load ( path );
+			doc.Load ( homePath );
 			XmlElement root = doc.DocumentElement;
 			if ( root.Name != "Config" ) throw new ArgumentException ( "Invalid root element." );
 			foreach ( XmlNode node in root.ChildNodes ) {

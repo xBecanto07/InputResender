@@ -18,6 +18,9 @@ public class GUICommands : ACommand<RetT> {
 	public GUICommands ( string parentHelp = null ) : base (parentHelp) {
 		commandNames.Add ("gui");
 
+		interCommands.Add ( "start" );
+		interCommands.Add ( "stop" );
+
 		requiredPositionals.Add ( 0, false ); // Start/Stop (maybe more later)
 	}
 

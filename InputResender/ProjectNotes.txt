@@ -24,3 +24,11 @@ GUI should be much more separated from app logic.
 PacketSender is not capable of stopping already receiving task, unless it receives data!
 
 Core might benefit from 'constructors registration', where top-level registers Func<Core, ComponentBase>. This would be used when Fetch would otherwise return null to create new component for user to use.
+
+
+
+-- Connection established! --
+Missing functionalities:
+- List existing connections
+- Close connection
+- Send textual message over connection

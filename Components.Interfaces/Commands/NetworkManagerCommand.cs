@@ -1,10 +1,10 @@
 ﻿using Components.Library;
+using InputResender.Commands;
 
 namespace Components.Interfaces.Commands;
 public class NetworkManagerCommand : ACommand<CommandResult> {
     public enum Act { HostList, Connect, Disconnect }
     override public string Description => "Manages network connections.";
-    override public string Help => $"{parentCommandHelp} {commandNames.First ()} ({string.Join ( "|", subCommands.Keys )}";
 
     public NetworkManagerCommand () : base ( null ) {
 		commandNames.Add ( "network" );
@@ -17,14 +17,13 @@ public class NetworkManagerCommand : ACommand<CommandResult> {
 
 public class ListHostsNetworkCommand : ACommand<CommandResult> {
     override public string Description => "Lists available local hosts.";
-    override public string Help => $"{parentCommandHelp} {commandNames.First ()}";
 
     public ListHostsNetworkCommand ( string parentHelp = null ) : base ( parentHelp ) {
         commandNames.Add ( "hostlist" );
     }
 
     override protected CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID = 1 ) {
-        var core = context.GetVar<DMainAppCore> ( "ActCore" );
+        var core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
         var sender = core.Fetch<DPacketSender> ();
         if ( sender == null ) return new CommandResult ( "No packet sender available." );
 

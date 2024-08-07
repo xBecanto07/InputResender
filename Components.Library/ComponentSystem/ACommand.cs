@@ -13,14 +13,26 @@ public abstract class ACommand {
 	protected readonly HashSet<string> requiredSwitches = new ();
 	protected readonly Dictionary<int, bool> requiredPositionals = new ();
 	protected readonly Dictionary<string, ACommand> subCommands = new ();
+	protected readonly HashSet<string> interCommands = new ();
 	public abstract string Description { get; }
 	public virtual string CallName { get => BasicCallName (); }
 	public virtual string Help { get => BasicHelp (); }
 
 	protected string BasicCallName () =>
 		(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First ();
-	protected string BasicHelp () => CallName + 
-		(subCommands.Count > 0 ? " (" + string.Join ( "|", subCommands.Keys ) + ")" : string.Empty);
+	protected string BasicHelp () {
+		System.Text.StringBuilder SB = new ();
+		SB.Append ( CallName );
+		if ( requiredPositionals.Count > 0 ) SB.Append ( " " + string.Join ( " ", requiredPositionals.Keys.Select ( i => requiredPositionals[i] ? $"[{i}]" : i.ToString () ) ) );
+		if ( requiredSwitches.Count > 0 ) SB.Append ( " [-" + string.Join ( "][-", requiredSwitches ) + "]" );
+		if ( interCommands.Any () ) SB.Append ( " (" + string.Join ( "|", interCommands ) + ")" );
+		SB.AppendLine ();
+		SB.AppendLine ( Description.PrefixAllLines ( " - " ) );
+		foreach ( ACommand cmd in subCommands.Values ) {
+			SB.AppendLine ( cmd.Help.PrefixAllLines ( "  . " ) );
+		}
+		return SB.ToString ().Trim ();
+	}
 
 	/// <summary>Used to access help of parent command. If null, it's considered the root command. When not command 'history' is not known, it is recommended to provide constructor to your command accepting string parameter and passing it to base constructor.</summary>
 	public ACommand ( string parentHelp ) => parentCommandHelp = parentHelp ?? string.Empty;
@@ -78,6 +90,8 @@ public abstract class ACommand {
 		}
 		return null;
 	}
+
+	override public string ToString () => CallName;
 }
 
 public abstract class ACommand<T> : ACommand where T : CommandResult {

@@ -50,14 +50,14 @@ namespace InputResender.GUIComponents {
 		private void PsswdUpdateBtn_Click ( object sender, EventArgs e ) {
 			var res = TextPromptDialog.Show ( "Enter new group passphrase:", DMainAppControls.PsswdRegEx, true );
 			if ( !res.DidSubmit ) return;
-			Core.MainAppControls.ChangePassword ( res.Text );
+			CmdProcessor.ProcessLine ( $"password add {res.Text}" );
 			Visualizer?.UpdateData ();
 		}
 
 		private void EPUpdateBtn_Click ( object sender, EventArgs e ) {
 			var res = TextPromptDialog.Show ( "Enter new end point (IPv4:Port):", "([\\d]{1,3}\\.[\\d]{1,3}\\.[\\d]{1,3}\\.[\\d]{1,3}):([\\d]{1,5})" );
 			if ( !res.DidSubmit ) return;
-			Core.MainAppControls.ChangeTarget ( res.Text );
+			CmdProcessor.ProcessLine ( $"target set {res.Text}" );
 			Visualizer?.UpdateData ();
 		}
 
