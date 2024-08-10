@@ -3,7 +3,13 @@
 namespace Components.Library; 
 public class BasicCommands : ACommand<CommandResult> {
 	override public string Description => "Basic commands.";
-	override public string Help => $"{parentCommandHelp} ({string.Join ( "|", commandNames )})";
+	override public string Help => "help - Show this help." + Environment.NewLine +
+		"info - Show info." + Environment.NewLine +
+		"print <Text> - Print text." + Environment.NewLine +
+		"clear - Clear screen." + Environment.NewLine +
+		"exit - Exit program." + Environment.NewLine +
+		"safemode <on|off> - Enable or disable safe mode." + Environment.NewLine +
+		"loadall - Load all commands." + Environment.NewLine;
 
 	private readonly Action<string> Print;
 	private readonly Action Clear;
@@ -21,6 +27,7 @@ public class BasicCommands : ACommand<CommandResult> {
 		commandNames.Add ( "clear" );
 		commandNames.Add ( "exit" );
 		commandNames.Add ( "loadall" );
+		commandNames.Add ( "argParse" );
 	}
 
 	override protected CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID = 1 ) {
@@ -48,6 +55,9 @@ public class BasicCommands : ACommand<CommandResult> {
 			}
 		} else if ( act == "loadall" ) {
 			return context.LoadAllCommands ();
+		} else if ( act == "argParse" ) {
+			// Debug only command, don't add to help
+			return new CommandResult ( $"Entered {args.ArgC} arguments:{Environment.NewLine}{args.Log ()}" );
 		} else {
 			return new CommandResult ( $"Unknown action '{act}'." );
 		}

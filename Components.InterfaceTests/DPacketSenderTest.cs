@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Xunit;
 using Xunit.Abstractions;
+using static Components.Interfaces.DPacketSender;
 
 namespace Components.InterfaceTests {
 	public abstract class DPacketSenderTest<TestObjT> : ComponentTestBase<TestObjT> where TestObjT : DPacketSender {
@@ -34,10 +35,10 @@ namespace Components.InterfaceTests {
 				if ( !bEPIter.MoveNext () ) break;
 				Output.WriteLine ( $"Testing {aEPIter.Current} -> {bEPIter.Current}" );
 				Connect ( sender, receiver, aEPIter.Current, bEPIter.Current );
-				receiver.ReceiveAsync ( SimpleCallback );
+				receiver.OnReceive += SimpleCallback;
 				for ( int i = 0; i < reps; i++ ) {
 					Output.WriteLine ( $"Sending message #{i}" );
-					receiver.ReceiveAsync ( SimpleCallback );
+					receiver.OnReceive += SimpleCallback;
 					sender.Send ( data );
 				}
 				Disconnect ( sender, receiver, aEPIter.Current, bEPIter.Current );
@@ -53,10 +54,10 @@ namespace Components.InterfaceTests {
 			}
 		}
 
-		protected bool SimpleCallback ( byte[] data) {
+		protected CallbackResult SimpleCallback ( byte[] data, bool processed ) {
 			Received.Add (data.CalcHash ());
 			resetEvent.Set ();
-			return !TestFinished;
+			return TestFinished ? CallbackResult.Stop : CallbackResult.None;
 		}
 
 		protected byte[] GenData ( int length ) {

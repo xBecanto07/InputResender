@@ -20,12 +20,9 @@ namespace Components.Implementations {
 		public readonly int Port;
 		readonly NetClientList Clients;
 		List<(string msg, Exception e)> errors;
-		public delegate void ReceiveHandler ( byte[] data );
-		public event ReceiveHandler OnReceiveEvent;
-		public Task ReceiverTask;
 		public IReadOnlyDictionary<INetPoint, NetworkConnection> ActiveConns;
 		private readonly BlockingCollection<NetMessagePacket> PacketBuffer;
-		private Func<byte[], bool> Receiver;
+		private readonly List<Func<byte[], bool, CallbackResult>> OnReceiveHandlers = new ();
 		private List<INetPoint[]> NetList;
 
 		private event Action<string, Exception> OnErrorLocal;
@@ -115,24 +112,37 @@ namespace Components.Implementations {
 
 		private INetDevice.ProcessResult LocalReceiver ( NetMessagePacket msg ) {
 			lock ( PacketBuffer ) {
-				if ( Receiver != null ) return Receiver ( msg.Data ) ? INetDevice.ProcessResult.Accepted : INetDevice.ProcessResult.Skiped;
+				//if ( Receiver != null ) return Receiver ( msg.Data ) ? INetDevice.ProcessResult.Accepted : INetDevice.ProcessResult.Skiped;
+				foreach ( var handler in OnReceiveHandlers ) {
+					var ret = handler ( msg.Data, false );
+					if ( ret.HasFlag ( CallbackResult.Skip ) ) return INetDevice.ProcessResult.Skiped;
+					if ( !ret.HasFlag ( CallbackResult.Stop ) ) return INetDevice.ProcessResult.Accepted;
+				}
 				if ( PacketBuffer.Count >= MaxBufferSize ) PacketBuffer.Take ();
 				PacketBuffer.Add ( msg );
 				return INetDevice.ProcessResult.Accepted;
 			}
 		}
 
-		public override void ReceiveAsync ( Func<byte[], bool> callback ) {
-			lock ( PacketBuffer ) {
-				if ( callback == null ) Receiver = null;
-				else {
+		public override event Func<byte[], bool, CallbackResult> OnReceive {
+			add {
+				if ( value == null ) return;
+				lock (PacketBuffer) {
 					List<NetMessagePacket> declined = new ();
 					while ( PacketBuffer.Count > 0 ) {
 						var msg = PacketBuffer.Take ();
-						if ( !callback ( msg.Data ) ) declined.Add ( msg );
+						var ret = value ( msg.Data, false );
+						if ( !ret.HasFlag ( CallbackResult.Skip) ) declined.Add ( msg );
+						if ( ret.HasFlag( CallbackResult.Stop) ) return; // Caller does no longer want to receive (might be due to a full buffer, error or received specific message)
 					}
 					foreach ( var msg in declined ) PacketBuffer.Add ( msg );
-					Receiver = callback;
+					OnReceiveHandlers.Add ( value );
+				}
+			}
+			remove {
+				if ( value == null ) return;
+				lock ( PacketBuffer ) {
+					OnReceiveHandlers.Remove ( value );
 				}
 			}
 		}

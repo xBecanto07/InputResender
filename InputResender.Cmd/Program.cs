@@ -6,9 +6,10 @@ using InputResender.Services.NetClientService.InMemNet;
 using InputResender.ServiceTests.NetServices;
 using System;
 using Xunit.Abstractions;
+using static Components.Interfaces.DPacketSender;
 
 
-namespace InputResender.Cmd;
+namespace InputResender.SandboxCmd;
 public class Program {
 	static CoreBase core;
 	static VPacketSender packetSender;
@@ -57,14 +58,11 @@ public class Program {
 				}
 			}
 		case "recvStart":
-			packetSender.ReceiveAsync ( ( data ) => {
-				WriteLine ( $"Received {data.Length} bytes ({System.Text.Encoding.UTF8.GetString ( data )}" );
-				return true;
-			} );
+			packetSender.OnReceive += LocalReceiver;
 			WriteLine ( "Started receiving" );
 			return true;
 		case "recvStop":
-			packetSender.ReceiveAsync ( null );
+			packetSender.OnReceive -= LocalReceiver;
 			WriteLine ( "Stopped receiving" );
 			return true;
 		case "send":
@@ -81,6 +79,11 @@ public class Program {
 			}
 		default: WriteLine ( "Unknown command" ); return true;
 		}
+	}
+
+	static CallbackResult LocalReceiver ( byte[] data, bool sentStatus ) {
+		Console.WriteLine ( $"Received {data.Length} bytes ({System.Text.Encoding.UTF8.GetString ( data )})" );
+		return CallbackResult.None;
 	}
 
 	static void PrintNetworks ( VPacketSender packetSender ) {

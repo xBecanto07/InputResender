@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
+using static Components.Interfaces.DPacketSender;
 using static Components.Interfaces.InputData;
 using SBld = System.Text.StringBuilder;
 
@@ -87,17 +88,17 @@ namespace InputResender.UserTesting {
 		private IEnumerable<Action> WaitForMessage (KeyCode key, InputData.Modifier mods) {
 			Program.WriteLine ( $"Waiting for {InputData.Command.KeyPress} | {key} | {mods}" );
 			AutoResetEvent waiter = new AutoResetEvent ( false );
-			Core.PacketSender.ReceiveAsync ( ( data ) => {
+			Core.PacketSender.OnReceive += ( data, isProcessed ) => {
 				var msg = Core.DataSigner.Decrypt ( data );
 				InputData combo = (InputData)Combo.Deserialize ( msg );
-				if ( combo == null ) return true;
+				if ( combo == null ) return CallbackResult.Skip;
 				Program.WriteLine ( $"Received: {combo.Cmnd} | {combo.Key} | {combo.Modifiers}" );
-				if ( combo.Cmnd != InputData.Command.KeyPress ) return true;
-				if ( combo.Key != key ) return true;
-				if ( combo.Modifiers != mods ) return true;
+				if ( combo.Cmnd != InputData.Command.KeyPress ) return CallbackResult.Skip;
+				if ( combo.Key != key ) return CallbackResult.Skip;
+				if ( combo.Modifiers != mods ) return CallbackResult.Skip;
 				waiter.Set ();
-				return false;
-			} );
+				return CallbackResult.Stop;
+			};
 			yield return () => waiter.WaitOne ();
 			yield break;
 		}

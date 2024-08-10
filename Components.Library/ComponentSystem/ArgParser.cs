@@ -20,29 +20,32 @@ public class ArgParser {
 
 			bool readingName = true;
 			bool isEscaped = false;
-			int start = pos;
+			bool isQuoted = false;
+			string arg = string.Empty;
+
 			for ( int N = line.Length; pos < N; pos++ ) {
 				if ( isEscaped ) { isEscaped = false; continue; }
 				if ( line[pos] == '\\' ) { isEscaped = true; continue; }
-				if ( line[pos] == '"' ) {
-
-				}
+				if ( line[pos] == '"' ) isQuoted = !isQuoted;
+				else arg += line[pos];
+				if ( isQuoted ) continue;
 
 				if ( pos == N - 1 ) {
-					if ( readingName ) Name = line[start..];
-					else Value = line[start..];
+					// End of line
+					if ( readingName ) Name = arg;
+					else Value = arg;
 					return;
 				}
 				if ( char.IsWhiteSpace ( line[pos] ) || char.IsSeparator ( line[pos] ) ) {
-					if ( readingName ) Name = line[start..pos];
-					else Value = line[start..pos];
+					if ( readingName ) Name = arg[..^1];
+					else Value = arg[..^1];
 					return;
 				}
 				if ( line[pos] == '=' ) {
 					if ( readingName ) {
-						Name = line[start..pos];
+						Name = arg[..^1];
 						readingName = false;
-						start = pos + 1;
+						arg = string.Empty;
 					} else {
 						throw new ArgumentException ( $"Unexpected '=' at {pos}" );
 					}
@@ -85,6 +88,7 @@ public class ArgParser {
 		}
 	}
 
+	/// <summary>Return all arguments as a single line (starting from given index).</summary>
 	public string Line ( int start = 0 ) {
 		System.Text.StringBuilder SB = new ();
 
@@ -187,5 +191,12 @@ public class ArgParser {
 		if ( !string.IsNullOrEmpty ( arg.Value ) ) return true;
 		if ( !tryLoadValue ) return false;
 		return GetSepValue ( arg );
+	}
+
+	public string Log () {
+		System.Text.StringBuilder SB = new ();
+		foreach ( var arg in Args )
+			SB.AppendLine ( $"Arg #{arg.Position}: '{arg.Name}' = '{arg.Value}'" );
+		return SB.ToString ();
 	}
 }

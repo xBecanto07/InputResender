@@ -29,6 +29,11 @@ Core might benefit from 'constructors registration', where top-level registers F
 
 -- Connection established! --
 Missing functionalities:
-- List existing connections
-- Close connection
-- Send textual message over connection
+✓ List existing connections
+✓ Close connection
+? Send textual message over connection
+× Send file over connection - That's actually not a bad idea, won't implement now but good bot :)
+✓ Receive textual message over connection - Message should be received by now, but no way of setting up any callback
+- Disconnect (via 'target set none') passes, but the connection stays at 'conns list' - I believe it's somewhat intented that connection is not removed until necessary, but maybe at least add 'conns remove' command or --force switch...
+
+Note: inputHooks are still untested :(

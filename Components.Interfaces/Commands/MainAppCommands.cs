@@ -53,6 +53,11 @@ public class TargetManagerCommand : ACommand {
 		switch ( args.String ( argID, "Action" ) ) {
 		case "set":
 			string target = args.String ( argID + 1, "Target end point" );
+			if (target == "none") {
+				if ( TargetEP != null ) core.PacketSender.Disconnect ( TargetEP );
+				TargetEP = null;
+				return new CommandResult ( "Target disconnected." );
+			}
 			if ( !IPEndPoint.TryParse ( target, out IPEndPoint EP ) )
 				return new CommandResult ( $"Provided target '{target}' is not a valid end point." );
 			if ( TargetEP != null ) core.PacketSender.Disconnect ( TargetEP );

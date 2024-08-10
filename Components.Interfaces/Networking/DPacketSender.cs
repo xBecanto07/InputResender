@@ -10,7 +10,8 @@ namespace Components.Interfaces {
 				(nameof(Disconnect), typeof(void)),
 				(nameof(Send), typeof(void)),
 				(nameof(Recv), typeof(void)),
-				(nameof(ReceiveAsync), typeof(void)),
+				("add_"+nameof(OnReceive), typeof(void)),
+				("remove_"+nameof(OnReceive), typeof(void)),
 				("get_"+nameof(EPList), typeof(IReadOnlyList<IReadOnlyList<object>>)),
 				("get_"+nameof(Connections), typeof(int)),
 				("get_"+nameof(Errors), typeof(IReadOnlyCollection<(string msg, Exception e)>)),
@@ -20,6 +21,8 @@ namespace Components.Interfaces {
 				(nameof(IsPacketSenderConnected), typeof(bool))
 			};
 
+		[Flags]
+		public enum CallbackResult { None = 0, Skip = 1, Stop = 2, Fallback = 4 }
 		public abstract IReadOnlyList<IReadOnlyList<object>> EPList { get; }
 		public abstract IReadOnlyCollection<(string msg, Exception e)> Errors { get; }
 		public abstract int Connections { get; }
@@ -29,7 +32,8 @@ namespace Components.Interfaces {
 		public abstract void Send ( byte[] data );
 		/// <summary>Direct receive</summary>
 		public abstract void Recv ( byte[] data );
-		public abstract void ReceiveAsync ( Func<byte[], bool> callback );
+		/// <summary>List of all recv handlers. Will be iterated from newest to oldest. (binary data, was procesed)=>CallbackResult</summary>
+		public abstract event Func<byte[], bool, CallbackResult> OnReceive;
 		public abstract void Destroy ();
 		public abstract bool IsEPConnected ( object ep );
 		public abstract event Action<string, Exception> OnError;
@@ -80,7 +84,6 @@ namespace Components.Interfaces {
 	public class MPacketSender : DPacketSender {
 		List<MPacketSender> ConnList = new List<MPacketSender> ();
 		Queue<byte[]> MsgQueue = new Queue<byte[]> ();
-		Func<byte[], bool> Callback = null;
 
 		public MPacketSender ( CoreBase owner ) : base ( owner ) { }
 
@@ -91,6 +94,7 @@ namespace Components.Interfaces {
 		public override IReadOnlyList<IReadOnlyList<MPacketSender>> EPList { get => new []{ this }.AsReadonly2D (); }
 		public override IReadOnlyCollection<(string msg, Exception e)> Errors { get => new List<(string msg, Exception e)> ().AsReadOnly (); }
 		public override bool IsEPConnected ( object ep ) => ConnList.Contains ( ep );
+		private readonly List<Func<byte[], bool, CallbackResult>> OnReceiveHandlers = new ();
 
 		public override void Connect ( object ep ) {
 			if ( ep is not MPacketSender mpSender ) throw new InvalidCastException ( $"Unexpected object type: {ep.GetType ().Name}." );
@@ -106,14 +110,21 @@ namespace Components.Interfaces {
 			if ( !ConnList.Remove ( mpSender ) ) throw new InvalidOperationException ( $"No active connection to {ep}" );
 			if ( !mpSender.ConnList.Remove ( this ) ) throw new InvalidOperationException ( $"{mpSender.Name} is not connected to this" );
 		}
-		public override void ReceiveAsync ( Func<byte[], bool> callback ) {
-			Callback = callback;
-			while ( MsgQueue.Count > 0 ) {
-				if ( !Callback ( MsgQueue.Dequeue () ) ) {
-					// Caller does no longer want to receive
-					Callback = null;
-					return;
+		public override event Func<byte[], bool, CallbackResult> OnReceive {
+			add {
+				if ( value == null ) return;
+				while ( MsgQueue.Count > 0 ) {
+					var ret = value ( MsgQueue.Dequeue (), false );
+					if ( ret.HasFlag ( CallbackResult.Stop ) ) {
+						// Caller does no longer want to receive
+						return;
+					}
 				}
+				OnReceiveHandlers.Add ( value );
+			}
+			remove {
+				if ( value == null ) return;
+				OnReceiveHandlers.Remove ( value );
 			}
 		}
 		public override void Send ( byte[] data ) {
@@ -121,23 +132,36 @@ namespace Components.Interfaces {
 				receiver.Recv ( data );
 		}
 		public override void Recv ( byte[] data ) {
-			if ( Callback != null ) { if ( !Callback ( data ) ) Callback = null; }
-			else if ( MsgQueue.Count < 16 ) MsgQueue.Enqueue ( data );
+			bool proc = false;
+			List<Func<byte[], bool, CallbackResult>> removedCBs = new ();
+			foreach ( var Callback in OnReceiveHandlers ) {
+				var ret = Callback ( data, proc );
+				proc |= !ret.HasFlag ( CallbackResult.Skip );
+				if ( !ret.HasFlag (CallbackResult.Stop) ) removedCBs.Add ( Callback );
+			}
+			foreach ( var Callback in removedCBs ) OnReceive -= Callback;
+			if (!proc) {
+				if (MsgQueue.Count >= 16 ) MsgQueue.Dequeue ();
+				MsgQueue.Enqueue ( data );
+			}
 		}
 
 		public override void Destroy () {
 			ConnList.Clear (); MsgQueue.Clear ();
-			Callback = null; MsgQueue = null; ConnList = null;
+			OnReceiveHandlers.Clear (); MsgQueue = null; ConnList = null;
 		}
 
 		public override StateInfo Info => new VStateInfo ( this );
 		public class VStateInfo : DStateInfo {
 			public new MPacketSender Owner => (MPacketSender)base.Owner;
 			public VStateInfo ( MPacketSender owner ) : base ( owner ) {
-				LocalCallback = Owner.Callback.Method.AsString ();
+				//LocalCallback = Owner.Callback.Method.AsString ();
+				LocalCallbacks = new string[Owner.OnReceiveHandlers.Count];
+				for ( int i = 0; i < Owner.OnReceiveHandlers.Count; i++ )
+					LocalCallbacks[i] = Owner.OnReceiveHandlers[i].Method.AsString ();
 			}
 
-			public string LocalCallback;
+			public string[] LocalCallbacks;
 
 			protected override string[] GetConnections () {
 				int N = Owner.ConnList.Count;
@@ -154,7 +178,7 @@ namespace Components.Interfaces {
 					ret[ID++] = msg.ToHex ();
 				return ret;
 			}
-			public override string AllInfo () => $"{base.AllInfo ()}{BR}Callback:{BR}{LocalCallback}";
+			public override string AllInfo () => $"{base.AllInfo ()}{BR}Callback:{BR}{string.Join (", ", LocalCallbacks)}";
 		}
 	}
 }

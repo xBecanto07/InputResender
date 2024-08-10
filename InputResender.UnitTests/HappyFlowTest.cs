@@ -38,7 +38,7 @@ namespace InputResender.UnitTests {
 
 			Sender.PacketSender.Connect ( Receiver.PacketSender.OwnEP ( 0, 0 ) );
 			Receiver.PacketSender.Connect ( Sender.PacketSender.OwnEP ( 0, 0 ) );
-			Receiver.PacketSender.ReceiveAsync ( RecvCB );
+			Receiver.PacketSender.OnReceive += RecvCB;
 		}
 
 		protected bool ProcessInput ( DictionaryKey key, HInputEventDataHolder inputData) {
@@ -52,7 +52,7 @@ namespace InputResender.UnitTests {
 			Sender.PacketSender.Send ( packet );
 		}
 
-		protected bool RecvCB ( byte[] data) {
+		protected DPacketSender.CallbackResult RecvCB ( byte[] data, bool isProcessed ) {
 			InputData recvData;
 			if (data == null) {
 				recvData = null;
@@ -64,7 +64,7 @@ namespace InputResender.UnitTests {
 				ReceivedInput.Add ( recvData );
 				receivedEvent.Set ();
 			}
-			return true;
+			return DPacketSender.CallbackResult.None;
 		}
 
 		protected void WaitForInput (int N) {

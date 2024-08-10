@@ -2,6 +2,7 @@
 using System.Net;
 using System.Reflection;
 using Components.Library;
+using static Components.Interfaces.DPacketSender;
 
 namespace Components.Interfaces {
 	public abstract class DMainAppControls : ComponentBase<DMainAppCore> {
@@ -65,17 +66,17 @@ namespace Components.Interfaces {
 			set {
 				receiving = value;
 				if ( value ) {
-					Owner.PacketSender.ReceiveAsync ( PrivRecvCallback );
+					Owner.PacketSender.OnReceive += PrivRecvCallback;
 				}
 			}
 		}
-		private bool PrivRecvCallback ( byte[] data) {
-			if ( !receiving ) return false;
+		private CallbackResult PrivRecvCallback ( byte[] data, bool processed ) {
+			if ( !receiving ) return CallbackResult.Stop;
 			byte[] packet = Owner.DataSigner.Encrypt ( data );
 			if ( lastInputData == null ) lastInputData = new InputData ( this );
 			lastInputData = (InputData)lastInputData.Deserialize ( data );
 			recvCallback?.Invoke ( lastInputData );
-			return true;
+			return CallbackResult.None;
 		}
 		InputData lastInputData;
 		Action<InputData> recvCallback = null;
