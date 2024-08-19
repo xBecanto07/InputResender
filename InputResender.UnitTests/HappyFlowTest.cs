@@ -48,17 +48,17 @@ namespace InputResender.UnitTests {
 		}
 		private void ProcessedCallback ( InputData inputData ) {
 			SentInput.Add ( inputData );
-			var packet = Sender.DataSigner.Encrypt ( inputData.Serialize (), IV );
+			var packet = Sender.DataSigner.Encrypt ( (HMessageHolder)inputData.Serialize (), IV );
 			Sender.PacketSender.Send ( packet );
 		}
 
-		protected DPacketSender.CallbackResult RecvCB ( byte[] data, bool isProcessed ) {
+		protected DPacketSender.CallbackResult RecvCB ( HMessageHolder data, bool isProcessed ) {
 			InputData recvData;
 			if (data == null) {
 				recvData = null;
 			} else {
-				byte[] decoded = Receiver.DataSigner.Decrypt ( data, IV );
-				recvData = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded );
+				HMessageHolder decoded = Receiver.DataSigner.Decrypt ( data, IV );
+				recvData = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded.InnerMsg );
 			}
 			lock (ReceivedInput) {
 				ReceivedInput.Add ( recvData );
@@ -80,7 +80,7 @@ namespace InputResender.UnitTests {
 		public void SendRecv () {
 			Init ();
 			var data = new InputData ( Receiver.Fetch<DPacketSender> () ) { Cmnd = InputData.Command.KeyPress, DeviceID = 1, Key = KeyCode.E, X = 1 };
-			var packet = Sender.DataSigner.Encrypt ( data.Serialize (), IV );
+			var packet = Sender.DataSigner.Encrypt ( (HMessageHolder)data.Serialize (), IV );
 			Sender.PacketSender.Send ( packet );
 			receivedEvent.WaitOne ();
 			ReceivedInput.Should ().HaveCount ( 1 );

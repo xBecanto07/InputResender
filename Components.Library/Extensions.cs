@@ -40,6 +40,7 @@ public static class Extensions {
 		return SB.ToString ();
 	}
 	public static string ToHex ( this byte[] data ) => data == null ? "NULL" : BitConverter.ToString ( data ).Replace ( "-", null );
+	public static string ToHex ( this ReadOnlySpan<byte> data ) => data.IsEmpty ? "NULL" : BitConverter.ToString ( data.ToArray () ).Replace ( "-", null );
 	public static IntPtr ToUnmanaged (this IntPtr value) {
 		var ptr = Marshal.AllocHGlobal ( IntPtr.Size );
 		var bAr = BitConverter.GetBytes ( value );
@@ -83,13 +84,14 @@ public static class Extensions {
 		return ret;
 	}
 
-	public static long CalcHash ( this byte[] data, int start = 0, int size = -1 ) {
-		if ( data == null ) return -1;
+	public static long CalcHash ( this ReadOnlySpan<byte> data, int start = 0, int size = -1 ) {
+		if ( data.IsEmpty ) return -1;
 		if ( size < 0 ) size = data.Length - start;
 		long ret = 0;
 		for ( int i = start; i < start + size; i++ ) ret += data[i] ^ i.CalcHash ();
 		return ret;
 	}
+	public static long CalcHash ( this byte[] data, int start = 0, int size = -1 ) => data == null ? -1 : CalcHash ( (ReadOnlySpan<byte>)data, start, size );
 
 	public static int CalcHash (this int num) {
 		uint seed = 0x57981A3D;

@@ -11,7 +11,7 @@ public abstract class ACommandLoader : ACommand {
 	protected virtual IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => null;
 
 	// Note that created command might not be actually added to the context
-	protected sealed override CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID ) {
+	protected sealed override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
 		string ret = string.Empty;
 		Dictionary<string, ACommand> commands = new ();
 		Dictionary<string, Func<ACommand, ACommand>> subCommands = new ();

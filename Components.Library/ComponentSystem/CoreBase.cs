@@ -10,6 +10,8 @@ namespace Components.Library {
 		public readonly int CoreID;
 		public string Name;
 		public Action<string> LogFcn = null;
+		private readonly List<string> DelayedMessages = new ();
+		public enum LogLevel { None, Error, Warning, Info, Debug, All }
 
 		public class ComponentInfo {
 			public readonly ComponentBase Component;
@@ -20,7 +22,7 @@ namespace Components.Library {
 			public DictionaryKey GroupID;
 			public int Priority;
 
-			public ComponentInfo (ComponentBase comp, DictionaryKey globID) { Component = comp; GlobalID = globID; }
+			public ComponentInfo ( ComponentBase comp, DictionaryKey globID ) { Component = comp; GlobalID = globID; }
 			public override string ToString () => $"{Component}({GlobalID}:{Name}:{GroupID}:{Priority})";
 		}
 
@@ -28,7 +30,7 @@ namespace Components.Library {
 			public readonly CoreBase Core;
 			IEnumerable<ComponentInfo> comps;
 
-			public ComponentGroup(CoreBase core, Func<ComponentInfo, bool> selector ) {
+			public ComponentGroup ( CoreBase core, Func<ComponentInfo, bool> selector ) {
 				Core = core;
 				comps = Core.Components.Values.Where ( selector );
 			}
@@ -38,7 +40,7 @@ namespace Components.Library {
 			public ComponentInfo GetInfo () {
 				int mostPrio = int.MinValue;
 				ComponentInfo ret = null;
-				foreach (var c in comps) {
+				foreach ( var c in comps ) {
 					if ( c.Priority > mostPrio ) { mostPrio = c.Priority; ret = c; }
 				}
 				return ret;
@@ -47,7 +49,7 @@ namespace Components.Library {
 			public bool Contains ( ComponentBase obj ) => comps.Any ( ( val ) => val.Component == obj );
 
 			public static Func<ComponentInfo, bool> ByType<T> () where T : ComponentBase => ByType ( typeof ( T ) );
-			public static Func<ComponentInfo, bool> ByType (Type t) => ( comp ) => comp.TypeTree.Contains ( t );
+			public static Func<ComponentInfo, bool> ByType ( Type t ) => ( comp ) => comp.TypeTree.Contains ( t );
 			public static Func<ComponentInfo, bool> ByName ( string name ) => ( comp ) => comp.Name == name;
 			public static Func<ComponentInfo, bool> BySubGroupID ( DictionaryKey subGroupID ) => ( comp ) => comp.GroupID == subGroupID;
 			public static Func<ComponentInfo, bool> ByVariantName ( string variantName ) => ( comp ) => comp.VariantName == variantName;
@@ -56,7 +58,7 @@ namespace Components.Library {
 
 		private static readonly string[] nameList = new string[] { "Alfa", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu" };
 
-		public CoreBase() {
+		public CoreBase () {
 			lock ( nameList ) {
 				CoreID = index++;
 				Name = nameList[CoreID % nameList.Length];
@@ -68,7 +70,7 @@ namespace Components.Library {
 
 		public void Register<T> ( T component, string name = null, int priority = 0 ) where T : ComponentBase {
 			DictionaryKey key = DictionaryKey.Empty;
-			Register (component, ref key, name, priority );
+			Register ( component, ref key, name, priority );
 		}
 		public DictionaryKey Register<T> ( T component, ref DictionaryKey perTypeID, string name = null, int priority = 0 ) where T : ComponentBase {
 			if ( IsRegistered ( component ) ) throw new ArgumentException ( "Given component instance is already registered!" );
@@ -81,9 +83,9 @@ namespace Components.Library {
 			compInfo.Priority = priority;
 			if ( perTypeID.Valid ) compInfo.GroupID = perTypeID;
 			else {
-				var group = new ComponentGroup (this, ( comp ) => comp.TypeTree[0] == compInfo.TypeTree[0] ).GetInfoGroup ();
+				var group = new ComponentGroup ( this, ( comp ) => comp.TypeTree[0] == compInfo.TypeTree[0] ).GetInfoGroup ();
 				int ID = 1;
-				foreach (var comp in group) {
+				foreach ( var comp in group ) {
 					int compID = comp.GroupID.GetHashCode ();
 					if ( compID >= ID ) ID = compID + 1;
 				}
@@ -93,23 +95,25 @@ namespace Components.Library {
 			Components.Add ( retKey, compInfo );
 			return retKey;
 		}
-		public void Register (ComponentInfo compInfo) {
+		public void Register ( ComponentInfo compInfo ) {
 			if ( Components.ContainsKey ( compInfo.GlobalID ) ) throw new ArgumentException ( $"There is another component already registered under key {compInfo.GlobalID}" );
 			Components.Add ( compInfo.GlobalID, compInfo );
 		}
 
 		public ComponentBase this[DictionaryKey ID] => Components[ID].Component;
-		public ComponentInfo this[ComponentBase comp] { get {
-				foreach (var compInfo in  Components) {
+		public ComponentInfo this[ComponentBase comp] {
+			get {
+				foreach ( var compInfo in Components ) {
 					if ( compInfo.Value.Component == comp )
 						return compInfo.Value;
 				}
 				return null;
-			} }
+			}
+		}
 
-		public void SelectNewPriority ( ComponentInfo[] group, ComponentBase newPrioComp, int newPrio = 15) {
+		public void SelectNewPriority ( ComponentInfo[] group, ComponentBase newPrioComp, int newPrio = 15 ) {
 			int N = group.Length;
-			for (int i = 0; i < N; i++ ) {
+			for ( int i = 0; i < N; i++ ) {
 				var CI = group[i];
 				if ( Components.TryGetValue ( CI.GlobalID, out var comp ) ) {
 					if ( comp != CI ) throw new KeyNotFoundException ( $"Component {CI.Name}#{CI.GlobalID} is not the one, registered in this core under same ID!" );
@@ -146,7 +150,7 @@ namespace Components.Library {
 			if ( acceptedType != null ) ret.Reduce ( ComponentGroup.ByAcceptedType ( acceptedType ) );
 			return ret.Get ();
 		}
-		public ComponentBase Fetch (string name, DictionaryKey subGroupID = default, string variantName = null, Type acceptedType = null ) {
+		public ComponentBase Fetch ( string name, DictionaryKey subGroupID = default, string variantName = null, Type acceptedType = null ) {
 			var ret = new ComponentGroup ( this, ComponentGroup.ByName ( name ) );
 			if ( subGroupID.Valid ) ret.Reduce ( ComponentGroup.BySubGroupID ( subGroupID ) );
 			if ( variantName != null ) ret.Reduce ( ComponentGroup.ByVariantName ( variantName ) );
@@ -167,6 +171,27 @@ namespace Components.Library {
 			Type t = typeof ( T );
 			foreach ( var val in Components ) if ( val.Value.TypeTree.Contains ( t ) ) return true;
 			return false;
+		}
+
+		public void PushDelayedMsg ( string msg ) {
+			lock ( DelayedMessages ) DelayedMessages.Add ( msg );
+		}
+		public void PushDelayedError ( string msg, Exception ex ) {
+			lock ( DelayedMessages ) DelayedMessages.Add ( $"{msg}: {ex.Message}{Environment.NewLine}{ex.StackTrace}" );
+		}
+		public void FlushDelayedMsgs ( Action<string> printer = null ) {
+			lock ( DelayedMessages ) {
+				if ( !DelayedMessages.Any () ) return;
+				var PrintFcn = printer ?? LogFcn;
+				if ( PrintFcn == null ) {
+					var cmdProc = Fetch<CommandProcessor> ();
+					if ( cmdProc == null ) throw new Exception ( "No printer function available!" );
+					PrintFcn = ( msg ) => cmdProc.ProcessLine ( $"print \"{msg}\"" );
+				}
+
+				foreach ( var msg in DelayedMessages ) LogFcn?.Invoke ( msg );
+				DelayedMessages.Clear ();
+			}
 		}
 	}
 

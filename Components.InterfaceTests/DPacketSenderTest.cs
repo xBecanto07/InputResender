@@ -26,7 +26,7 @@ namespace Components.InterfaceTests {
 		public void SendRecvTest (int reps ) {
 			//UDPDeviceLL.OnMessage += Output.WriteLine;
 
-			byte[] data = SetupTest ( out var sender, out var receiver );
+			HMessageHolder data = SetupTest ( out var sender, out var receiver );
 			var aEPIter = GetLocalPoint ( sender, 0 ).GetEnumerator ();
 			var bEPIter = GetLocalPoint ( receiver, 0 ).GetEnumerator ();
 			Output.WriteLine ( $"Starting test with {reps} repetitions, A: {sender}, B: {receiver}" );
@@ -45,7 +45,7 @@ namespace Components.InterfaceTests {
 
 				var logger = OwnerCore.Fetch ( typeof ( DLogger ) );
 				if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
-				long hash = data.CalcHash ();
+				long hash = data.Span.CalcHash ();
 				Received.Should ().HaveCount ( reps ).And.OnlyContain ( val => val == hash );
 				receiver.Errors.Should ().BeEmpty ();
 				Output.WriteLine ( $"Finished {aEPIter.Current} -> {bEPIter.Current}" );
@@ -54,8 +54,8 @@ namespace Components.InterfaceTests {
 			}
 		}
 
-		protected CallbackResult SimpleCallback ( byte[] data, bool processed ) {
-			Received.Add (data.CalcHash ());
+		protected CallbackResult SimpleCallback ( HMessageHolder data, bool processed ) {
+			Received.Add (data.Span.CalcHash ());
 			resetEvent.Set ();
 			return TestFinished ? CallbackResult.Stop : CallbackResult.None;
 		}
@@ -66,11 +66,11 @@ namespace Components.InterfaceTests {
 			return ret;
 		}
 
-		protected virtual byte[] SetupTest (out TestObjT sender, out TestObjT receiver ) {
+		protected virtual HMessageHolder SetupTest (out TestObjT sender, out TestObjT receiver ) {
 			Received.Clear ();
 			sender = GenerateTestObject ();
 			receiver = GenerateTestObject ();
-			return GenData ( 32 );
+			return new ( HMessageHolder.MsgFlags.None, GenData ( 32 ) );
 		}
 
 		protected void Connect ( TestObjT A, TestObjT B, object aEP, object bEP ) {

@@ -24,7 +24,7 @@ public class GUICommands : ACommand<RetT> {
 		requiredPositionals.Add ( 0, false ); // Start/Stop (maybe more later)
 	}
 
-	override protected RetT ExecIner ( ICommandProcessor context, ArgParser args, int argID = 1 ) {
+	override protected RetT ExecIner ( CommandProcessor context, ArgParser args, int argID = 1 ) {
 		string act = args.String ( argID, "Action" );
 		if ( act == "start" ) {
 			if ( mainScreen != null ) return new RetT ( mainScreen, "Main screen is already running." );

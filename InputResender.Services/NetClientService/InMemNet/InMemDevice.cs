@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Components.Interfaces;
+using System;
 using System.Collections.Generic;
 
 namespace InputResender.Services.NetClientService.InMemNet {
@@ -127,14 +128,13 @@ namespace InputResender.Services.NetClientService.InMemNet {
 	public class InMemDeviceLL : ANetDeviceLL<InMemNetPoint> {
 		public InMemDeviceLL ( InMemNetPoint ep, Func<NetMessagePacket, bool> receiver ) : base ( ep, receiver ) { }
 
-		public INetDevice.ProcessResult ReceiveMsg ( NetMessagePacket msg ) {
+		public new INetDevice.ProcessResult ReceiveMsg ( NetMessagePacket msg ) {
 			if ( msg == null ) throw new ArgumentNullException ( nameof ( msg ) );
 			if ( msg.TargetEP != LocalEP ) throw new InvalidOperationException ( "TargetEP of given message is not this device" );
 
 			// Break reference to 1) allow modification of original data, 2) to prevent modification of data after it was sent and 3) to simulate network behavior
-			byte[] recvBuff = new byte[msg.Data.Length];
-			msg.Data.CopyTo ( recvBuff, 0 );
-			NetMessagePacket recvMsg = new ( recvBuff, targetEP: msg.TargetEP, sourceEP: msg.SourceEP );
+			byte[] newData = (byte[])msg.Data;
+			NetMessagePacket recvMsg = new ( (HMessageHolder)newData, targetEP: msg.TargetEP, sourceEP: msg.SourceEP );
 
 			return base.ReceiveMsg ( recvMsg );
 		}

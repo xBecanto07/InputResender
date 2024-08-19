@@ -21,9 +21,6 @@ internal static class Program {
 
 		cmdProcessor = new ( Console.WriteLine );
 		cmdProcessor.AddCommand ( new BasicCommands ( Console.WriteLine, Console.Clear, () => throw new NotImplementedException () ) );
-		/*cmdProcessor.AddCommand ( new CoreManagerCommand () );
-		cmdProcessor.AddCommand ( new NetworkManagerCommand () );
-		cmdProcessor.AddCommand ( new GUICommands () );*/
 		cmdProcessor.AddCommand ( new FactoryCommandsLoader () );
 
 		var startCommands = Config.FetchAutoCommands ( Config.AutostartName );
@@ -37,6 +34,7 @@ internal static class Program {
 			string line = Console.ReadLine ();
 			if ( line == "exit" ) break;
 			var res = cmdProcessor.ProcessLine ( line );
+			cmdProcessor.Owner.FlushDelayedMsgs ( Console.WriteLine );
 			if ( res == null ) continue;
 			if ( string.IsNullOrWhiteSpace ( res.Message ) ) continue;
 			if ( res.Message.Contains ( Environment.NewLine ) )

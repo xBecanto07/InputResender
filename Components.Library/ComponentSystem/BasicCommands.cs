@@ -28,9 +28,10 @@ public class BasicCommands : ACommand<CommandResult> {
 		commandNames.Add ( "exit" );
 		commandNames.Add ( "loadall" );
 		commandNames.Add ( "argParse" );
+		commandNames.Add ( "loglevel" );
 	}
 
-	override protected CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID = 1 ) {
+	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID = 1 ) {
 		argID--;
 		string act = args.String ( argID, "Command" );
 		if ( act == "help" ) {
@@ -58,6 +59,16 @@ public class BasicCommands : ACommand<CommandResult> {
 		} else if ( act == "argParse" ) {
 			// Debug only command, don't add to help
 			return new CommandResult ( $"Entered {args.ArgC} arguments:{Environment.NewLine}{args.Log ()}" );
+		} else if ( act == "loglevel" ) {
+			CoreBase.LogLevel level = args.EnumC<CoreBase.LogLevel> ( argID + 1, "Level" );
+			switch ( level ) {
+			case CoreBase.LogLevel.None:
+				context.Owner.LogFcn = null;
+				return new CommandResult ( "Log level set to None." );
+			default:
+				context.Owner.LogFcn = ( msg ) => Print ( $"! {msg}" );
+				return new CommandResult ( $"Log level set to {level} (note that only On/Off is supported at the moment)." );
+			}
 		} else {
 			return new CommandResult ( $"Unknown action '{act}'." );
 		}

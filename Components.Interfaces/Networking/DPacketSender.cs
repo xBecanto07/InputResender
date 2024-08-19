@@ -29,11 +29,12 @@ namespace Components.Interfaces {
 		public abstract object OwnEP ( int TTL, int network );
 		public abstract void Connect ( object ep );
 		public abstract void Disconnect ( object ep );
-		public abstract void Send ( byte[] data );
+		public abstract void Send ( HMessageHolder data );
 		/// <summary>Direct receive</summary>
 		public abstract void Recv ( byte[] data );
 		/// <summary>List of all recv handlers. Will be iterated from newest to oldest. (binary data, was procesed)=>CallbackResult</summary>
-		public abstract event Func<byte[], bool, CallbackResult> OnReceive;
+		public abstract event Func<HMessageHolder, bool, CallbackResult> OnReceive;
+		public abstract event Action<object> OnNewConn;
 		public abstract void Destroy ();
 		public abstract bool IsEPConnected ( object ep );
 		public abstract event Action<string, Exception> OnError;
@@ -83,7 +84,10 @@ namespace Components.Interfaces {
 	/// <summary>Thread unsafe!</summary>
 	public class MPacketSender : DPacketSender {
 		List<MPacketSender> ConnList = new List<MPacketSender> ();
-		Queue<byte[]> MsgQueue = new Queue<byte[]> ();
+		Queue<HMessageHolder> MsgQueue = new Queue<HMessageHolder> ();
+
+		private event Action<MPacketSender> OnNewConnLocal;
+		public override event Action<object> OnNewConn {  add => OnNewConnLocal += value; remove => OnNewConnLocal -= value; }
 
 		public MPacketSender ( CoreBase owner ) : base ( owner ) { }
 
@@ -94,7 +98,7 @@ namespace Components.Interfaces {
 		public override IReadOnlyList<IReadOnlyList<MPacketSender>> EPList { get => new []{ this }.AsReadonly2D (); }
 		public override IReadOnlyCollection<(string msg, Exception e)> Errors { get => new List<(string msg, Exception e)> ().AsReadOnly (); }
 		public override bool IsEPConnected ( object ep ) => ConnList.Contains ( ep );
-		private readonly List<Func<byte[], bool, CallbackResult>> OnReceiveHandlers = new ();
+		private readonly List<Func<HMessageHolder, bool, CallbackResult>> OnReceiveHandlers = new ();
 
 		public override void Connect ( object ep ) {
 			if ( ep is not MPacketSender mpSender ) throw new InvalidCastException ( $"Unexpected object type: {ep.GetType ().Name}." );
@@ -110,7 +114,7 @@ namespace Components.Interfaces {
 			if ( !ConnList.Remove ( mpSender ) ) throw new InvalidOperationException ( $"No active connection to {ep}" );
 			if ( !mpSender.ConnList.Remove ( this ) ) throw new InvalidOperationException ( $"{mpSender.Name} is not connected to this" );
 		}
-		public override event Func<byte[], bool, CallbackResult> OnReceive {
+		public override event Func<HMessageHolder, bool, CallbackResult> OnReceive {
 			add {
 				if ( value == null ) return;
 				while ( MsgQueue.Count > 0 ) {
@@ -127,22 +131,23 @@ namespace Components.Interfaces {
 				OnReceiveHandlers.Remove ( value );
 			}
 		}
-		public override void Send ( byte[] data ) {
+		public override void Send ( HMessageHolder data ) {
 			foreach ( MPacketSender receiver in ConnList )
-				receiver.Recv ( data );
+				receiver.Recv ( (byte[])data );
 		}
 		public override void Recv ( byte[] data ) {
 			bool proc = false;
-			List<Func<byte[], bool, CallbackResult>> removedCBs = new ();
+			var msg = (HMessageHolder)data;
+			List<Func<HMessageHolder, bool, CallbackResult>> removedCBs = new ();
 			foreach ( var Callback in OnReceiveHandlers ) {
-				var ret = Callback ( data, proc );
+				var ret = Callback ( msg, proc );
 				proc |= !ret.HasFlag ( CallbackResult.Skip );
 				if ( !ret.HasFlag (CallbackResult.Stop) ) removedCBs.Add ( Callback );
 			}
 			foreach ( var Callback in removedCBs ) OnReceive -= Callback;
 			if (!proc) {
 				if (MsgQueue.Count >= 16 ) MsgQueue.Dequeue ();
-				MsgQueue.Enqueue ( data );
+				MsgQueue.Enqueue ( msg );
 			}
 		}
 
@@ -175,7 +180,7 @@ namespace Components.Interfaces {
 				string[] ret = new string[N];
 				int ID = 0;
 				foreach ( var msg in Owner.MsgQueue )
-					ret[ID++] = msg.ToHex ();
+					ret[ID++] = msg.Span.ToHex ();
 				return ret;
 			}
 			public override string AllInfo () => $"{base.AllInfo ()}{BR}Callback:{BR}{string.Join (", ", LocalCallbacks)}";

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using InputResender.Commands;
+using System;
 using System.Collections.Generic;
 
 namespace Components.Library;
@@ -95,6 +96,14 @@ public class CommandProcessor : ComponentBase, ICommandProcessor {
 		if ( verbose ) WriteLine ( $"Processing line: '{line}'" );
 		ArgParser args = new ( line, WriteLine );
 		if ( args.ArgC == 0 ) return new CommandResult ( string.Empty, false );
+
+		if (args.String (0, null) == "core" && args.String(1, null) == "own") {
+			var core = GetVar<CoreBase> ( CoreManagerCommand.ActiveCoreVarName );
+			if ( core == null ) return new ClassCommandResult<CoreBase> ( null, "No active core." );
+			if (Owner == core) return new ClassCommandResult<CoreBase> ( core, "Active core already ownes this context." );
+			ChangeOwner ( core );
+			return new ClassCommandResult<CoreBase> ( core, "Active core is now owner of this context." );
+		}
 
 		var cmd = ACommand.Search ( args, registeredCmds );
 		if ( cmd == null ) return new ErrorCommandResult ( null, new ArgumentException ( $"Command '{args.String ( 0, "Command" )}' not found." ) );

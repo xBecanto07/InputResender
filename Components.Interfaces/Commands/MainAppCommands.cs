@@ -3,15 +3,6 @@ using InputResender.Commands;
 using System.Net;
 
 namespace Components.Interfaces;
-/*public class MainAppCommands : ACommand {
-	PasswordManagerCommand passwordManager;
-	public override string Description => "Main application commands.";
-
-	public MainAppCommands ( ACommand parent = null ) : base ( parent?.CallName ) {
-		commandNames.Add 
-	}
-}*/
-
 public class PasswordManagerCommand : ACommand {
 	public override string Description => "Password management";
 
@@ -23,7 +14,7 @@ public class PasswordManagerCommand : ACommand {
 		interCommands.Add ( "print" );
 	}
 
-	protected override CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID ) {
+	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
 		DMainAppCore core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		switch ( args.String ( argID, "Action" ) ) {
 		case "add":
@@ -48,7 +39,7 @@ public class TargetManagerCommand : ACommand {
 		interCommands.Add ( "set" );
 	}
 
-	protected override CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID ) {
+	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
 		DMainAppCore core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		switch ( args.String ( argID, "Action" ) ) {
 		case "set":
@@ -60,7 +51,9 @@ public class TargetManagerCommand : ACommand {
 			}
 			if ( !IPEndPoint.TryParse ( target, out IPEndPoint EP ) )
 				return new CommandResult ( $"Provided target '{target}' is not a valid end point." );
-			if ( TargetEP != null ) core.PacketSender.Disconnect ( TargetEP );
+			if ( TargetEP != null ) {
+				try { core.PacketSender.Disconnect ( TargetEP ); } catch { }
+			}
 			TargetEP = EP;
 			core.PacketSender.Connect ( TargetEP );
 			return new CommandResult ( $"Target set to {TargetEP}" );
@@ -81,7 +74,7 @@ public class HookManagerCommand : ACommand {
 		interCommands.Add ( "start" );
 	}
 
-	protected override CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID ) {
+	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
 		DMainAppCore core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		switch ( args.String ( argID, "Action" ) ) {
 		case "status": return new CommandResult ( $"Hook status: {(hookInfo != null ? "active" : "inactive")}" );
@@ -125,7 +118,7 @@ public class HookCallbackManagerCommand : ACommand {
 		PrintCB
 	};
 
-	protected override CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID ) {
+	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
 		switch ( args.String ( argID, "Action" ) ) {
 		case "list":
 			return new CommandResult ( $"Available callbacks: {string.Join ( ", ", PossibleCallbacks.Select ( (cb, i) => $"{i}: {cb.Method.Name}" ) )}" );

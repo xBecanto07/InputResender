@@ -70,11 +70,11 @@ namespace Components.Interfaces {
 				}
 			}
 		}
-		private CallbackResult PrivRecvCallback ( byte[] data, bool processed ) {
+		private CallbackResult PrivRecvCallback ( HMessageHolder data, bool processed ) {
 			if ( !receiving ) return CallbackResult.Stop;
-			byte[] packet = Owner.DataSigner.Encrypt ( data );
-			if ( lastInputData == null ) lastInputData = new InputData ( this );
-			lastInputData = (InputData)lastInputData.Deserialize ( data );
+			var packet = Owner.DataSigner.Encrypt ( data );
+			if ( lastInputData == null ) lastInputData = new InputData ( this ); // Prepare the 'deserializer' (cannot be static couse it inherits)
+			lastInputData = (InputData)lastInputData.Deserialize ( packet.InnerMsg );
 			recvCallback?.Invoke ( lastInputData );
 			return CallbackResult.None;
 		}

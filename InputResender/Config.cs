@@ -44,7 +44,7 @@ internal static class Config {
 			XmlElement key = doc.CreateElement ( pair.Key );
 			autoCmds.AppendChild ( key );
 			for ( int i = 0; i < pair.Value.Length; i++ ) {
-				XmlElement cmd = doc.CreateElement ( i.ToString () );
+				XmlElement cmd = doc.CreateElement ( $"C{i}" );
 				cmd.InnerText = pair.Value[i];
 				key.AppendChild ( cmd );
 			}
@@ -59,7 +59,7 @@ internal static class Config {
 		if ( File.Exists ( path ) ) {
 			if ( Path.GetExtension ( path ) != ".xml" )
 				throw new ArgumentException ( "Invalid file extension." );
-			homePath = Path.GetDirectoryName ( path );
+			homePath = path;
 		} else if ( Directory.Exists ( path ) ) {
 			homePath = path;
 			path = Path.Combine ( homePath, "config.xml" );

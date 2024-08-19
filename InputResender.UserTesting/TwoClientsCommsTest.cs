@@ -90,7 +90,7 @@ namespace InputResender.UserTesting {
 			AutoResetEvent waiter = new AutoResetEvent ( false );
 			Core.PacketSender.OnReceive += ( data, isProcessed ) => {
 				var msg = Core.DataSigner.Decrypt ( data );
-				InputData combo = (InputData)Combo.Deserialize ( msg );
+				InputData combo = (InputData)Combo.Deserialize ( msg.InnerMsg );
 				if ( combo == null ) return CallbackResult.Skip;
 				Program.WriteLine ( $"Received: {combo.Cmnd} | {combo.Key} | {combo.Modifiers}" );
 				if ( combo.Cmnd != InputData.Command.KeyPress ) return CallbackResult.Skip;
@@ -104,7 +104,7 @@ namespace InputResender.UserTesting {
 		}
 
 		private void ProcessedCallback (InputData combo ) {
-			byte[] msg = Core.DataSigner.Encrypt ( combo.Serialize () );
+			HMessageHolder msg = Core.DataSigner.Encrypt ( (HMessageHolder)combo.Serialize () );
 			if ( UserTestApp.ClientState == ClientState.Slave ) {
 				Program.WriteLine ( $"Input: {combo.Cmnd} | {combo.Key} | {combo.Modifiers}" );
 				if ( combo.Cmnd != Command.KeyPress ) return;

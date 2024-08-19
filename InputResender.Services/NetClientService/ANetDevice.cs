@@ -90,7 +90,7 @@ namespace InputResender.Services.NetClientService {
 			if ( msg == null ) return false;
 			if ( msg.TargetEP == null ) return false;
 			if ( msg.SourceEP != EP ) return false;
-			var res = boundedLLDevice.Send ( msg.Data, msg.TargetEP as EPT );
+			var res = boundedLLDevice.Send ( (byte[])msg.Data, msg.TargetEP as EPT );
 			Waiter ( msg, res );
 			return res;
 		}
@@ -117,7 +117,7 @@ namespace InputResender.Services.NetClientService {
 
 				// Send confirmation to requester
 				var accMsg = NetMessagePacket.CreateSignal ( INetDevice.SignalMsgType.Confirm, EP, msg.SourceEP );
-				boundedLLDevice.Send ( accMsg.Data, remoteEP );
+				boundedLLDevice.Send ( (byte[])accMsg.Data, remoteEP );
 
 				return true;
 

@@ -23,7 +23,7 @@ public class ConnectionManagerCommand : ACommand {
 		interCommands.Add ( "callback" );
 	}
 
-	override protected CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID ) {
+	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
 		var core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		if ( core.Fetch<DPacketSender> () is not VPacketSender sender )
 			return new CommandResult ( "No packet sender available." );
@@ -66,7 +66,7 @@ public class ConnectionManagerCommand : ACommand {
 				return new CommandResult ( "Callback removed." );
 			default:
 				if ( lastContext != null )
-					sender.OnReceive -= RecvCallback; // Ensure only one callback is set.
+					sender.OnReceive -= RecvCallback; // Ensure only one (our) callback is set.
 				lastContext = context;
 				sender.OnReceive += RecvCallback;
 				return new CommandResult ( "Callback set." );
@@ -77,11 +77,11 @@ public class ConnectionManagerCommand : ACommand {
 		}
 	}
 
-	private CallbackResult RecvCallback ( byte[] data, bool wasProcessed ) {
+	private CallbackResult RecvCallback ( HMessageHolder data, bool wasProcessed ) {
 		switch ( CBSelector ) {
 		case CBSel.None: return CallbackResult.Skip | CallbackResult.Stop;
 		case CBSel.Print:
-			lastContext.ProcessLine ( $"print \"{System.Text.Encoding.UTF8.GetString ( data )}\"" );
+			lastContext.ProcessLine ( $"print \"{System.Text.Encoding.UTF8.GetString ( data.InnerMsg )}\"" );
 			return CallbackResult.None;
 		default: return CallbackResult.Skip;
 		}

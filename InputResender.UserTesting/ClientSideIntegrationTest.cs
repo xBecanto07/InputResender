@@ -11,14 +11,14 @@ using SBld = System.Text.StringBuilder;
 namespace InputResender.UserTesting {
 	public class ClientSideIntegrationTest : UserTestBase {
 		public static ClientState SupportedState = ClientState.Master;
-		Queue<byte[]> RecvData;
+		Queue<HMessageHolder> RecvData;
 		string Password = "Blbosti1";
 
 		DMainAppCoreFactory CoreFactory;
 		DMainAppCore Core;
 
 		public ClientSideIntegrationTest ( SBld sb ) : base ( sb ) {
-			RecvData = new Queue<byte[]> ();
+			RecvData = new ();
 			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
 			Core = CoreFactory.CreateVMainAppCore ();
 		}
@@ -47,7 +47,7 @@ namespace InputResender.UserTesting {
 				signer.Key = signer.GenerateIV ( System.Text.Encoding.UTF8.GetBytes ( Password ) );
 				var decrypted = signer.Decrypt ( msg );
 				var combo = new InputData ( signer );
-				combo = (InputData)combo.Deserialize ( decrypted );
+				combo = (InputData)combo.Deserialize ( decrypted.InnerMsg );
 				if ( !combo.Pressed ) continue;
 				if ( combo.Modifiers != expMod ) {
 					Program.WriteLine ( $"({expMod})expected, {combo.Modifiers} active. Waiting for more input ({tryCnt} left)" );
@@ -85,7 +85,7 @@ namespace InputResender.UserTesting {
 			Core.InputProcessor.ProcessInput ( combo );
 		}
 		private void ProcessedCallback (InputData inputData) {
-			var msg = Core.DataSigner.Encrypt ( inputData.Serialize () );
+			var msg = Core.DataSigner.Encrypt ( (HMessageHolder)inputData.Serialize () );
 			RecvData.Enqueue ( msg );
 			Program.SendSignal ();
 		}

@@ -30,7 +30,7 @@ namespace InputResender.Services.NetClientService {
 			var packet = CreateConnRequestSignal ();
 
 			DeviceLL.OnReceive += OnReceive;
-			DeviceLL.Send ( packet.Data, packet.TargetEP as EPT );
+			DeviceLL.Send ( (byte[])packet.Data, packet.TargetEP as EPT );
 
 			int res;
 			if ( ct == null ) res = Signal.WaitOne ( TimeSpan.FromMinutes ( 10 ) ) ? 0 : 1;

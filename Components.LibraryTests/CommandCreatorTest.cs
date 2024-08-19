@@ -44,7 +44,7 @@ internal abstract class ATestCommand : ACommand {
 	public abstract string CommandName { get; }
 	override public string Description => $"Test command {CommandName.ToUpper ()}";
 	public ATestCommand ( string parentHelp = null ) : base ( parentHelp ) => commandNames.Add ( CommandName );
-	override protected CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID ) => new ( $"Test command {CallName.ToUpper ()} executed." );
+	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) => new ( $"Test command {CallName.ToUpper ()} executed." );
 }
 internal class CommandA1 : ATestCommand {
 	override public string CommandName => CommandAdderA1.A1;

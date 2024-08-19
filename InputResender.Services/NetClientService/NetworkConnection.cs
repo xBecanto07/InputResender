@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Components.Interfaces;
+using Components.Library;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -84,7 +86,7 @@ namespace InputResender.Services {
 		/// <summary>Instructs local device to send data to the target network point.</summary>
 		public bool Send ( byte[] data ) {
 			if ( Sender == null ) throw new InvalidOperationException ( "Connection is closed" );
-			NetMessagePacket packet = new ( data, TargetEP, LocalDevice.EP );
+			NetMessagePacket packet = new ( (HMessageHolder)data, TargetEP, LocalDevice.EP );
 			return Sender ( packet );
 		}
 
@@ -128,14 +130,14 @@ namespace InputResender.Services {
 
 
 	public class NetMessagePacket {
-		public readonly byte[] Data;
+		public readonly HMessageHolder Data;
 		public readonly INetPoint TargetEP;
 		public readonly INetPoint SourceEP;
 		public readonly INetDevice.SignalMsgType SignalType;
 		public readonly INetDevice.NetworkError Error;
 		public readonly DateTime TimeStamp;
 
-		public NetMessagePacket ( byte[] data, INetPoint targetEP, INetPoint sourceEP ) {
+		public NetMessagePacket ( HMessageHolder data, INetPoint targetEP, INetPoint sourceEP ) {
 			if ( targetEP == null ) throw new ArgumentNullException ( nameof ( targetEP ) );
 			if ( sourceEP == null ) throw new ArgumentNullException ( nameof ( sourceEP ) );
 			if ( data == null ) throw new ArgumentNullException ( nameof ( data ) );
@@ -152,17 +154,11 @@ namespace InputResender.Services {
 			Error = error;
 		}
 
-		static INetDevice.SignalMsgType ParseSignalMessage ( byte[] data ) {
+		static INetDevice.SignalMsgType ParseSignalMessage ( HMessageHolder data ) {
 			if ( data == null || data.Length != INetDevice.SignalMsgSize ) return INetDevice.SignalMsgType.None;
 			if ( data[0] != 0xAA ) return INetDevice.SignalMsgType.None;
 			if ( Enum.TryParse<INetDevice.SignalMsgType> ( data[1].ToString (), out var msgType ) ) return msgType;
 			else return INetDevice.SignalMsgType.None;
-
-			/*var msgType = (INetDevice.SignalMsgType)data[1];
-			return msgType switch {
-				INetDevice.SignalMsgType.Close => msgType,
-				_ => INetDevice.SignalMsgType.None,
-			};*/
 		}
 
 		public bool IsError => Error != INetDevice.NetworkError.None;
@@ -181,14 +177,14 @@ namespace InputResender.Services {
 			msgData[0] = 0xAA;
 			msgData[1] = (byte)msgType;
 			for ( int i = 2; i < INetDevice.SignalMsgSize; i++ ) msgData[i] = 0xFF;
-			return new ( msgData, dst, src );
+			return new ( new HMessageHolder ( HMessageHolder.MsgFlags.None, msgData), dst, src );
 		}
 
 		public override string ToString () {
-			System.Text.StringBuilder SB = new ();
-			SB.Append ( $"{SourceEP}->{TargetEP}({SignalType}/{Error})@{TimeStamp.ToString ( "m:ss:fff" )}[{Data.Length}]" );
-			foreach ( var b in Data ) SB.Append ( $" {b:X2}" );
-			return SB.ToString ();
+			//System.Text.StringBuilder SB = new ();
+			return $"{SourceEP}->{TargetEP}({SignalType}/{Error})@{TimeStamp.ToString ( "m:ss:fff" )}[{Data.Length}] {Data.Span.ToHex ()}";
+			//foreach ( var b in Data ) SB.Append ( $" {b:X2}" );
+			//return SB.ToString ();
 		}
 	}
 

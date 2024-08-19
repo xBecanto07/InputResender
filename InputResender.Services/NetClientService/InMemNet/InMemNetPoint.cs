@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Components.Interfaces;
+using System;
 using System.Collections.Generic;
 
 namespace InputResender.Services.NetClientService.InMemNet {
@@ -74,7 +75,7 @@ namespace InputResender.Services.NetClientService.InMemNet {
 		public bool SendHere ( byte[] data, InMemNetPoint senderEP ) {
 			if ( ListeningDevice == null ) throw new InvalidOperationException ( $"Not listening" );
 			if ( ListeningDevice.BoundedInMemDeviceLL == null ) throw new InvalidOperationException ( $"Listening device not bound properly" );
-			NetMessagePacket msg = new ( data, this, senderEP );
+			NetMessagePacket msg = new ( (HMessageHolder)data, this, senderEP );
 			var status = ListeningDevice.BoundedInMemDeviceLL.ReceiveMsg ( msg );
 			switch (status) {
 			case INetDevice.ProcessResult.Accepted: return true;

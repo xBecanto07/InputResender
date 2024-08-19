@@ -199,4 +199,15 @@ public class ArgParser {
 			SB.AppendLine ( $"Arg #{arg.Position}: '{arg.Name}' = '{arg.Value}'" );
 		return SB.ToString ();
 	}
+	public T EnumC<T> ( int id, string dsc ) where T : struct {
+		if ( !Enum.TryParse ( String ( id, dsc ), true, out T ret ) ) {
+			Output ( $"Argument #{id} is not {typeof ( T ).Name}." );
+			return default;
+		}
+		if ( !Enum.IsDefined ( typeof ( T ), ret ) ) {
+			Output ( $"Argument #{id} is not a valid {typeof ( T ).Name}." );
+			return default;
+		}
+		return ret;
+	}
 }

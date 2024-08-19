@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
     <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
   </ItemGroup>
 

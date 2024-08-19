@@ -18,20 +18,20 @@ namespace Components.Implementations {
 		public override int ComponentVersion => 1;
 		public override int ChecksumSize => HashSize * 2 + KeySize;
 
-		public override byte[] Decrypt ( byte[] data, byte[] IV = null ) {
+		public override HMessageHolder Decrypt ( HMessageHolder data, byte[] IV = null ) {
 			// Data size should be checked in integrity test
 			if ( !TestIntegrity ( data ) ) return null;
-			if ( IV == null ) IV = data.SubArray ( ChecksumSize - KeySize, KeySize );
+			if ( IV == null ) IV = data.InnerMsg.SubArray ( ChecksumSize - KeySize, KeySize );
 			if ( !TestPsswd ( data, IV ) ) return null;
 
 			using ( Aes aes = Aes.Create () ) {
 				aes.Key = Key;
 				aes.IV = IV;
-				ReadOnlySpan<byte> dataSpan = new ReadOnlySpan<byte> ( data, ChecksumSize, data.Length - ChecksumSize );
-				return aes.DecryptCbc ( dataSpan, IV );
+				ReadOnlySpan<byte> dataSpan = new ReadOnlySpan<byte> ( data.InnerMsg, ChecksumSize, data.Length - ChecksumSize );
+				return new ( HMessageHolder.MsgFlags.None, aes.DecryptCbc ( dataSpan, IV ) );
 			}
 		}
-		public override byte[] Encrypt ( byte[] data, byte[] IV = null ) {
+		public override HMessageHolder Encrypt ( HMessageHolder data, byte[] IV = null ) {
 			if ( IV == null ) IV = GenerateIV ();
 			using ( Aes aes = Aes.Create () ) {
 				aes.Key = Key;
@@ -40,20 +40,20 @@ namespace Components.Implementations {
 				List<byte> ret = new List<byte> ();
 				ret.AddRange ( MD5.HashData ( Key.Merge ( IV ) ) );
 				ret.AddRange ( IV );
-				ret.AddRange ( aes.EncryptCbc ( data, IV ) );
+				ret.AddRange ( aes.EncryptCbc ( data.InnerMsg, IV ) );
 				byte[] hash = MD5.HashData ( ret.ToArray () );
 				ret.InsertRange ( 0, hash );
-				return ret.ToArray ();
+				return new ( HMessageHolder.MsgFlags.Encrypted, ret.ToArray () );
 			}
 		}
-		public override bool TestIntegrity ( byte[] data ) {
+		public override bool TestIntegrity ( HMessageHolder data ) {
 			using MD5 md5 = MD5.Create ();
-			byte[] hash = md5.ComputeHash ( data, HashSize, data.Length - HashSize );
-			return CheckHash ( hash, data, 0 );
+			byte[] hash = md5.ComputeHash ( data.InnerMsg, HashSize, data.Length - HashSize );
+			return CheckHash ( hash, data.InnerMsg, 0 );
 		}
-		public override bool TestPsswd ( byte[] data, byte[] IV ) {
+		public override bool TestPsswd ( HMessageHolder data, byte[] IV ) {
 			byte[] hash = MD5.HashData ( Key.Merge ( IV ) );
-			return CheckHash ( hash, data, HashSize );
+			return CheckHash ( hash, data.InnerMsg, HashSize );
 		}
 
 		private bool CheckHash ( byte[] calcHash, byte[] data, int start) {

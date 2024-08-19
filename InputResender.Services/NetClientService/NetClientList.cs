@@ -38,11 +38,15 @@ public class NetClientList {
 		Connections = Conns.AsReadOnly ();
 	}
 
+	public delegate void LogFcn ( NetMessagePacket packet, string msg );
+	public event LogFcn OnLog;
+	private void Log ( NetMessagePacket packet, string msg ) => OnLog?.Invoke ( packet, msg );
+
 	public void AddEP (INetPoint ep) {
 		if ( ep == null ) throw new ArgumentNullException ( nameof ( ep ) );
 		if ( Devices.ContainsKey ( ep ) ) throw new InvalidOperationException ( $"EP {ep} already added" );
 		
-		var locDev = NetworkDeviceFactory.CreateDevice ( ep );
+		var locDev = NetworkDeviceFactory.CreateDevice ( ep, Log );
 		if ( AccepterCT != null ) locDev.AcceptAsync ( ConnAccepter, AccepterCT.Token );
 		Devices.Add ( ep, locDev );
 	}

@@ -69,7 +69,7 @@ public class Program {
 			if ( parser.String (1, "Message", 3) == null ) return true;
 			else {
 				try {
-					packetSender.Send ( System.Text.Encoding.UTF8.GetBytes ( parser.String ( 1, null ) ) );
+					packetSender.Send ( new ( HMessageHolder.MsgFlags.None, System.Text.Encoding.UTF8.GetBytes ( parser.String ( 1, null ) ) ) );
 					WriteLine ( "Sent" );
 					return true;
 				} catch ( Exception e ) {
@@ -81,8 +81,9 @@ public class Program {
 		}
 	}
 
-	static CallbackResult LocalReceiver ( byte[] data, bool sentStatus ) {
-		Console.WriteLine ( $"Received {data.Length} bytes ({System.Text.Encoding.UTF8.GetString ( data )})" );
+	static CallbackResult LocalReceiver ( HMessageHolder data, bool sentStatus ) {
+		string msgText = System.Text.Encoding.UTF8.GetString ( data.InnerMsg );
+		Console.WriteLine ( $"Received {data.Length} bytes ({msgText})" );
 		return CallbackResult.None;
 	}
 

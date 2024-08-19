@@ -22,8 +22,11 @@ namespace Components.Implementations {
 		List<(string msg, Exception e)> errors;
 		public IReadOnlyDictionary<INetPoint, NetworkConnection> ActiveConns;
 		private readonly BlockingCollection<NetMessagePacket> PacketBuffer;
-		private readonly List<Func<byte[], bool, CallbackResult>> OnReceiveHandlers = new ();
+		private readonly List<Func<HMessageHolder, bool, CallbackResult>> OnReceiveHandlers = new ();
 		private List<INetPoint[]> NetList;
+
+		private event Action<NetworkConnection> OnNewConnLocal;
+		public override event Action<object> OnNewConn { add => OnNewConnLocal += value; remove => OnNewConnLocal -= value; }
 
 		private event Action<string, Exception> OnErrorLocal;
 		public override event Action<string, Exception> OnError { add => OnErrorLocal += value; remove => OnErrorLocal -= value; }
@@ -37,6 +40,7 @@ namespace Components.Implementations {
 			NetList.Insert ( 0, INetPoint.NextAvailable<InMemNetPoint> ( 1, Port, DefPort.ToString () ) );
 			PacketBuffer = new ( MaxBufferSize );
 			Clients = new ();
+			Clients.OnLog += (packet, msg) => Owner.PushDelayedMsg (packet == null ? $"{msg} (no packet)" : $"{msg} {packet.SourceEP}->{packet.TargetEP}");
 			ActiveConns = Clients.Connections;
 			//Clients.AddEP ( InMemNetPoint.NextAvailable ( DefPort ) );
 
@@ -124,7 +128,7 @@ namespace Components.Implementations {
 			}
 		}
 
-		public override event Func<byte[], bool, CallbackResult> OnReceive {
+		public override event Func<HMessageHolder, bool, CallbackResult> OnReceive {
 			add {
 				if ( value == null ) return;
 				lock (PacketBuffer) {
@@ -147,14 +151,16 @@ namespace Components.Implementations {
 			}
 		}
 		public override void Recv ( byte[] data ) => throw new NotImplementedException ();
-		public override void Send ( byte[] data ) {
+		public override void Send ( HMessageHolder data ) {
 			if ( Owner.LogFcn != null ) {
 				System.Text.StringBuilder SB = new ();
-				SB.AppendLine ( $"Sending data[{data.Length}]" );
+				SB.AppendLine ( $"Sending data[{data.Size}]" );
 				foreach ( var conn in ActiveConns ) SB.AppendLine ( $"  {conn.Value}" );
 				Owner.LogFcn.Invoke ( SB.ToString () );
 			}
-			foreach ( var conn in ActiveConns ) conn.Value.Send ( data );
+			foreach ( var conn in ActiveConns ) conn.Value.Send ( (byte[])data );
+			Task.Delay ( 10 ).Wait ();
+			Owner.FlushDelayedMsgs ();
 		}
 
 		public override string ToString () {
@@ -192,7 +198,7 @@ namespace Components.Implementations {
 				lock ( Owner.PacketBuffer ) {
 					NetMessagePacket[] bufferCopy = Owner.PacketBuffer.ToArray ();
 					return bufferCopy.Where ( p => p != null )
-						.Select ( p => $"{p.SourceEP}->{p.TargetEP}[t:{p.SignalType}|e:{p.Error}] {p.Data.ToHex ()}" ).ToArray ();
+						.Select ( p => $"{p.SourceEP}->{p.TargetEP}[t:{p.SignalType}|e:{p.Error}] {((byte[])p.Data).ToHex ()}" ).ToArray ();
 				}
 			}
 			protected override string[] GetConnections () {

@@ -47,7 +47,7 @@ public abstract class ACommand {
 		}
 	}
 
-	public virtual CommandResult Execute ( ICommandProcessor context, ArgParser args, int argID = 1 ) {
+	public virtual CommandResult Execute ( CommandProcessor context, ArgParser args, int argID = 1 ) {
 		if ( new string[] { "-h", "?", "help" }.Contains ( args.String ( argID, null ) ) )
 			return new CommandResult ( Help + Environment.NewLine + " - " + Description );
 
@@ -77,7 +77,7 @@ public abstract class ACommand {
 		return false;
 	}
 
-	protected virtual CommandResult ExecIner ( ICommandProcessor context, ArgParser args, int argID ) => null;
+	protected virtual CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) => null;
 
 	public static ACommand Search ( ArgParser args, ICollection<ACommand> commands ) {
 		string command = args.String ( 0, "Command" );
@@ -98,8 +98,8 @@ public abstract class ACommand<T> : ACommand where T : CommandResult {
 	/// <inheritdoc/>
 	public ACommand ( string parentHelp ) : base ( parentHelp ) { }
 
-	public sealed override T Execute ( ICommandProcessor context, ArgParser args, int argID = 1 ) => (T)base.Execute ( context, args, argID );
-	protected override T ExecIner ( ICommandProcessor context, ArgParser args, int argID ) => null;
+	public sealed override T Execute ( CommandProcessor context, ArgParser args, int argID = 1 ) => (T)base.Execute ( context, args, argID );
+	protected override T ExecIner ( CommandProcessor context, ArgParser args, int argID ) => null;
 }
 
 
