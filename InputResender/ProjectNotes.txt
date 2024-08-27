@@ -36,4 +36,14 @@ Missing functionalities:
 ✓ Receive textual message over connection - Message should be received by now, but no way of setting up any callback
 - Disconnect (via 'target set none') passes, but the connection stays at 'conns list' - I believe it's somewhat intented that connection is not removed until necessary, but maybe at least add 'conns remove' command or --force switch...
 
-Note: inputHooks are still untested :(
+
+Two issues at the moment:
+ 1) All commands should have some 'clean' option, question is where
+ 2) Removing hooks is not implemented
+ 3) When keydown and mousemove hooks are added, both events are reported as keydown (i.e. only first change is used instead of actual state))
+
+
+Subcommands don't seem to increment argID!
+
+When registering new inter-command, also include a help info.
+Add command to control Config (mostly Config.MaxOnelinerLength, rest probably doesn't need real-time changes)

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Components.Library {
-	public enum VKChange { KeyDown = 0x100, KeyUp = 0x101 }
+	public enum VKChange { None = 0, KeyDown = 0x100, KeyUp = 0x101, SysKeyDown = 0x104, SysKeyUp = 0x105, MouseMove = 0x200, LButtonDown = 0x201, LButtonUp = 0x202, MouseWheel = 0x20A, RButtonDown = 0x204, RButtonUp = 0x205 } // This should be reduced such that LowLevel component translates these (like LButtonDown should be considered outside of the LL as KeyDown)
 
 	public enum KeyCode {
 		/// <summary>The A key.</summary>
@@ -13,7 +13,7 @@ namespace Components.Library {
 		/// <summary>The add key.</summary>
 		Add = 107,
 		/// <summary>The ALT modifier key.</summary>
-		Alt = 262144,
+		Alt = 0x40000,
 		/// <summary>The application key (Microsoft Natural Keyboard).</summary>
 		Apps = 93,
 		/// <summary>The ATTN key.</summary>
@@ -47,7 +47,7 @@ namespace Components.Library {
 		/// <summary>The CLEAR key.</summary>
 		Clear = 12,
 		/// <summary>The CTRL modifier key.</summary>
-		Control = 131072,
+		Control = 0x20000,
 		/// <summary>The CTRL key.</summary>
 		ControlKey = 17,
 		/// <summary>The CRSEL key.</summary>
@@ -187,7 +187,7 @@ namespace Components.Library {
 		/// <summary>The IME Kanji mode key.</summary>
 		KanjiMode = 25,
 		/// <summary>The bitmask to extract a key code from a key value.</summary>
-		KeyCode = 65535,
+		KeyCode = 0x0000FFFF,
 		/// <summary>The L key.</summary>
 		L = 76,
 		/// <summary>The start application one key.</summary>
@@ -225,7 +225,9 @@ namespace Components.Library {
 		/// <summary>The ALT key.</summary>
 		Menu = 18,
 		/// <summary>The bitmask to extract modifiers from a key value.</summary>
-		Modifiers = -65536,
+		Modifiers = -0x10000,
+		/// <summary>Mark for mouse move event. Not original value, added to allow more general handling.</summary>
+		MouseMove = 0x80000,
 		/// <summary>The multiply key.</summary>
 		Multiply = 106,
 		/// <summary>The N key.</summary>
@@ -355,7 +357,7 @@ namespace Components.Library {
 		/// <summary>The separator key.</summary>
 		Separator = 108,
 		/// <summary>The SHIFT modifier key.</summary>
-		Shift = 65536,
+		Shift = 0x10000,
 		/// <summary>The SHIFT key.</summary>
 		ShiftKey = 16,
 		/// <summary>The computer sleep key.</summary>

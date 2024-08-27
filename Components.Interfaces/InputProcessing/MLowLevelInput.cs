@@ -18,11 +18,10 @@ namespace Components.Interfaces {
 		}
 
 		public override int ComponentVersion => 1;
-		public override int HookTypeCode => 1;
 
 		/// <inheritdoc />
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextResult;
-		public override int GetChangeCode ( VKChange vkChange ) {
+		private int GetChangeCode ( VKChange vkChange ) {
 			// Source: https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
 			switch ( vkChange ) {
 			case VKChange.KeyDown: return 0x0100;
@@ -30,7 +29,7 @@ namespace Components.Interfaces {
 			}
 			return -1;
 		}
-		public override VKChange GetChangeType ( int vkCode ) {
+		private VKChange GetChangeType ( int vkCode ) {
 			switch (vkCode ) {
 			case 0x0100: return VKChange.KeyDown;
 			case 0x0101: return VKChange.KeyUp;

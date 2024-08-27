@@ -13,6 +13,8 @@ namespace Components.Interfaces {
 
 		/// <summary>Prepare a hardware hook, that will on recieving an input event call a returned Action, providing input vektor ID and input data</summary>
 		/// <param name="hookInfo">Use given info to initialize hook(s). Fills back info about created hooks (e.g. hookIDs).</param>
+		/// <param name="mainCB">Fast callback that is called immediately after input event is recieved. Return value indicates if event should be passed to other hooks (true) or should be consumed (false)</param>
+		/// <param name="delayedCB">Use this callback for more time-consuming processing. It is called from separate task to avoid blocking input processing, but thread safety can not be guaranteed</param>
 		public abstract ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB );
 		public abstract int ReleaseHook ( HHookInfo hookInfo );
 		/// <summary></summary>
@@ -100,5 +102,19 @@ namespace Components.Interfaces {
 		}
 
 		public override DataHolderBase Clone () => new HKeyboardEventDataHolder ( (DInputReader)Owner, HookInfo, InputCode, ValueX / (float)PressThreshold, DeltaX / (float)PressThreshold );
+
+		public override string ToString () => base.ToString ();
+	}
+
+	public class HMouseEventDataHolder : HInputEventDataHolder {
+		public HMouseEventDataHolder (DInputReader owner, HHookInfo hookInfo, int x, int y) : base (owner, hookInfo) {
+			InputCode = (int)KeyCode.MouseMove;
+			ValueX = ValueY = ValueZ = 0;
+			DeltaX = x;
+			DeltaY = y;
+			DeltaZ = 0;
+		}
+
+		public override DataHolderBase Clone () => new HMouseEventDataHolder ( (DInputReader)Owner, HookInfo, DeltaX, DeltaY );
 	}
 }

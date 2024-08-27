@@ -15,6 +15,8 @@ internal static class Config {
 
 	public static string AutostartName { get => autostartName; set { autostartName = value; Save (); } }
 	public static string HomePath { get => homePath; set { homePath = value; Save (); } }
+	public static bool PrintAutoCommands { get; set; } = true;
+	public static int MaxOnelinerLength { get; set; } = 90;
 	public static IReadOnlyCollection<string> FetchAutoCommands ( string key ) {
 		if ( string.IsNullOrEmpty ( key ) ) return Array.Empty<string> ();
 		if ( !autoCommands.TryGetValue ( key, out string[] ret ) ) return Array.Empty<string> ();
@@ -37,6 +39,8 @@ internal static class Config {
 		doc.AppendChild ( root );
 		root.AppendChild ( doc.CreateElement ( "HomePath" ) ).InnerText = homePath;
 		root.AppendChild ( doc.CreateElement ( "AutostartName" ) ).InnerText = autostartName;
+		root.AppendChild ( doc.CreateElement ( "PrintAutoCommands" ) ).InnerText = PrintAutoCommands ? "T" : "F";
+		root.AppendChild ( doc.CreateElement ( "MaxOnelinerLength" ) ).InnerText = MaxOnelinerLength.ToString ();
 		
 		XmlElement autoCmds = doc.CreateElement ( "AutoCommands" );
 		root.AppendChild ( autoCmds );
@@ -79,6 +83,8 @@ internal static class Config {
 				switch ( node.Name ) {
 				case "HomePath": homePath = node.InnerText; break;
 				case "AutostartName": autostartName = node.InnerText; break;
+				case "PrintAutoCommands": PrintAutoCommands = node.InnerText == "T"; break;
+				case "MaxOnelinerLength": if ( int.TryParse ( node.InnerText, out int maxOnelinerLength ) ) MaxOnelinerLength = maxOnelinerLength; break;
 				case "AutoCommands":
 					autoCommands.Clear ();
 					foreach ( XmlNode key in node.ChildNodes ) {

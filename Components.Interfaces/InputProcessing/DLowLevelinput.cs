@@ -23,9 +23,6 @@ namespace Components.Interfaces {
 				(nameof(SimulateInput), typeof(uint)),
 				(nameof(GetLowLevelData), typeof(HInputData)),
 				(nameof(GetHighLevelData), typeof(HInputEventDataHolder)),
-				(nameof(GetChangeCode), typeof(int)),
-				(nameof(GetChangeType), typeof(VKChange)),
-				(nameof(HookTypeCode), typeof(int)),
 				(nameof(ErrorList), typeof(Win32Exception)),
 				(nameof(PrintErrors), typeof(void)),
 				(nameof(GetMessageExtraInfoPtr), typeof(nint))
@@ -60,9 +57,6 @@ namespace Components.Interfaces {
 		public abstract uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null );
 		public abstract HInputData GetLowLevelData ( HInputEventDataHolder higLevelData );
 		public abstract HInputEventDataHolder GetHighLevelData ( DictionaryKey hookKey, DInputReader requester, HInputData highLevelData );
-		public abstract int GetChangeCode ( VKChange vkChange );
-		public abstract VKChange GetChangeType ( int vkCode );
-		public abstract int HookTypeCode { get; }
 		public List<(string, Win32Exception)> ErrorList { get; } = new List<(string, Win32Exception)> ();
 		public void PrintErrors (Action<string> outAct) {
 			foreach ( var error in ErrorList ) {

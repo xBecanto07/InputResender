@@ -5,6 +5,7 @@ using System.Linq;
 
 namespace Components.Library;
 public abstract class ACommand {
+	public static readonly IReadOnlyCollection<string> HelpSwitches = new string[] { "-h", "?", "help" };
 	protected virtual int RequiredUnnamedArgs => 0;
 	public int RequiredArgC => RequiredUnnamedArgs + requiredSwitches.Count + requiredPositionals.Count;
 
@@ -29,7 +30,7 @@ public abstract class ACommand {
 		SB.AppendLine ();
 		SB.AppendLine ( Description.PrefixAllLines ( " - " ) );
 		foreach ( ACommand cmd in subCommands.Values ) {
-			SB.AppendLine ( cmd.Help.PrefixAllLines ( "  . " ) );
+			SB.AppendLine ( cmd.Help.PrefixAllLines ( " > " ) );
 		}
 		return SB.ToString ().Trim ();
 	}
@@ -40,7 +41,7 @@ public abstract class ACommand {
 	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd, string name = null ) {
 		if ( owner == null ) throw new ArgumentNullException ( nameof ( owner ) );
 		if ( string.IsNullOrEmpty ( name ) ) name = nwCmd.commandNames.First ();
-		if ( owner.subCommands.ContainsKey (name) ) owner.subCommands[name] = nwCmd;
+		if ( owner.subCommands.ContainsKey ( name ) ) owner.subCommands[name] = nwCmd;
 		else {
 			if ( nwCmd == null ) return;
 			owner.subCommands.Add ( name, nwCmd );
@@ -48,8 +49,9 @@ public abstract class ACommand {
 	}
 
 	public virtual CommandResult Execute ( CommandProcessor context, ArgParser args, int argID = 1 ) {
-		if ( new string[] { "-h", "?", "help" }.Contains ( args.String ( argID, null ) ) )
+		if ( HelpSwitches.Contains ( args.String ( argID, null ) ) )
 			return new CommandResult ( Help + Environment.NewLine + " - " + Description );
+		if ( args.String ( argID, null ) == "clear" ) return ExecCleanup ( context, args, argID );
 
 		// Note that erorr result needs to have exception specified, otherwise it will be treated as a successful result.
 		if ( args.ArgC < RequiredArgC ) return new CommandResult ( new Exception ( $"Invalid argument count. Required: {RequiredArgC}, provided: {args.ArgC}" ) );
@@ -66,7 +68,6 @@ public abstract class ACommand {
 				if ( rquiresValues && !args.HasValue ( i, true ) ) return new CommandResult ( new Exception ( $"Argument #{i} requires a value but is not provided." ) );
 			}
 		}
-
 		return ExecIner ( context, args, argID );
 	}
 
@@ -78,6 +79,11 @@ public abstract class ACommand {
 	}
 
 	protected virtual CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) => null;
+	protected virtual CommandResult ExecCleanup ( CommandProcessor context, ArgParser args, int argID ) => null;
+	public CommandResult Cleanup ( CommandProcessor context, ArgParser args = null, int argID = 0 ) {
+		if ( args == null ) args = new ArgParser ( string.Empty, s => context.ProcessLine ( $"print {s}" ) );
+		return ExecCleanup ( context, args, argID );
+	}
 
 	public static ACommand Search ( ArgParser args, ICollection<ACommand> commands ) {
 		string command = args.String ( 0, "Command" );
@@ -92,6 +98,13 @@ public abstract class ACommand {
 	}
 
 	override public string ToString () => CallName;
+	protected bool TryPrintHelp ( ArgParser args, int argID, Func<string> helpFcn, out CommandResult helpRes ) {
+		helpRes = null;
+		string arg = args.String ( argID, null );
+		if ( !HelpSwitches.Contains ( arg ) ) return false;
+		helpRes = new CommandResult ( "Usage: " + helpFcn () );
+		return true;
+	}
 }
 
 public abstract class ACommand<T> : ACommand where T : CommandResult {

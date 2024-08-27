@@ -24,7 +24,17 @@ public class ArgParser {
 			string arg = string.Empty;
 
 			for ( int N = line.Length; pos < N; pos++ ) {
-				if ( isEscaped ) { isEscaped = false; continue; }
+				if ( isEscaped ) {
+					switch ( line[pos] ) {
+						case 'n': arg += '\n'; break;
+						case 'r': arg += '\r'; break;
+						case 't': arg += '\t'; break;
+						case '0': arg += '\0'; break;
+						default: arg += line[pos]; break;
+					}
+					isEscaped = false;
+					continue;
+				}
 				if ( line[pos] == '\\' ) { isEscaped = true; continue; }
 				if ( line[pos] == '"' ) isQuoted = !isQuoted;
 				else arg += line[pos];
@@ -56,8 +66,11 @@ public class ArgParser {
 
 	private readonly List<Arg> Args;
 	private readonly Action<string> Output;
+	public enum ErrLvl { None, Minimal, Normal, Full }
+	public ErrLvl ErrorLevel;
 
-	public ArgParser ( string args, Action<string> output ) {
+	public ArgParser ( string args, Action<string> output, ErrLvl errLvl = ErrLvl.Normal ) {
+		ErrorLevel = errLvl;
 		Args = new ();
 		Output = output;
 
@@ -79,7 +92,7 @@ public class ArgParser {
 			if ( nextArg.Name.StartsWith ( '-' ) ) {
 				foreach ( var arg in Args ) {
 					if ( arg.Name != nextArg.Name ) continue;
-					Output ( $"Argument '{nextArg.Name}' is duplicated." );
+					Error ( $"Argument '{nextArg.Name}' is duplicated.", 1, true, 0 );
 					return;
 				}
 			}
@@ -113,25 +126,16 @@ public class ArgParser {
 		get => Args.FirstOrDefault ( arg => arg.Name == key );
 	}
 
-	private string Get ( string key, string dsc ) {
+	private string Get ( string key, string dsc, bool shouldThrow = false ) {
 		var arg = this[key];
-		if ( arg == null ) {
-			if ( dsc != null ) Output ( $"Argument '{key}' not found. {dsc}" );
-			return null;
-		}
+		if ( arg == null ) return dsc == null ? string.Empty : Error ( $"Argument '{key}' not found. {dsc}", 2, shouldThrow, string.Empty );
 
-		if ( !GetSepValue ( arg ) ) {
-			Output ( $"Argument '{key}' has no value. {dsc}" );
-			return null;
-		}
+		if ( !GetSepValue ( arg ) ) return dsc == null ? string.Empty : Error ( $"Argument '{key}' has no value. {dsc}", 3, shouldThrow, string.Empty );
 		return arg.Value;
 	}
-	private string Get ( int id, string dsc = null ) {
+	private string Get ( int id, string dsc = null, bool shouldThrow = false ) {
 		var arg = this[id];
-		if ( arg == null ) {
-			if ( dsc != null ) Output ( $"Argument #'{id}' not found. {dsc}" );
-			return null;
-		}
+		if ( arg == null ) return dsc == null ? string.Empty : Error ( $"Argument #{id} not found. {dsc}", 4, shouldThrow, string.Empty );
 		return arg.Name;
 	}
 
@@ -148,37 +152,31 @@ public class ArgParser {
 		return true;
 	}
 
-	private T? Parse<T> ( string arg, object id, string dsc, Func<string, T> parser ) where T : struct {
-		if ( arg == null ) return null;
+	private T? Parse<T> ( string arg, object id, string dsc, Func<string, T> parser, bool shouldThrow = false ) where T : struct {
+		if ( arg == null ) return Error<T?> ( $"Argument '{id}' not found. {dsc}", 5, shouldThrow, null );
 		try {
 			return parser ( arg );
 		} catch ( FormatException ) {
-			Output ( $"Argument '{id}' is not {typeof ( T ).Name}. {dsc}" );
-			return null;
+			return Error<T?> ( $"Argument '{id}' is not {typeof ( T ).Name}. {dsc}", 6, shouldThrow, null );
 		} catch ( Exception ex ) {
-			Output ( $"Problem with parsing argument '{id}' ({arg}). {dsc}\n\t{ex.Message}" );
-			return null;
+			return Error<T?> ( $"Problem with parsing argument '{id}' ({arg}). {dsc}\n\t{ex.Message}", 7, shouldThrow, null );
 		}
 	}
 
-	public double? Double ( int id, string dsc ) => Parse ( Get ( id, dsc ), id, dsc, double.Parse );
-	public double? Double ( string key, string dsc ) => Parse ( Get ( key, dsc ), key, dsc, double.Parse );
-	public int? Int ( int id, string dsc ) => Parse ( Get ( id, dsc ), id, dsc, int.Parse );
-	public int? Int ( string key, string dsc ) => Parse ( Get ( key, dsc ), key, dsc, int.Parse );
-	public string String ( int id, string dsc, int min = 0 ) {
+	public double? Double ( int id, string dsc, bool shouldThrow = false ) => Parse ( Get ( id, dsc ), id, dsc, double.Parse );
+	public double? Double ( string key, string dsc, bool shouldThrow = false ) => Parse ( Get ( key, dsc ), key, dsc, double.Parse );
+	public int? Int ( int id, string dsc, bool shouldThrow = false ) => Parse ( Get ( id, dsc ), id, dsc, int.Parse );
+	public int? Int ( string key, string dsc, bool shouldThrow = false ) => Parse ( Get ( key, dsc ), key, dsc, int.Parse );
+	public string String ( int id, string dsc, int min = 0, bool shouldThrow = false ) {
 		string ret = Get ( id, dsc );
-		if ( ret != null && ret.Length < min ) {
-			Output ( $"Argument #{id} is too short. {dsc}" );
-			return null;
-		}
+		if ( ret != null && ret.Length < min )
+			return Error ( $"Argument #{id} is too short. {dsc}", 8, shouldThrow, string.Empty );
 		return ret;
 	}
-	public string String ( string key, string dsc, int min = 0 ) {
+	public string String ( string key, string dsc, int min = 0, bool shouldThrow = false ) {
 		string ret = Get ( key, dsc );
-		if ( ret != null && ret.Length < min ) {
-			Output ( $"Argument '{key}' is too short. {dsc}" );
-			return null;
-		}
+		if ( ret != null && ret.Length < min )
+			return Error ( $"Argument '{key}' is too short. {dsc}", 9, shouldThrow, string.Empty );
 		return ret;
 	}
 	public bool Present ( int id ) => Args.Any ( arg => arg.Position == id );
@@ -199,15 +197,22 @@ public class ArgParser {
 			SB.AppendLine ( $"Arg #{arg.Position}: '{arg.Name}' = '{arg.Value}'" );
 		return SB.ToString ();
 	}
-	public T EnumC<T> ( int id, string dsc ) where T : struct {
-		if ( !Enum.TryParse ( String ( id, dsc ), true, out T ret ) ) {
-			Output ( $"Argument #{id} is not {typeof ( T ).Name}." );
-			return default;
-		}
-		if ( !Enum.IsDefined ( typeof ( T ), ret ) ) {
-			Output ( $"Argument #{id} is not a valid {typeof ( T ).Name}." );
-			return default;
-		}
+	public T EnumC<T> ( int id, string dsc, bool shouldThrow = false ) where T : struct {
+		if ( !Enum.TryParse ( String ( id, dsc ), true, out T ret ) )
+			return Error ( $"Argument #{id} is not a valid {typeof ( T ).Name}. {dsc}", 10, shouldThrow, default ( T ) );
+		if ( !Enum.IsDefined ( typeof ( T ), ret ) )
+			return Error ( $"Argument #{id} was not found in {typeof ( T ).Name}. {dsc}", 11, shouldThrow, default ( T ) );
 		return ret;
+	}
+
+	private T Error<T> ( string message, int errID, bool shouldThrow, T defVal ) {
+		if ( shouldThrow ) throw new ArgumentException ( message );
+		if ( ErrorLevel != ErrLvl.None ) {
+			if ( ErrorLevel == ErrLvl.Minimal ) Output ( $"ArgParseErr#{errID}" );
+			else if ( ErrorLevel == ErrLvl.Normal ) Output ( message );
+			else if ( ErrorLevel == ErrLvl.Full ) Output ( $"{message} (ArgParseErr#{errID})\n{Log ().PrefixAllLines ( " - " )}" );
+			else Output ( message );
+		}
+		return defVal;
 	}
 }

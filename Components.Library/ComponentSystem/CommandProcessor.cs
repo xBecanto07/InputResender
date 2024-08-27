@@ -18,11 +18,13 @@ public interface ICommandProcessor {
 	T GetVar<T> ( string name );
 }
 
-public class CommandProcessor : ComponentBase, ICommandProcessor {
+public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
 	private readonly HashSet<ACommand> registeredCmds = new ();
 	private Action<string> WriteLine;
 	private Dictionary<string, object> Vars = new ();
 
+	// Have highest loglevel by default so that it shows enough info when error in command to set different error loglevel. To have something lower, use config init commands.
+	public ArgParser.ErrLvl ArgErrorLevel = ArgParser.ErrLvl.Full;
 	public bool SafeMode { get; set; } = false;
 
 	public override int ComponentVersion => 1;
@@ -41,6 +43,20 @@ public class CommandProcessor : ComponentBase, ICommandProcessor {
 
 	public CommandProcessor ( Action<string> writeLine ) {
 		WriteLine = writeLine;
+	}
+
+	// Dispose pattern
+	void Dispose ( bool disposing ) {
+		if ( disposing ) {
+			foreach ( var cmd in registeredCmds ) cmd.Cleanup ( this );
+			foreach ( var cmd in registeredCmds ) {
+				if ( cmd is IDisposable disposable ) disposable.Dispose ();
+			}
+		}
+	}
+	public void Dispose () {
+		Dispose ( true );
+		GC.SuppressFinalize ( this );
 	}
 
 	public void AddCommand ( ACommand cmd ) {
@@ -94,7 +110,7 @@ public class CommandProcessor : ComponentBase, ICommandProcessor {
 
 	public CommandResult ProcessLine ( string line, bool verbose = false ) {
 		if ( verbose ) WriteLine ( $"Processing line: '{line}'" );
-		ArgParser args = new ( line, WriteLine );
+		ArgParser args = new ( line, WriteLine, ArgErrorLevel );
 		if ( args.ArgC == 0 ) return new CommandResult ( string.Empty, false );
 
 		if (args.String (0, null) == "core" && args.String(1, null) == "own") {
@@ -121,6 +137,11 @@ public class CommandProcessor : ComponentBase, ICommandProcessor {
 	// Currently no support for scope, so all variables are considered global.
 	public void SetVar ( string name, object var ) => Vars[name] = var;
 	public T GetVar<T> ( string name ) {
+		if ( name == "all" ) {
+			if ( typeof ( T ) == typeof ( ICollection<string> ) ) return (T)(object)Vars.Keys.ToList ();
+			if ( typeof ( T ) == typeof ( string ) ) return (T)(object)string.Join ( ", ", Vars.Keys );
+			throw new ArgumentException ( $"Unsupported type {typeof ( T ).Name} to get all variable names." );
+		}
 		if ( !Vars.TryGetValue ( name, out object var ) )
 			throw new ArgumentException ( $"Variable '{name}' not found." );
 		if ( var is not T tVar )

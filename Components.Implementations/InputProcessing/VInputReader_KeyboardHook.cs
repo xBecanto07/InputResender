@@ -38,6 +38,11 @@ namespace Components.Implementations {
 			var ret = new HashSet<DictionaryKey> ();
 			var hooks = LowLevelComponent.SetHookEx ( hookInfo, LocalCallback );
 
+			if (hooks == null) {
+				Owner.LogFcn?.Invoke ($"Failed to set hook for {hookInfo}");
+				return ret;
+			}
+
 			foreach ( var hook in hooks ) {
 				HookSet.Add ( hook.Key, new ( hook, mainCB, delayedCB ) );
 				ret.Add ( hook.Key );

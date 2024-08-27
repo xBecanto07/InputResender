@@ -29,6 +29,7 @@ public class BasicCommands : ACommand<CommandResult> {
 		commandNames.Add ( "loadall" );
 		commandNames.Add ( "argParse" );
 		commandNames.Add ( "loglevel" );
+		commandNames.Add ( "argerrorlvl" );
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID = 1 ) {
@@ -59,6 +60,10 @@ public class BasicCommands : ACommand<CommandResult> {
 		} else if ( act == "argParse" ) {
 			// Debug only command, don't add to help
 			return new CommandResult ( $"Entered {args.ArgC} arguments:{Environment.NewLine}{args.Log ()}" );
+		} else if ( act == "argerrorlvl" ) {
+			var lvl = args.EnumC<ArgParser.ErrLvl> ( argID + 1, "Level" );
+			context.ArgErrorLevel = lvl;
+			return new CommandResult ( $"ArgParser error log level set to {lvl}." );
 		} else if ( act == "loglevel" ) {
 			CoreBase.LogLevel level = args.EnumC<CoreBase.LogLevel> ( argID + 1, "Level" );
 			switch ( level ) {

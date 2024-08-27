@@ -25,7 +25,7 @@ public class CoreManagerCommand : ACommand<RetT> {
 		if ( act == "act" ) {
 			return new RetT ( core, "Core activated." );
 		} else {
-			return new RetT ( core, "Unknown action." );
+			return new RetT ( core, $"Invalid action '{act}'." );
 		}
 	}
 }

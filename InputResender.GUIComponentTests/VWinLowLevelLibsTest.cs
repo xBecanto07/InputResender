@@ -40,9 +40,9 @@ namespace InputResender.GUIComponentTests {
 		public void VKChangeConversion () {
 			VKChange[] vals = { VKChange.KeyDown, VKChange.KeyUp };
 			foreach (var val in vals ) {
-				var code = TestObject.GetChangeCode ( val );
+				int code = (int)val;
 				code.Should ().BeGreaterThan ( 0 );
-				var en = TestObject.GetChangeType ( code );
+				VKChange en = (VKChange)code;
 				en.Should ().Be ( val );
 			}
 		}
@@ -50,7 +50,7 @@ namespace InputResender.GUIComponentTests {
 		[Fact]
 		public void InputDataToStringTest () {
 			var inputData = GenerateInputData ();
-			var vals = ((Input)inputData.Data).Data.ki;
+			var vals = ((HWInput)inputData.Data).Data.ki;
 			string ss = inputData.ToString ();
 			ss.Should ().Contain ( "K" ).And
 				.Contain ( ((KeyCode)vals.vkCode).ToString () ).And
@@ -84,7 +84,7 @@ namespace InputResender.GUIComponentTests {
 			messages[0].Should ().NotBeNull ();
 			messages[0].Item1.GetHashCode ().Should ().NotBe ( 0 );
 			messages[0].Item2.Pressed.Should ().Be ( VKChange.KeyDown );
-			((Input)messages[0].Item2.Data).Data.ki.vkCode.Should ().Be ( (ushort)KeyCode.E );
+			((HWInput)messages[0].Item2.Data).Data.ki.vkCode.Should ().Be ( (ushort)KeyCode.E );
 		}
 
 		public bool Callback ( DictionaryKey hookKey, HInputData inputData ) {
