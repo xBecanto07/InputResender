@@ -1,10 +1,6 @@
 ﻿using Components.Interfaces;
 using Components.Library;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using InputResender.Commands;
 
 namespace Components.Implementations;
 public class HookManagerCommand : ACommand {
@@ -28,14 +24,15 @@ public class HookManagerCommand : ACommand {
     }
 
     override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-        switch ( args.String ( argID, "Action" ) ) {
+		DMainAppCore core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		switch ( args.String ( argID, "Action" ) ) {
         case "manager": {
             string act = args.String ( argID + 1, "Sub-action" );
-            var manager = context.Owner.Fetch<DHookManager> ();
+            var manager = core.Fetch<DHookManager> ();
             switch ( act ) {
             case "start":
                 if ( manager != null ) return new CommandResult ( "Hook manager already started." );
-                manager = new VHookManager ( context.Owner );
+                manager = new VHookManager ( core );
                 return new CommandResult ( "Hook manager started." );
             case "status": return new CommandResult ( manager == null ? "Hook manager not started." : "Hook manager is running." );
             default:
@@ -70,12 +67,21 @@ public class HookManagerCommand : ACommand {
                 if ( act == VKChange.None ) return new CommandResult ( "Invalid action." );
                 actionList.Add ( act );
             }
-            var hookManager = context.Owner.Fetch<DHookManager> ();
+            var hookManager = core.Fetch<DHookManager> ();
             if ( hookManager == null ) return new CommandResult ( "No hook manager available." );
-            hookManager.AddHook ( 0, actionList.ToArray () );
+
+            var newHooks = hookManager.AddHook ( 0, actionList.ToArray () );
+            if (newHooks == null || !newHooks.Any ()) return new CommandResult ( "No hooks added." );
+
             var cb = hookManager.AddCallback ( DHookManager.CBType.Delayed, 0 );
             cb.callback = HookCallback;
-            return new CommandResult ( "Hook added." );
+
+            string[] hookInfo = new string[newHooks.Count];
+            int j = 0;
+            foreach ( var hook in newHooks ) hookInfo[j++] = core.Fetch<DInputReader> ().PrintHookInfo ( hook );
+
+
+            return new CommandResult ( $"Hook added ({string.Join ( ", ", hookInfo )})." );
         }
         case "remove": return new CommandResult ( "Removing hooks is not implemented." );
         case "list": return new CommandResult ( "Listing hooks is not implemented." );

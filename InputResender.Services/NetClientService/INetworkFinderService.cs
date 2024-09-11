@@ -68,7 +68,6 @@ namespace InputResender.Services {
 			var interfaces = NetworkInterface.GetAllNetworkInterfaces ();
 			foreach ( var inf in interfaces ) {
 				var info = inf.GetIPProperties ();
-				var gateways = info.GatewayAddresses;
 				var unicasts = info.UnicastAddresses;
 				IPAddress newAddr = null;
 				foreach ( var addr in unicasts ) {
@@ -78,8 +77,13 @@ namespace InputResender.Services {
 				}
 				if ( newAddr == null ) continue;
 				Network network = new Network ( ret.Count, inf.Name, IPAddress.Loopback, newAddr );
-				if ( gateways.Count > 0 ) ret.Insert ( 0, network );
-				else ret.Add ( network );
+				try {
+					// I really wonder what this is supposed to do, since only loopback seems to have gateway
+					// Maybe it was just copied 1:1 from internet, worked fine so not modified? Who knows...
+					var gateways = info.GatewayAddresses;
+					if ( gateways.Count > 0 ) ret.Insert ( 0, network );
+					else ret.Add ( network );
+				} catch { ret.Add ( network ); }
 			}
 			networks = ret.ToArray ();
 		}

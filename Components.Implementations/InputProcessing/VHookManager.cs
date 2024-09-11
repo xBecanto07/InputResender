@@ -19,7 +19,10 @@ public class VHookManager : DHookManager {
 		Callbacks[key].Add ( ret );
 		return ret;
 	}
-	public override void AddHook ( DeviceID device, params VKChange[] vKChanges ) {
+
+	/// <summary>Return value can be ignored. It is returned only to let caller know if hook was successfully added and to provide info if caller needs that. Otherwise, all important data are stored inside of this component</summary>
+	public override IReadOnlyCollection<DictionaryKey> AddHook ( DeviceID device, params VKChange[] vKChanges ) {
+		HashSet<DictionaryKey> ret = new ();
 		List<VKChange> WinLLHook = new (); // keyboard and mouse can be combined here
 		foreach ( var vKChange in vKChanges ) {
 			switch ( vKChange ) {
@@ -38,8 +41,11 @@ public class VHookManager : DHookManager {
 			var keyHooks = Owner.Fetch<VInputReader_KeyboardHook> ().SetupHook ( keyHookInfo, FastCB, DelayedCB );
 			if ( !ActiveHooks.ContainsKey ( device ) ) ActiveHooks.Add ( device, new HookGroup () );
 			ActiveHooks[device].Add ( WinLLHook, keyHooks );
+			ret.UnionWith ( keyHooks );
 		}
+		return ret;
 	}
+
 	public override void ClearHooks ( DeviceID device = 0 ) {
 		if ( ActiveHooks.ContainsKey ( device ) ) {
 			ActiveHooks[device].Clear ();
@@ -50,6 +56,13 @@ public class VHookManager : DHookManager {
 		foreach ( var cb in cbToRemove ) cb.Unregister ();
 
 	}
+
+	public override Dictionary<DeviceID, DictionaryKey> ListHooks () {
+		Dictionary<DeviceID, DictionaryKey> ret = new ();
+		foreach ( var hook in ActiveHooks ) foreach ( var key in hook.Value.HookList ) ret.Add ( hook.Key, key );
+		return ret;
+	}
+
 	public override void RemoveHook ( DeviceID device, params VKChange[] vKChanges ) => throw new NotImplementedException ();
 
 	private bool FastCB ( DictionaryKey key, HInputEventDataHolder e ) {
@@ -71,6 +84,7 @@ public class VHookManager : DHookManager {
 			Changes.UnionWith ( changes );
 			HookIDs.UnionWith ( hookIDs );
 		}
+		public HashSet<DictionaryKey> HookList => new ( HookIDs );
 		public void Clear () {
 			Changes.Clear ();
 			HookIDs.Clear ();

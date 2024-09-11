@@ -129,6 +129,7 @@ public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
 			try {
 				return cmd.Execute ( this, args );
 			} catch ( Exception e ) {
+				string fullInfo = $"Error processing '{line}': {e.Message}\n{e.StackTrace}";
 				return new ErrorCommandResult ( null, e );
 			}
 		}

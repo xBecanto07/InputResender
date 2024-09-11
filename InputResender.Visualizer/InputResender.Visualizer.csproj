@@ -1,8 +1,6 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0-windows10.0.17763.0</TargetFramework>
     <Nullable>disable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <StartupObject>InputResender.Visualizer.Program</StartupObject>
@@ -10,24 +8,15 @@
     <RunAnalyzersDuringLiveAnalysis>False</RunAnalyzersDuringLiveAnalysis>
     <EnableNETAnalyzers>False</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
-  </PropertyGroup>
-
   <ItemGroup>
-    <ProjectReference Include="..\Components.Convertors\Components.Convertors.csproj" />
-    <ProjectReference Include="..\Components.Factories\Components.Factories.csproj" />
     <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
     <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
     <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
-    <ProjectReference Include="..\InputReader.GUIComponents\InputResender.GUIComponents.csproj" />
+    <ProjectReference Include="..\InputResender.WindowsGUI\InputResender.WindowsGUI.csproj" />
+    <ProjectReference Include="..\InputResender.OSDependent.Windows\InputResender.OSDependent.Windows.csproj" />
     <ProjectReference Include="..\InputResender.Services\InputResender.Services.csproj" />
   </ItemGroup>
-
 </Project>

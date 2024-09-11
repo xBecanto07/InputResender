@@ -18,8 +18,8 @@ public class ContextVarCommands : ACommand {
 	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
 		switch ( args.String ( argID, "Action" ) ) {
 		case "set": {
-			string varName = args.String ( argID + 1, "Variable name" );
-			string varType = args.String ( argID + 2, "Variable type" );
+			string varType = args.String ( argID + 1, "Variable type" );
+			string varName = args.String ( argID + 2, "Variable name" );
 			try {
 				switch ( varType ) {
 				case "string":
@@ -32,8 +32,8 @@ public class ContextVarCommands : ACommand {
 			}
 		}
 		case "get": {
-			string varName = args.String ( argID + 1, "Variable name" );
-			string varType = args.String ( argID + 2, "Variable type" );
+			string varType = args.String ( argID + 1, "Variable type" );
+			string varName = args.String ( argID + 2, "Variable name" );
 			try {
 				//context.GetVar ( varName, varType );
 				switch ( varType ) {
@@ -50,8 +50,8 @@ public class ContextVarCommands : ACommand {
 			}
 		}
 		case "add": {
-			string varName = args.String ( argID + 1, "Variable name" );
-			string varType = args.String ( argID + 2, "Variable type" );
+			string varType = args.String ( argID + 1, "Variable type" );
+			string varName = args.String ( argID + 2, "Variable name" );
 			try {
 				switch ( varType ) {
 				case "string":
@@ -68,8 +68,8 @@ public class ContextVarCommands : ACommand {
 			}
 		}
 		case "reset": {
-			string varName = args.String ( argID + 1, "Variable name" );
-			string varType = args.String ( argID + 2, "Variable type" );
+			string varType = args.String ( argID + 1, "Variable type" );
+			string varName = args.String ( argID + 2, "Variable name" );
 			try {
 				switch ( varType ) {
 				case "string":

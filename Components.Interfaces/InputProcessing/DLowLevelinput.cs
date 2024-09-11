@@ -25,7 +25,8 @@ namespace Components.Interfaces {
 				(nameof(GetHighLevelData), typeof(HInputEventDataHolder)),
 				(nameof(ErrorList), typeof(Win32Exception)),
 				(nameof(PrintErrors), typeof(void)),
-				(nameof(GetMessageExtraInfoPtr), typeof(nint))
+				(nameof(GetMessageExtraInfoPtr), typeof(nint)),
+				(nameof(PrintHookInfo), typeof(string)),
 			};
 
 		protected static Dictionary<DictionaryKey, Hook> HookIDDict = new Dictionary<DictionaryKey, Hook> ();
@@ -48,6 +49,7 @@ namespace Components.Interfaces {
 		/// <returns></returns>
 		public abstract IntPtr CallNextHook ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
 		public abstract IntPtr GetModuleHandleID ( string lpModuleName );
+		public abstract string PrintHookInfo ( DictionaryKey key );
 		public abstract HInputData ParseHookData ( DictionaryKey hookID, IntPtr vkChngCode, IntPtr vkCode );
 		/// <summary></summary>
 		/// <param name="nInputs">Count of inputs in <paramref name="pInputs"/> array</param>

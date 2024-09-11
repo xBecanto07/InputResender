@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
-using Components.Factories;
+using InputResender.CLI;
 using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
-using InputResender.GUIComponents;
+using InputResender.WindowsGUI;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using SBld = System.Text.StringBuilder;
 

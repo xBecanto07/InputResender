@@ -76,6 +76,11 @@ namespace Components.Interfaces {
 			return UnhookResult;
 		}
 
+		public override string PrintHookInfo ( DictionaryKey key ) {
+			if ( !HookList.TryGetValue ( key, out var hook ) ) return null;
+			return $"MockLLHook#{key}@{hook.HookInfo.DeviceID}<{string.Join ( ", ", hook.HookInfo.ChangeMask )}>";
+		}
+
 		public enum Part { CallNextHookEx, GetModuleHandle, SetHookEx, Unhook, NCode }
 		public void RaiseEvent ( DictionaryKey hookID, int nCode, IntPtr wParam, IntPtr lParam ) {
 			if ( HookList.TryGetValue ( hookID, out var hook ) ) {

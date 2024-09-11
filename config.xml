@@ -1,0 +1,20 @@
+<Config>
+  <HomePath>C:\Maldus\Projects\InputResender\InputResender.CLI\bin\Debug\net7.0\</HomePath>
+  <AutostartName>initCmds</AutostartName>
+  <PrintAutoCommands>T</PrintAutoCommands>
+  <MaxOnelinerLength>125</MaxOnelinerLength>
+  <ResponsePrintFormat>Normal</ResponsePrintFormat>
+  <AutoCommands>
+    <initCmds>
+      <C0>loadall</C0>
+      <C1>clear</C1>
+      <C2>safemode on</C2>
+      <C3>core new</C3>
+      <c4>core own</c4>
+      <C5>loglevel all</C5>
+      <C6>network callback recv print</C6>
+      <C7>network callback newconn print</C7>
+      <C8>hook manager start</C8>
+    </initCmds>
+  </AutoCommands>
+</Config>

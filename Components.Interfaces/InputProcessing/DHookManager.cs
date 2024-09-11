@@ -19,9 +19,10 @@ public abstract class DHookManager : ComponentBase<CoreBase> {
 
 	public DHookManager ( CoreBase owner ) : base ( owner ) { }
 
-	public abstract void AddHook ( int device, params VKChange[] vKChanges );
+	public abstract IReadOnlyCollection<DictionaryKey> AddHook ( int device, params VKChange[] vKChanges );
 	public abstract void RemoveHook ( int device, params VKChange[] vKChanges );
 	public abstract void ClearHooks ( int device = 0 );
+	public abstract Dictionary<int, DictionaryKey> ListHooks ();
 	/// <summary>Register callback for all active hooks (in this manager) for given device. Callback should return true if event should be passed to other hooks, false if it should be consumed.</summary>
 	public abstract HCallbackHolder<HookCallback> AddCallback ( CBType cbType, int device = -1 );
 }

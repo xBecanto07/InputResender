@@ -1,6 +1,6 @@
 ﻿using Components.Interfaces;
 using Components.Library;
-using InputResender.GUIComponents;
+using InputResender.WindowsGUI;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;

@@ -1,8 +1,8 @@
-﻿using Components.Factories;
-using Components.Implementations;
+﻿using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
-using InputResender.GUIComponents;
+using InputResender.CLI;
+using InputResender.WindowsGUI;
 using System;
 using System.Collections.Generic;
 using System.Text;

@@ -8,7 +8,9 @@ namespace Components.Interfaces {
 				(nameof(SetupHook), typeof(void)),
 				(nameof(ReleaseHook), typeof(void)),
 				(nameof(SimulateInput), typeof(uint)),
-				(nameof(SimulateInput), typeof(HInputEventDataHolder))
+				(nameof(SimulateInput), typeof(HInputEventDataHolder)),
+				(nameof(PrintHookInfo), typeof(string)),
+				(nameof(SimulateKeyInput), typeof(HInputEventDataHolder))
 			};
 
 		/// <summary>Prepare a hardware hook, that will on recieving an input event call a returned Action, providing input vektor ID and input data</summary>
@@ -20,6 +22,7 @@ namespace Components.Interfaces {
 		/// <summary></summary>
 		/// <returns>Returns number of successfully simulated events</returns>
 		public abstract uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture );
+		public abstract string PrintHookInfo ( DictionaryKey key );
 		public HInputEventDataHolder SimulateKeyInput ( HHookInfo hookInfo, VKChange action, KeyCode key ) {
 			HInputEventDataHolder ret = new HKeyboardEventDataHolder ( this, hookInfo, (int)key, action );
 			SimulateInput ( ret, true );
@@ -70,6 +73,13 @@ namespace Components.Interfaces {
 				return 1;
 			}
 			return 0;
+		}
+
+		public override string PrintHookInfo ( DictionaryKey key ) {
+			foreach ( var cb in CallbackList ) if ( cb.Value.Key == key ) {
+					return $"MockHook#{key} on {cb.Key.DeviceID} <{cb.Key.ChangeMask}>";
+				}
+			return null;
 		}
 
 		public uint SimulateKeyPress ( HHookInfo hookInfo, KeyCode keyCode, VKChange Pressed ) => SimulateInput ( new HKeyboardEventDataHolder ( this, hookInfo, (int)keyCode, Pressed), false );

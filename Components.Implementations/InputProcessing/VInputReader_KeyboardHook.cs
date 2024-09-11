@@ -8,14 +8,15 @@ namespace Components.Implementations {
 		private string TaskState = "Not started";
 		readonly AutoResetEvent waiter;
 		bool Continue = true;
-		Dictionary<DictionaryKey, HLHookInfo> HookSet;
+		// LowLevelInput should be stored here. Components aren't supposed to be swaped at runtime nor should they be know about each other but 1) they can change and 2) hooks are bound to specific DLowLevelInput variant. As long as this relation is not broken up, creater of hook must be stored.
+		Dictionary<DictionaryKey, (DLowLevelInput, HLHookInfo)> HookSet;
 
 		public VInputReader_KeyboardHook ( CoreBase owner ) : base ( owner ) {
-			HookSet = new Dictionary<DictionaryKey, HLHookInfo> ();
-			waiter = new AutoResetEvent ( false );
+			HookSet = new ();
+			waiter = new ( false );
 		}
 
-		public HLHookInfo GetHook (DictionaryKey key) => HookSet[key];
+		public HLHookInfo GetHook ( DictionaryKey key ) => HookSet[key].Item2;
 
 		public struct HLHookInfo {
 			public Hook hook;
@@ -44,7 +45,7 @@ namespace Components.Implementations {
 			}
 
 			foreach ( var hook in hooks ) {
-				HookSet.Add ( hook.Key, new ( hook, mainCB, delayedCB ) );
+				HookSet.Add ( hook.Key, (LowLevelComponent, new ( hook, mainCB, delayedCB ) ) );
 				ret.Add ( hook.Key );
 
 				waiter.Reset ();
@@ -58,7 +59,7 @@ namespace Components.Implementations {
 			foreach ( var hookID in hookInfo.HookIDs ) {
 				if ( !HookSet.TryGetValue ( hookID, out var hookRef ) ) throw new KeyNotFoundException ( $"Couldn't find a hook ID for Hook Definition: {hookInfo}" );
 				if ( HookSet.Remove ( hookID ) )
-					released += LowLevelComponent.UnhookHookEx ( hookRef.hook ) ? 1 : 0;
+					released += LowLevelComponent.UnhookHookEx ( hookRef.Item2.hook ) ? 1 : 0;
 			}
 			if ( inputHandler != null && HookSet.Count == 0 ) {
 				Continue = false;
@@ -70,6 +71,11 @@ namespace Components.Implementations {
 			return released;
 		}
 
+		public override string PrintHookInfo ( DictionaryKey key ) {
+			if ( !HookSet.TryGetValue ( key, out var hookRef ) ) return null;
+			return hookRef.Item1.PrintHookInfo ( key );
+		}
+
 		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) {
 			var LLData = LowLevelComponent.GetLowLevelData ( input );
 			return LowLevelComponent.SimulateInput ( 1, new HInputData[1] { LLData }, LLData.SizeOf );
@@ -79,8 +85,8 @@ namespace Components.Implementations {
 			var inputEventDataHolder = LowLevelComponent.GetHighLevelData ( hookKey, this, inputData );
 			bool willResend = true;
 			if ( HookSet.TryGetValue ( hookKey, out var hookRef ) ) {
-				if ( hookRef.MainCallback != null ) willResend = hookRef.MainCallback ( hookKey, inputEventDataHolder );
-				hookRef.MessageQueue.Enqueue ( (hookKey, inputEventDataHolder) );
+				if ( hookRef.Item2.MainCallback != null ) willResend = hookRef.Item2.MainCallback ( hookKey, inputEventDataHolder );
+				hookRef.Item2.MessageQueue.Enqueue ( (hookKey, inputEventDataHolder) );
 				waiter.Set ();
 			}
 			return willResend;
@@ -93,10 +99,10 @@ namespace Components.Implementations {
 				waiter.WaitOne ();
 				if ( !Continue ) break;
 				foreach ( var hook in HookSet.Values ) {
-					if ( hook.MessageQueue.Count < 1 ) continue;
+					if ( hook.Item2.MessageQueue.Count < 1 ) continue;
 					TaskState = "Pushing data";
-					var msg = hook.MessageQueue.Dequeue ();
-					if ( hook.DelayedCB != null ) hook.DelayedCB ( msg.Item1, msg.Item2 );
+					var msg = hook.Item2.MessageQueue.Dequeue ();
+					if ( hook.Item2.DelayedCB != null ) hook.Item2.DelayedCB ( msg.Item1, msg.Item2 );
 				}
 			}
 			TaskState = "Stopped";
@@ -114,7 +120,7 @@ namespace Components.Implementations {
 				string[] ret = new string[Owner.HookSet.Count];
 				int ID = 0;
 				foreach ( var hook in Owner.HookSet )
-					ret[ID++] = $"{hook.Key} => {hook.Value.hook}>>({hook.Value.MainCallback.Method.AsString ()}|{hook.Value.DelayedCB.Method.AsString ()})[{hook.Value.MessageQueue.Count}]";
+					ret[ID++] = $"{hook.Key} => {hook.Value.Item2.hook}>>({hook.Value.Item2.MainCallback.Method.AsString ()}|{hook.Value.Item2.DelayedCB.Method.AsString ()})[{hook.Value.Item2.MessageQueue.Count}]";
 				return ret;
 			}
 			public override string AllInfo () => $"{base.AllInfo ()}{BR}Task state: {TaskState}";

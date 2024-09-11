@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TargetFrameworks>net8.0-windows10.0.19041.0;net8.0-android</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
+    <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
+    <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
+    <ProjectReference Include="..\InputResender.Services\InputResender.Services.csproj" />
+  </ItemGroup>
+</Project>

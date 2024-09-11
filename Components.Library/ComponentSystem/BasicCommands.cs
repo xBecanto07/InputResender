@@ -65,6 +65,7 @@ public class BasicCommands : ACommand<CommandResult> {
 			context.ArgErrorLevel = lvl;
 			return new CommandResult ( $"ArgParser error log level set to {lvl}." );
 		} else if ( act == "loglevel" ) {
+			if (context.Owner == null) throw new InvalidOperationException ( "Owner core is not set." );
 			CoreBase.LogLevel level = args.EnumC<CoreBase.LogLevel> ( argID + 1, "Level" );
 			switch ( level ) {
 			case CoreBase.LogLevel.None:

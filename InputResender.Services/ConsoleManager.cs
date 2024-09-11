@@ -15,6 +15,7 @@ public class ConsoleManager {
 	private readonly List<string> OutputBuffer = new ();
 	private string NewInput = null;
 	private readonly AutoResetEvent readerWaiter;
+	private bool EndsWithEOL = true;
 
 	public ConsoleManager ( Action<string> realWriteLine = null, Func<string> realReadLine = null, Action<string> realWrite = null ) {
 		RealWriteLine = realWriteLine ?? Console.WriteLine;
@@ -25,8 +26,14 @@ public class ConsoleManager {
 		reader.Start ();
 	}
 
-	public void Write ( string text ) { OutputBuffer.Insert ( 0, text ); RealWrite ( text ); }
-	public void WriteLine ( string text ) { OutputBuffer.Insert ( 0, text ); RealWriteLine ( text ); }
+	public void Write ( string text ) { PushOut ( text, false ); RealWrite ( text ); }
+	public void WriteLine ( string text ) { PushOut ( text, true ); RealWriteLine ( text ); }
+
+	private void PushOut (string text, bool endWithEOL) {
+		if ( EndsWithEOL ) OutputBuffer.Insert ( 0, text );
+		else OutputBuffer[0] += text;
+		EndsWithEOL = endWithEOL;
+	}
 
 	private void ReaderTask () {
 		while ( true ) {
@@ -43,7 +50,7 @@ public class ConsoleManager {
 				// Read input and wait for it to be processed
 				lock ( readerWaiter ) {
 					NewInput = line;
-					OutputBuffer.Insert ( 0, line );
+					PushOut ( line, true );
 					InputBuffer.Insert ( 0, line );
 				}
 				readerWaiter.WaitOne ();
@@ -73,10 +80,19 @@ public class ConsoleManager {
 		}
 	}
 
-	public void Append ( string line ) {
+	public string ReadLineBlocking () {
+		while ( true ) {
+			string line = ReadLine ();
+			if ( line != null ) return line;
+			Thread.Sleep ( 1 );
+		}
+	}
+
+	public void Append ( string line, bool endsWithEOL = true ) {
 		string fullLine = LastLine () + line;
 		if ( OutputBuffer.Any () ) OutputBuffer[0] = fullLine;
 		else OutputBuffer.Add ( fullLine );
+		EndsWithEOL = endsWithEOL;
 		if (Console.CursorTop > 0) Console.SetCursorPosition ( 0, Console.CursorTop - 1 ); // Replace this with injection
 		RealWriteLine ( $"\r{new string ( ' ', Console.WindowWidth - 1 )}\r{fullLine}" );
 	}
