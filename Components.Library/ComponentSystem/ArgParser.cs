@@ -170,13 +170,13 @@ public class ArgParser {
 	public string String ( int id, string dsc, int min = 0, bool shouldThrow = false ) {
 		string ret = Get ( id, dsc );
 		if ( ret != null && ret.Length < min )
-			return Error ( $"Argument #{id} is too short. {dsc}", 8, shouldThrow, string.Empty );
+			return Error ( $"Argument #{id}({ret}) is too short. {dsc}", 8, shouldThrow, string.Empty );
 		return ret;
 	}
 	public string String ( string key, string dsc, int min = 0, bool shouldThrow = false ) {
 		string ret = Get ( key, dsc );
 		if ( ret != null && ret.Length < min )
-			return Error ( $"Argument '{key}' is too short. {dsc}", 9, shouldThrow, string.Empty );
+			return Error ( $"Argument '{key}'({ret}) is too short. {dsc}", 9, shouldThrow, string.Empty );
 		return ret;
 	}
 	public bool Present ( int id ) => Args.Any ( arg => arg.Position == id );
@@ -198,10 +198,11 @@ public class ArgParser {
 		return SB.ToString ();
 	}
 	public T EnumC<T> ( int id, string dsc, bool shouldThrow = false ) where T : struct {
-		if ( !Enum.TryParse ( String ( id, dsc ), true, out T ret ) )
-			return Error ( $"Argument #{id} is not a valid {typeof ( T ).Name}. {dsc}", 10, shouldThrow, default ( T ) );
+		string arg = Get ( id, dsc );
+		if ( !Enum.TryParse ( arg, true, out T ret ) )
+			return Error ( $"Argument #{id}({arg}) is not a valid {typeof ( T ).Name}. {dsc}", 10, shouldThrow, default ( T ) );
 		if ( !Enum.IsDefined ( typeof ( T ), ret ) )
-			return Error ( $"Argument #{id} was not found in {typeof ( T ).Name}. {dsc}", 11, shouldThrow, default ( T ) );
+			return Error ( $"Argument #{id}({arg}) was not found in {typeof ( T ).Name}. {dsc}", 11, shouldThrow, default ( T ) );
 		return ret;
 	}
 

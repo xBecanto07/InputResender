@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace InputResender.Services;
+namespace Components.Library;
 public class ConsoleManager {
 	public const string EOF = "\x04";
 	private readonly Action<string> RealWrite, RealWriteLine;
@@ -17,10 +17,15 @@ public class ConsoleManager {
 	private readonly AutoResetEvent readerWaiter;
 	private bool EndsWithEOL = true;
 
-	public ConsoleManager ( Action<string> realWriteLine = null, Func<string> realReadLine = null, Action<string> realWrite = null ) {
-		RealWriteLine = realWriteLine ?? Console.WriteLine;
-		RealWrite = realWrite ?? Console.Write;
-		RealReadLine = realReadLine ?? Console.ReadLine;
+	public int MaxLineLength { get; set; } = 120;
+
+	public ConsoleManager ( Action<string> realWriteLine, Func<string> realReadLine, Action<string> realWrite ) {
+		if ( realWriteLine == null ) throw new ArgumentNullException ( nameof ( realWriteLine ) );
+		if ( realReadLine == null ) throw new ArgumentNullException ( nameof ( realReadLine ) );
+		if ( realWrite == null ) throw new ArgumentNullException ( nameof ( realWrite ) );
+		RealWriteLine = realWriteLine;
+		RealWrite = realWrite;
+		RealReadLine = realReadLine;
 		readerWaiter = new AutoResetEvent ( false );
 		reader = new Task ( ReaderTask );
 		reader.Start ();

@@ -14,12 +14,12 @@ public class PasswordManagerCommand : ACommand {
 		interCommands.Add ( "print" );
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		DMainAppCore core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
-		switch ( args.String ( argID, "Action" ) ) {
+	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		switch ( context.SubAction ) {
 		case "add":
-			if ( string.IsNullOrWhiteSpace ( args.String ( argID + 1, "password" ) ) ) return new CommandResult ( "Password cannot be empty." );
-			core.DataSigner.Key = core.DataSigner.GenerateIV (System.Text.Encoding.UTF8.GetBytes ( args.String ( argID + 1, "password" ) ) );
+			if ( string.IsNullOrWhiteSpace ( context[1, "password"] ) ) return new CommandResult ( "Password cannot be empty." );
+			core.DataSigner.Key = core.DataSigner.GenerateIV (System.Text.Encoding.UTF8.GetBytes ( context[1, "password"] ) );
 			return new CommandResult ( $"Password set to {core.DataSigner.Key.CalcHash ().ToShortCode ()}" );
 		case "print":
 			return new CommandResult ( $"Current password: {core.DataSigner.Key.CalcHash ().ToShortCode ()}" );
@@ -39,18 +39,17 @@ public class TargetManagerCommand : ACommand {
 		interCommands.Add ( "set" );
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		DMainAppCore core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
-		switch ( args.String ( argID, "Action" ) ) {
+	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		switch ( context.SubAction ) {
 		case "set":
-			string target = args.String ( argID + 1, "Target end point" );
-			if (target == "none") {
+			if ( context[1, "Target end point"] == "none") {
 				if ( TargetEP != null ) core.PacketSender.Disconnect ( TargetEP );
 				TargetEP = null;
 				return new CommandResult ( "Target disconnected." );
 			}
-			if ( !IPEndPoint.TryParse ( target, out IPEndPoint EP ) )
-				return new CommandResult ( $"Provided target '{target}' is not a valid end point." );
+			if ( !IPEndPoint.TryParse ( context[1], out IPEndPoint EP ) )
+				return new CommandResult ( $"Provided target '{context[1]}' is not a valid end point." );
 			if ( TargetEP != null ) {
 				try { core.PacketSender.Disconnect ( TargetEP ); } catch { }
 			}
@@ -63,8 +62,11 @@ public class TargetManagerCommand : ACommand {
 	}
 }
 
+// Is this really duplicated in Components.Interfaces.MainAppCommands and Components.Implementations.ConnectionManagerCommand? Further inspection needed! (critical)
+// Probably this was replaced by newer version under the Implementation that might be more generic.
+// Better question than is: Does the 'newer' version needs to be under Implementations? On what variant and how it depends?
 public class HookManagerCommand : ACommand {
-	ICommandProcessor activeContext = null;
+	CommandProcessor activeContext = null;
 	HHookInfo hookInfo;
 	public override string Description => "Input hook management";
 	public HookManagerCommand ( ACommand parent = null ) : base ( parent?.CallName ) {
@@ -74,14 +76,13 @@ public class HookManagerCommand : ACommand {
 		interCommands.Add ( "start" );
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		DMainAppCore core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
-		switch ( args.String ( argID, "Action" ) ) {
+	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		switch ( context.SubAction ) {
 		case "status": return new CommandResult ( $"Hook status: {(hookInfo != null ? "active" : "inactive")}" );
 		case "start":
 			if ( hookInfo != null ) return new CommandResult ( "Hook already active." );
-			if ( context is not ComponentBase cb ) return new CommandResult ( "Invalid context type." );
-			hookInfo = new HHookInfo ( cb, 0, VKChange.KeyDown, VKChange.KeyUp );
+			hookInfo = new HHookInfo ( context.CmdProc, 0, VKChange.KeyDown, VKChange.KeyUp );
 			var hookIDs = core.InputReader.SetupHook ( hookInfo, HookFastCallback, HookCallback );
 			return new CommandResult ( $"Hook started with following IDs: {string.Join ( ", ", hookIDs )}" );
 		default:
@@ -114,37 +115,37 @@ public class HookCallbackManagerCommand : ACommand {
 		interCommands.Add ( "active" );
 	}
 
-	readonly Action<ICommandProcessor, HInputEventDataHolder>[] PossibleCallbacks = new[] {
+	readonly Action<DictionaryKey, HInputEventDataHolder>[] PossibleCallbacks = new[] {
 		PrintCB
 	};
 
-	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		switch ( args.String ( argID, "Action" ) ) {
+	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		// This command is not setting the callbacks themselfs, but only sets global variable to an Action that can be used to process HInputEventDataHolder type of callback.
+		switch ( context.SubAction ) {
 		case "list":
 			return new CommandResult ( $"Available callbacks: {string.Join ( ", ", PossibleCallbacks.Select ( (cb, i) => $"{i}: {cb.Method.Name}" ) )}" );
 		case "set":
-			string cbSel = args.String ( argID + 1, "Callback selector" );
-			if ( int.TryParse( cbSel, out int idx ) ) {
+			if ( int.TryParse( context[1, "Callback selector"], out int idx ) ) {
 				if ( idx < 0 || idx >= PossibleCallbacks.Length ) return new CommandResult ( $"Invalid callback index of {idx}." );
-				context.SetVar ( CBVarName, PossibleCallbacks[idx] );
+				context.CmdProc.SetVar ( CBVarName, PossibleCallbacks[idx] );
 			}
-			var cb = PossibleCallbacks.FirstOrDefault ( cb => cb.Method.Name == cbSel );
-			if ( cb == null ) return new CommandResult ( $"Callback '{cbSel}' not found." );
-			context.SetVar ( CBVarName, cb );
+			var cb = PossibleCallbacks.FirstOrDefault ( cb => cb.Method.Name == context[1] );
+			if ( cb == null ) return new CommandResult ( $"Hook callback '{context[1]}' not found." );
+			context.CmdProc.SetVar ( CBVarName, cb );
 			return new CommandResult ( $"Hook callback set to {cb.Method.Name}." );
 		case "active":
 			try {
-				var callback = context.GetVar<Action<DictionaryKey, HInputEventDataHolder>> ( CBVarName );
+				var callback = context.CmdProc.GetVar<Action<DictionaryKey, HInputEventDataHolder>> ( CBVarName );
 				return new CommandResult ( $"Active callback: {callback.Method.Name}" );
 			} catch ( ArgumentException ex ) {
 				return new CommandResult ( "No active callback." );
 			} catch { throw; }
 		default:
-			return new CommandResult ( "Missing or unknown subcommand." );
+			return new CommandResult ( $"Missing or unknown subcommand '{context.SubAction}'." );
 		}
 	}
 
-	private static void PrintCB ( ICommandProcessor context, HInputEventDataHolder e ) {
+	private static void PrintCB ( DictionaryKey hookID, HInputEventDataHolder e ) {
 
 	}
 }

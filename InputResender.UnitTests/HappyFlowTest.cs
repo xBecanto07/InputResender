@@ -113,7 +113,7 @@ namespace InputResender.UnitTests {
 
 	public class MHappyFlowTest : DHappyFlowTest<MMainAppCore> {
 		public MHappyFlowTest ( OutpuHelper outputHelper ) : base ( outputHelper ) { } 
-		protected override MMainAppCore GenerateAppCore () => new MMainAppCore ();
+		protected override MMainAppCore GenerateAppCore () => DMainAppCore.CreateMock ( DMainAppCore.CompSelect.All );
 	}
 
 	public class VHappyFlowTest : DHappyFlowTest<VMainAppCore> {

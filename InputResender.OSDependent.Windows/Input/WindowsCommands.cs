@@ -22,20 +22,20 @@ public class WindowsCommands : ACommand {
 		interCommands.Add ( "load" );
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID = 1 ) {
-		switch ( args.String ( argID, "Action" ) ) {
+	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		switch ( context.SubAction ) {
 		case "load":
-			var actCore = context.GetVar<CoreBase> ( CoreManagerCommand.ActiveCoreVarName );
+			var actCore = context.CmdProc.GetVar<CoreBase> ( CoreManagerCommand.ActiveCoreVarName );
 			if ( actCore.IsRegistered<DLowLevelInput> () ) {
 				var llInput = actCore.Fetch<DLowLevelInput> ();
-				if (llInput.GetType() == typeof(VWinLowLevelLibs)) {
+				if ( llInput.GetType () == typeof ( VWinLowLevelLibs ) ) {
 					return new CommandResult ( "Windows dependencies already loaded." );
 				}
-				if (args.String(argID + 1, null) == "force") {
+				if ( context[1] == "force" ) {
 					do {
 						actCore.Unregister ( actCore.Fetch<DLowLevelInput> () );
 					} while ( actCore.IsRegistered<DLowLevelInput> () );
-				} else return new CommandResult ( $"LowLevelInput is already registered with variant {llInput.GetType().Name}. To override, use 'force' hint." );
+				} else return new CommandResult ( $"LowLevelInput is already registered with variant {llInput.GetType ().Name}. To override, use 'force' hint." );
 			}
 			new VWinLowLevelLibs ( actCore );
 			return new CommandResult ( "Windows dependencies loaded." );

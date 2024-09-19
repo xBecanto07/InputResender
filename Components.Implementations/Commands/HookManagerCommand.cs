@@ -7,7 +7,7 @@ public class HookManagerCommand : ACommand {
     HCallbackHolder<DHookManager.HookCallback> hookCallback;
     public enum CallbackFcn { None, Print, Aggregate }
     CallbackFcn CbFcn = CallbackFcn.None;
-    CommandProcessor lastContext;
+    CommandProcessor.CmdContext lastContext;
     List<string> aggregatedEvetns = new ();
 
     override public string Description => "Input hook manager.";
@@ -18,25 +18,24 @@ public class HookManagerCommand : ACommand {
         interCommands.Add ( "add" );
     }
 
-    protected override CommandResult ExecCleanup ( CommandProcessor context, ArgParser args, int argID ) {
+    protected override CommandResult ExecCleanup ( CommandProcessor.CmdContext context ) {
         hookCallback?.Unregister ();
         return new CommandResult ( "Hook callback unregistered." );
     }
 
-    override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		DMainAppCore core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
-		switch ( args.String ( argID, "Action" ) ) {
+    override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		switch ( context.SubAction ) {
         case "manager": {
-            string act = args.String ( argID + 1, "Sub-action" );
             var manager = core.Fetch<DHookManager> ();
-            switch ( act ) {
+            switch ( context[1, "Sub-action"] ) {
             case "start":
                 if ( manager != null ) return new CommandResult ( "Hook manager already started." );
                 manager = new VHookManager ( core );
                 return new CommandResult ( "Hook manager started." );
             case "status": return new CommandResult ( manager == null ? "Hook manager not started." : "Hook manager is running." );
             default:
-                return new CommandResult ( "Invalid sub-action." );
+                return new CommandResult ( $"Invalid sub-action '{context[1]}'." );
             }
         }
         case "add": {
@@ -52,18 +51,18 @@ public class HookManagerCommand : ACommand {
             /// 3. <see cref="VHookManager.FastCB"/> or <see cref="VHookManager.DelayedCB"/> - Loop through all registered callbacks, stop at first consuming one
             /// 4. <see cref="HookManagerCommand.HookCallback(HInputEventDataHolder)"/> - Callback assign via command
 
-            if ( TryPrintHelp ( args, argID + 1, () => $"hook add <CbAction={{{string.Join ( "|", Enum.GetNames<CallbackFcn> () )}}}> <VKChange1={{{string.Join ( "|", Enum.GetNames<VKChange> () )}}}> [<VKChange2> ...]", out var helpRes ) ) return helpRes;
+            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook add <CbAction={{{string.Join ( "|", Enum.GetNames<CallbackFcn> () )}}}> <VKChange1={{{string.Join ( "|", Enum.GetNames<VKChange> () )}}}> [<VKChange2> ...]", out var helpRes ) ) return helpRes;
 
-            CallbackFcn cbFcn = args.EnumC<CallbackFcn> ( argID + 1, "Callback action" );
+            CallbackFcn cbFcn = context.Args.EnumC<CallbackFcn> ( context.ArgID + 1, "Callback action" );
             lastContext = context;
             CbFcn = cbFcn;
             if ( cbFcn == CallbackFcn.Aggregate ) {
-                try { context.GetVar<List<string>> ( "hookEvents" ); } catch ( Exception ) { context.SetVar ( "hookEvents", aggregatedEvetns = new () ); }
+                try { context.CmdProc.GetVar<List<string>> ( "hookEvents" ); } catch ( Exception ) { context.CmdProc.SetVar ( "hookEvents", aggregatedEvetns = new () ); }
             }
 
             List<VKChange> actionList = new ();
-            for ( int i = argID + 2; i < args.ArgC; i++ ) {
-                var act = args.EnumC<VKChange> ( i, i == argID + 2 ? "Action" : null );
+            for ( int i = context.ArgID + 2; i < context.Args.ArgC; i++ ) {
+                var act = context.Args.EnumC<VKChange> ( i, i == context.ArgID + 2 ? "Action" : null );
                 if ( act == VKChange.None ) return new CommandResult ( "Invalid action." );
                 actionList.Add ( act );
             }
@@ -85,7 +84,7 @@ public class HookManagerCommand : ACommand {
         }
         case "remove": return new CommandResult ( "Removing hooks is not implemented." );
         case "list": return new CommandResult ( "Listing hooks is not implemented." );
-        default: return new CommandResult ( $"Invalid action '{args.String ( argID, "Action" )}'." );
+        default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
         }
     }
 
@@ -93,10 +92,10 @@ public class HookManagerCommand : ACommand {
         switch ( CbFcn ) {
         case CallbackFcn.None: return true;
         case CallbackFcn.Print:
-            lastContext.ProcessLine ( $"print \"{EventToStr ( e )}\"" );
+            lastContext.CmdProc.ProcessLine ( $"print \"{EventToStr ( e )}\"" );
             return true;
         case CallbackFcn.Aggregate:
-            var list = lastContext.GetVar<List<string>> ( "hookEvents" );
+            var list = lastContext.CmdProc.GetVar<List<string>> ( "hookEvents" );
             if ( !list.Any () || list[^1].Length > 90 ) list.Add ( EventToShort ( e ) );
             else list[^1] += ' ' + EventToShort ( e );
             return true;

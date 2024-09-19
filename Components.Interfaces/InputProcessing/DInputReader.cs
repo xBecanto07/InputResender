@@ -8,7 +8,6 @@ namespace Components.Interfaces {
 				(nameof(SetupHook), typeof(void)),
 				(nameof(ReleaseHook), typeof(void)),
 				(nameof(SimulateInput), typeof(uint)),
-				(nameof(SimulateInput), typeof(HInputEventDataHolder)),
 				(nameof(PrintHookInfo), typeof(string)),
 				(nameof(SimulateKeyInput), typeof(HInputEventDataHolder))
 			};

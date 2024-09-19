@@ -117,7 +117,22 @@ namespace Components.Library {
 			int BaseMethodCount = BaseMethods.Count ();
 			var DiffMethods = DefinitionMethods.Where ( x => !BaseMethods.Contains ( x ) ).ToArray ();
 			int DiffMethodsCount = DiffMethods.Count ();
-			TestObject.SupportedCommands.Should ().HaveCount ( DefinitionMethodCount - BaseMethodCount );
+			try {
+				TestObject.SupportedCommands.Should ().HaveCount ( DefinitionMethodCount - BaseMethodCount );
+			} catch ( Exception e ) {
+				System.Text.StringBuilder SB = new ();
+				string[] registeredMethodNames = TestObject.SupportedCommands.Select (cmd=> $"{cmd.opType.Name} {cmd.opCode}").ToArray();
+				
+				SB.AppendLine ( "Probably missing methods:" );
+				int id = 0;
+				foreach (var cmd in DiffMethods ) {
+					string name = cmd.ToString ();
+					if ( registeredMethodNames.Contains ( name ) ) continue;
+					SB.AppendLine ( $"  {id++}: {name}" );
+				}
+				SB.AppendLine ();
+				throw new Exception ( SB.ToString (), e );
+			}
 
 			string[] GetMethods ( Type type ) => type.GetMethods ().Select ( x => $"{x.ReturnType.Name} {x.Name}" ).ToArray ();
 		}

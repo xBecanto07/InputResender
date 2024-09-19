@@ -24,8 +24,8 @@ public class ListHostsNetworkCommand : ACommand<CommandResult> {
         commandNames.Add ( "hostlist" );
     }
 
-    override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID = 1 ) {
-        var core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+    override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+        var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
         var sender = core.Fetch<DPacketSender> ();
         if ( sender == null ) return new CommandResult ( "No packet sender available." );
 
@@ -53,22 +53,20 @@ public class NetworkConnsManagerCommand : ACommand {
 		interCommands.Add ( "send" );
 	}
 
-	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		var core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		var sender = core.Fetch<DPacketSender> ();
 		if ( sender == null ) return new CommandResult ( "No packet sender available." );
 
-        string action = args.String ( argID + 1, "Action" );
-		switch ( action ) {
+		switch ( context.SubAction ) {
 		case "list":
             return new CommandResult ( string.Join ( '\n', sender.Connections ) );
 		case "send":
-            string msg = args.String ( argID + 2, "Message" );
-            byte[] data = System.Text.Encoding.UTF8.GetBytes ( msg );
+            byte[] data = System.Text.Encoding.UTF8.GetBytes ( context[1, "Message"] );
             HMessageHolder msgHolder = new ( HMessageHolder.MsgFlags.None, data );
             sender.Send ( msgHolder );
 			return new CommandResult ( $"Sent {data.Length} bytes." );
-		default: return new CommandResult ( "Unknown action." );
+		default: return new CommandResult ( $"Unknown action '{context.SubAction}'." );
 		}
 	}
 }
@@ -77,7 +75,7 @@ public class NetworkCallbacks : ACommand {
 	private enum CallbackType { None, Print, Fcn }
 	private CallbackType NewConnCB = CallbackType.None;
 	private CallbackType RecvCB = CallbackType.None;
-	private CommandProcessor lastContext;
+	private CommandProcessor.CmdContext lastContext;
 
 	override public string Description => "Manages network callbacks.";
 
@@ -89,18 +87,17 @@ public class NetworkCallbacks : ACommand {
 		interCommands.Add ( "newconn" );
 	}
 
-	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
+	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		lastContext = context;
-		var core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		var sender = core.Fetch<DPacketSender> ();
 		if ( sender == null ) return new CommandResult ( "No packet sender available." );
 
-		string action = args.String ( argID + 1, "Action" );
-		switch ( action ) {
+		switch ( context.SubAction ) {
 		case "list":
 			return new CommandResult ( $"New connection callback (newconn): {NewConnCB}\nReceive callback (recv): {RecvCB}" );
 		case "recv":
-			var recvcb = args.EnumC<CallbackType> ( argID + 2, "Callback (onReceive) type" );
+			var recvcb = context.Args.EnumC<CallbackType> ( context.ArgID + 1, "Callback (onReceive) type" );
 			if ( recvcb == RecvCB ) return new CommandResult ( $"Callback already set to {recvcb}." );
 			else if ( recvcb == CallbackType.None ) {
 				RecvCB = CallbackType.None;
@@ -112,7 +109,7 @@ public class NetworkCallbacks : ACommand {
 				return new CommandResult ( $"Callback set to {recvcb}." );
 			}
 		case "newconn":
-			var newconncb = args.EnumC<CallbackType> ( argID + 2, "Callback (onNewConn) type" );
+			var newconncb = context.Args.EnumC<CallbackType> ( context.ArgID + 1, "Callback (onNewConn) type" );
 			if ( newconncb == NewConnCB ) return new CommandResult ( $"Callback already set to {newconncb}." );
 			else if ( newconncb == CallbackType.None ) {
 				NewConnCB = CallbackType.None;
@@ -123,7 +120,7 @@ public class NetworkCallbacks : ACommand {
 				sender.OnNewConn += NewConnCallback;
 				return new CommandResult ( $"Callback set to {newconncb}." );
 			}
-		default: return new CommandResult ( "Unknown action." );
+		default: return new CommandResult ( $"Unknown action '{context.SubAction}'." );
 		}
 	}
 
@@ -135,10 +132,10 @@ public class NetworkCallbacks : ACommand {
 			string printInfo = $"Received {msg.Size} bytes ({(wasProcessed ? "already processed" : "not processed")}): ";
 			if ( binData.All ( b => b >= 32 && b < 127 ) ) printInfo += $"'{System.Text.Encoding.UTF8.GetString ( binData )}'";
 			else printInfo += $"{binData.ToHex ()}";
-			lastContext.ProcessLine ( $"print \"{printInfo}\"" );
+			lastContext.CmdProc.ProcessLine ( $"print \"{printInfo}\"" );
 			return DPacketSender.CallbackResult.None;
 		case CallbackType.Fcn:
-			lastContext.Owner.PushDelayedError ( "Calling extra function to process callbacks is not yet supported.", new NotImplementedException () );
+			lastContext.CmdProc.Owner.PushDelayedError ( "Calling extra function to process callbacks is not yet supported.", new NotImplementedException () );
 			return DPacketSender.CallbackResult.Skip;
 		default: return DPacketSender.CallbackResult.Skip;
 		}
@@ -147,8 +144,8 @@ public class NetworkCallbacks : ACommand {
 	private void NewConnCallback ( object connInfo ) {
 		switch ( NewConnCB ) {
 		case CallbackType.None: return;
-		case CallbackType.Print: lastContext.ProcessLine ( $"print \"New connection: {connInfo}\"" ); return;
-		case CallbackType.Fcn: lastContext.Owner.PushDelayedError ( "Calling extra function to process callbacks is not yet supported.", new NotImplementedException () ); return;
+		case CallbackType.Print: lastContext.CmdProc.ProcessLine ( $"print \"New connection: {connInfo}\"" ); return;
+		case CallbackType.Fcn: lastContext.CmdProc.Owner.PushDelayedError ( "Calling extra function to process callbacks is not yet supported.", new NotImplementedException () ); return;
 		}
 	}
 }

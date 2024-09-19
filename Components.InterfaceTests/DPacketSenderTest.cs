@@ -12,11 +12,14 @@ using static Components.Interfaces.DPacketSender;
 namespace Components.InterfaceTests {
 	public abstract class DPacketSenderTest<TestObjT> : ComponentTestBase<TestObjT> where TestObjT : DPacketSender {
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
-		protected List<long> Received = new List<long> ();
+		protected List<string> Received = new List<string> ();
 		protected AutoResetEvent resetEvent = new AutoResetEvent (false);
 		bool TestFinished = false;
 
 		protected abstract IEnumerable<object> GetLocalPoint ( TestObjT testObj, int port );
+
+		/// <summary>Inform if error found on receiver (B) can be disregarded as minor one or is deemed critical to fail the test.<para>Minor error might be e.g. failure to connect to network, that is not being tested.</para></summary>
+		protected virtual bool IsErrorCritical (string msg, Exception e, TestObjT Aobj, object AEP, TestObjT Bobj, object BEP ) => true;
 
 		public DPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
@@ -39,15 +42,37 @@ namespace Components.InterfaceTests {
 				for ( int i = 0; i < reps; i++ ) {
 					Output.WriteLine ( $"Sending message #{i}" );
 					receiver.OnReceive += SimpleCallback;
-					sender.Send ( data );
+					byte[] bData = data.InnerMsg;
+					bData[0] = (byte)reps;
+					bData[1] = (byte)i;
+					HMessageHolder specificData = new ( data.Flags, bData );
+					sender.Send ( specificData );
 				}
 				Disconnect ( sender, receiver, aEPIter.Current, bEPIter.Current );
 
 				var logger = OwnerCore.Fetch ( typeof ( DLogger ) );
 				if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
-				long hash = data.Span.CalcHash ();
-				Received.Should ().HaveCount ( reps ).And.OnlyContain ( val => val == hash );
-				receiver.Errors.Should ().BeEmpty ();
+
+				Received.Should ().HaveCount ( reps );
+				for ( int i = 0; i < reps; i++ ) {
+					byte[] bData = data.InnerMsg;
+					bData[0] = (byte)reps;
+					bData[1] = (byte)i;
+					HMessageHolder specificData = new ( data.Flags, bData );
+					long hash = specificData.Span.CalcHash ();
+					string expected = $"{reps};{i};{hash}";
+					Received[i].Should ().Be ( expected );
+				}
+				//receiver.Errors.Should ().BeEmpty ();
+
+				foreach (var err in receiver.Errors) {
+					try {
+						IsErrorCritical ( err.msg, err.e, sender, aEPIter.Current, receiver, bEPIter.Current ).Should ().BeFalse ();
+					} catch {
+						throw new Exception ( $"Error '{err.msg}' is considered critical!", err.e );
+					}
+				}
+
 				Output.WriteLine ( $"Finished {aEPIter.Current} -> {bEPIter.Current}" );
 
 				Received.Clear ();
@@ -55,7 +80,7 @@ namespace Components.InterfaceTests {
 		}
 
 		protected CallbackResult SimpleCallback ( HMessageHolder data, bool processed ) {
-			Received.Add (data.Span.CalcHash ());
+			Received.Add ( $"{data.InnerMsg[0]};{data.InnerMsg[1]};{data.Span.CalcHash ()}" );
 			resetEvent.Set ();
 			return TestFinished ? CallbackResult.Stop : CallbackResult.None;
 		}

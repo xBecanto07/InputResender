@@ -1,9 +1,5 @@
 ﻿using Components.Library;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace InputResender.CLI; 
 public class DebugCommand : ACommand {
@@ -14,10 +10,10 @@ public class DebugCommand : ACommand {
 		interCommands.Add ( "throw" );
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		switch ( args.String ( argID, "Action" ) ) {
+	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		switch ( context.SubAction ) {
 		case "throw": throw new Exception ( "Debug command throw" );
-		default: return new CommandResult ( $"Invalid action '{args.String ( argID, "Action" )}'." );
+		default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
 		}
 	}
 }

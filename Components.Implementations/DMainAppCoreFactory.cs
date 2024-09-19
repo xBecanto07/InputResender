@@ -1,7 +1,6 @@
-﻿using Components.Implementations;
-using Components.Interfaces;
+﻿using Components.Interfaces;
 
-namespace InputResender.CLI;
+namespace Components.Implementations;
 public class DMainAppCoreFactory {
 	public bool PreferMocks = false;
 

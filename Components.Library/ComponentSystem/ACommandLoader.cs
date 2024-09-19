@@ -11,7 +11,7 @@ public abstract class ACommandLoader : ACommand {
 	protected virtual IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => null;
 
 	// Note that created command might not be actually added to the context
-	protected sealed override CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
+	protected sealed override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		string ret = string.Empty;
 		Dictionary<string, ACommand> commands = new ();
 		Dictionary<string, Func<ACommand, ACommand>> subCommands = new ();
@@ -29,13 +29,13 @@ public abstract class ACommandLoader : ACommand {
 		}
 
 		foreach ( var cmd in commands ) {
-			context.AddCommand ( cmd.Value );
+			context.CmdProc.AddCommand ( cmd.Value );
 			if ( !string.IsNullOrEmpty ( ret ) ) ret += Environment.NewLine;
 			ret += cmd.Value.Help;
 		}
 
 		foreach ( var subCmd in subCommands ) {
-			context.ModifyCommand ( subCmd.Key, subCmd.Value );
+			context.CmdProc.ModifyCommand ( subCmd.Key, subCmd.Value );
 		}
 
 		return new CommandResult ( ret );

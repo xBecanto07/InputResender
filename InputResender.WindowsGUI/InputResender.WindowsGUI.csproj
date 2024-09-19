@@ -14,4 +14,9 @@
     <ProjectReference Include="..\InputResender.SandboxCmd\InputResender.SandboxCmd.csproj" />
     <ProjectReference Include="..\InputResender.CLI\InputResender.CLI.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Visualizer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
 </Project>

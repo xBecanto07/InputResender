@@ -17,17 +17,17 @@ public class CoreManagerCommand : ACommand<RetT> {
 		interCommands.Add ( "typeof" );
 	}
 
-	protected override RetT ExecIner ( CommandProcessor context, ArgParser args, int argID = 1 ) {
-		var core = context.GetVar<CoreBase> ( ActiveCoreVarName );
+	protected override RetT ExecIner ( CommandProcessor.CmdContext context ) {
+		var core = context.CmdProc.GetVar<CoreBase> ( ActiveCoreVarName );
 		if ( core == null ) return new RetT ( null, "No active core." );
 
-		switch ( args.String ( argID, "Action" ) ) {
+		switch ( context.SubAction ) {
 		case "act":
-			return new RetT ( core, "Core activated." );
+			return new RetT ( core, $"Active core: '{core.Name}'" );
 		case "typeof":
-			Type reqType = MdxExtensions.FindType ( args.String ( argID + 1, "Type" ) );
-			if ( reqType == null ) return new RetT ( core, $"Invalid type name: {args.String ( argID + 1, "Type" )}" );
-			var reqComp = context.Owner.Fetch ( reqType );
+			Type reqType = MdxExtensions.FindType ( context[1, "Type"] );
+			if ( reqType == null ) return new RetT ( core, $"Invalid type name: {context[1]}" );
+			var reqComp = core.Fetch ( reqType );
 			if ( reqComp == null ) return new RetT ( core, $"Component of type {reqType.Name} not found." );
 			return new RetT ( core, $"For definition '{reqType.Name}' was found variant '{reqComp.GetType ().Name}'." );
 		default: return new RetT ( core, "Invalid action." );

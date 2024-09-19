@@ -7,7 +7,7 @@ using CompGroup = Components.Library.CoreBase.ComponentGroup;
 
 namespace InputResender.WindowsGUI {
 	public partial class MainScreen : Form {
-		private readonly ICommandProcessor CmdProcessor;
+		private readonly CommandProcessor CmdProcessor;
 		private readonly Action<string> StdOut;
 		protected DMainAppCore Core;
 		//protected IPEndPoint TargetEP;
@@ -26,7 +26,7 @@ namespace InputResender.WindowsGUI {
 			throw ex;
 		}
 
-		public MainScreen ( ICommandProcessor cmdProc, DMainAppCore core, Action<string> stdout ) {
+		public MainScreen ( CommandProcessor cmdProc, DMainAppCore core, Action<string> stdout ) {
 			Core = core;
 			CmdProcessor = cmdProc;
 			StdOut = stdout;
@@ -44,31 +44,31 @@ namespace InputResender.WindowsGUI {
 
 		public void WriteLine ( string line ) {
 			ConsoleText.Invoke ( () => ConsoleText.AppendText ( line + Environment.NewLine ) );
-			Visualizer?.UpdateData ();
+			CmdProcessor.ProcessLine ( "visualizer update" );
 		}
 
 		private void PsswdUpdateBtn_Click ( object sender, EventArgs e ) {
 			var res = TextPromptDialog.Show ( "Enter new group passphrase:", DMainAppControls.PsswdRegEx, true );
 			if ( !res.DidSubmit ) return;
 			CmdProcessor.ProcessLine ( $"password add {res.Text}" );
-			Visualizer?.UpdateData ();
+			CmdProcessor.ProcessLine ( "visualizer update" );
 		}
 
 		private void EPUpdateBtn_Click ( object sender, EventArgs e ) {
 			var res = TextPromptDialog.Show ( "Enter new end point (IPv4:Port):", "([\\d]{1,3}\\.[\\d]{1,3}\\.[\\d]{1,3}\\.[\\d]{1,3}):([\\d]{1,5})" );
 			if ( !res.DidSubmit ) return;
 			CmdProcessor.ProcessLine ( $"target set {res.Text}" );
-			Visualizer?.UpdateData ();
+			CmdProcessor.ProcessLine ( "visualizer update" );
 		}
 
 		private void IsActiveCheckBox_CheckedChanged ( object sender, EventArgs e ) {
 
-			Visualizer?.UpdateData ();
+			CmdProcessor.ProcessLine ( "visualizer update" );
 		}
 
 		private void ShortcutCheckBox_CheckedChanged ( object sender, EventArgs e ) {
 
-			Visualizer?.UpdateData ();
+			CmdProcessor.ProcessLine ( "visualizer update" );
 		}
 
 		private CoreBase.ComponentInfo[] InputProcessors;
@@ -76,7 +76,7 @@ namespace InputResender.WindowsGUI {
 			int ID = InputProcSelector.SelectedIndex;
 			if ( ID < 0 | ID >= InputProcessors.Length ) return;
 			Core.SelectNewPriority ( InputProcessors, InputProcessors[ID].Component );
-			Visualizer?.UpdateData ();
+			CmdProcessor.ProcessLine ( "visualizer update" );
 		}
 		private void InputProcSelector_DropDown ( object sender, EventArgs e ) => UpdateInputProcessors ();
 		private void AddProcessorBtn_Click ( object sender, EventArgs e ) {
@@ -101,7 +101,7 @@ namespace InputResender.WindowsGUI {
 			foreach ( var processor in InputProcessors ) {
 				InputProcSelector.Items.Add ( processor.TypeTree[^1].Name );
 			}
-			Visualizer?.UpdateData ();
+			CmdProcessor.ProcessLine ( "visualizer update" );
 		}
 
 		private void AddCustModBtn_Click ( object sender, EventArgs e ) {
@@ -166,18 +166,13 @@ namespace InputResender.WindowsGUI {
 			list.Clear ();
 			foreach ( var mod in Core.InputProcessor.Modifiers )
 				list.Add ( new ModifierInfo ( mod.Key, mod.Value.mod, mod.Value.readOnly ) );
-			Visualizer?.UpdateData ();
+			CmdProcessor.ProcessLine ( "visualizer update" );
 		}
 
 		private void VisualizerBtn_Click ( object sender, EventArgs e ) {
-			if ( Visualizer != null && Visualizer.IsOpen ) {
-				Visualizer.Close ();
-				Visualizer = null;
-			} else {
-				Visualizer = new ComponentVisualizer ();
-				Visualizer.Init ( new VisualizationData ( Core ) );
-				Visualizer.Show ();
-			}
+			CmdProcessor.ProcessLine ( "visualizer status", out BoolCommandResult res );
+			if ( res.Result.Value ) CmdProcessor.ProcessLine ( "visualizer stop" );
+			else CmdProcessor.ProcessLine ( "visualizer start" );
 		}
 	}
 }

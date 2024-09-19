@@ -51,9 +51,9 @@
 			// MainAppControlsLabel
 			// 
 			MainAppControlsLabel.AutoSize = true;
-			MainAppControlsLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			MainAppControlsLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			MainAppControlsLabel.ForeColor = System.Drawing.Color.Silver;
-			MainAppControlsLabel.Location = new System.Drawing.Point ( 800, 950 );
+			MainAppControlsLabel.Location = new System.Drawing.Point ( 1200, 275 );
 			MainAppControlsLabel.Name = "MainAppControlsLabel";
 			MainAppControlsLabel.Size = new System.Drawing.Size ( 132, 20 );
 			MainAppControlsLabel.TabIndex = 31;
@@ -62,7 +62,7 @@
 			// InputSimulatorLabel
 			// 
 			InputSimulatorLabel.AutoSize = true;
-			InputSimulatorLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			InputSimulatorLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			InputSimulatorLabel.ForeColor = System.Drawing.Color.Silver;
 			InputSimulatorLabel.Location = new System.Drawing.Point ( 12, 725 );
 			InputSimulatorLabel.Name = "InputSimulatorLabel";
@@ -73,7 +73,7 @@
 			// CommandWorkerLabel
 			// 
 			CommandWorkerLabel.AutoSize = true;
-			CommandWorkerLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			CommandWorkerLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			CommandWorkerLabel.ForeColor = System.Drawing.Color.Silver;
 			CommandWorkerLabel.Location = new System.Drawing.Point ( 800, 725 );
 			CommandWorkerLabel.Name = "CommandWorkerLabel";
@@ -84,9 +84,9 @@
 			// ShortcutWorkerLabel
 			// 
 			ShortcutWorkerLabel.AutoSize = true;
-			ShortcutWorkerLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			ShortcutWorkerLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			ShortcutWorkerLabel.ForeColor = System.Drawing.Color.Silver;
-			ShortcutWorkerLabel.Location = new System.Drawing.Point ( 400, 950 );
+			ShortcutWorkerLabel.Location = new System.Drawing.Point ( 1200, 725 );
 			ShortcutWorkerLabel.Name = "ShortcutWorkerLabel";
 			ShortcutWorkerLabel.Size = new System.Drawing.Size ( 121, 20 );
 			ShortcutWorkerLabel.TabIndex = 30;
@@ -95,9 +95,9 @@
 			// PacketSenderLabel
 			// 
 			PacketSenderLabel.AutoSize = true;
-			PacketSenderLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			PacketSenderLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			PacketSenderLabel.ForeColor = System.Drawing.Color.Silver;
-			PacketSenderLabel.Location = new System.Drawing.Point ( 800, 50 );
+			PacketSenderLabel.Location = new System.Drawing.Point ( 400, 50 );
 			PacketSenderLabel.Name = "PacketSenderLabel";
 			PacketSenderLabel.Size = new System.Drawing.Size ( 103, 20 );
 			PacketSenderLabel.TabIndex = 29;
@@ -106,9 +106,9 @@
 			// DataSignerLabel
 			// 
 			DataSignerLabel.AutoSize = true;
-			DataSignerLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			DataSignerLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			DataSignerLabel.ForeColor = System.Drawing.Color.Silver;
-			DataSignerLabel.Location = new System.Drawing.Point ( 400, 725 );
+			DataSignerLabel.Location = new System.Drawing.Point ( 1200, 50 );
 			DataSignerLabel.Name = "DataSignerLabel";
 			DataSignerLabel.Size = new System.Drawing.Size ( 86, 20 );
 			DataSignerLabel.TabIndex = 28;
@@ -117,9 +117,9 @@
 			// InputProcessorLabel
 			// 
 			InputProcessorLabel.AutoSize = true;
-			InputProcessorLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			InputProcessorLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			InputProcessorLabel.ForeColor = System.Drawing.Color.Silver;
-			InputProcessorLabel.Location = new System.Drawing.Point ( 400, 50 );
+			InputProcessorLabel.Location = new System.Drawing.Point ( 800, 50 );
 			InputProcessorLabel.Name = "InputProcessorLabel";
 			InputProcessorLabel.Size = new System.Drawing.Size ( 115, 20 );
 			InputProcessorLabel.TabIndex = 27;
@@ -128,7 +128,7 @@
 			// InputParserLabel
 			// 
 			InputParserLabel.AutoSize = true;
-			InputParserLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			InputParserLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			InputParserLabel.ForeColor = System.Drawing.Color.Silver;
 			InputParserLabel.Location = new System.Drawing.Point ( 12, 500 );
 			InputParserLabel.Name = "InputParserLabel";
@@ -139,7 +139,7 @@
 			// InputReaderLabel
 			// 
 			InputReaderLabel.AutoSize = true;
-			InputReaderLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			InputReaderLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			InputReaderLabel.ForeColor = System.Drawing.Color.Silver;
 			InputReaderLabel.Location = new System.Drawing.Point ( 12, 275 );
 			InputReaderLabel.Name = "InputReaderLabel";
@@ -150,7 +150,7 @@
 			// LowLevelInputLabel
 			// 
 			LowLevelInputLabel.AutoSize = true;
-			LowLevelInputLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			LowLevelInputLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			LowLevelInputLabel.ForeColor = System.Drawing.Color.Silver;
 			LowLevelInputLabel.Location = new System.Drawing.Point ( 12, 50 );
 			LowLevelInputLabel.Name = "LowLevelInputLabel";
@@ -161,9 +161,9 @@
 			// EventVectorLabel
 			// 
 			EventVectorLabel.AutoSize = true;
-			EventVectorLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point );
+			EventVectorLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			EventVectorLabel.ForeColor = System.Drawing.Color.Silver;
-			EventVectorLabel.Location = new System.Drawing.Point ( 12, 950 );
+			EventVectorLabel.Location = new System.Drawing.Point ( 400, 725 );
 			EventVectorLabel.Name = "EventVectorLabel";
 			EventVectorLabel.Size = new System.Drawing.Size ( 93, 20 );
 			EventVectorLabel.TabIndex = 24;
@@ -172,7 +172,7 @@
 			// MainAppControlsGenericInfo
 			// 
 			MainAppControlsGenericInfo.AutoSize = true;
-			MainAppControlsGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			MainAppControlsGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			MainAppControlsGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			MainAppControlsGenericInfo.Location = new System.Drawing.Point ( 12, 750 );
 			MainAppControlsGenericInfo.Name = "MainAppControlsGenericInfo";
@@ -183,9 +183,9 @@
 			// InputSimulatorGenericInfo
 			// 
 			InputSimulatorGenericInfo.AutoSize = true;
-			InputSimulatorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			InputSimulatorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			InputSimulatorGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			InputSimulatorGenericInfo.Location = new System.Drawing.Point ( 800, 975 );
+			InputSimulatorGenericInfo.Location = new System.Drawing.Point ( 1200, 300 );
 			InputSimulatorGenericInfo.Name = "InputSimulatorGenericInfo";
 			InputSimulatorGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			InputSimulatorGenericInfo.TabIndex = 32;
@@ -194,7 +194,7 @@
 			// InputParserGenericInfo
 			// 
 			InputParserGenericInfo.AutoSize = true;
-			InputParserGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			InputParserGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			InputParserGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			InputParserGenericInfo.Location = new System.Drawing.Point ( 12, 525 );
 			InputParserGenericInfo.Name = "InputParserGenericInfo";
@@ -205,9 +205,9 @@
 			// InputProcessorGenericInfo
 			// 
 			InputProcessorGenericInfo.AutoSize = true;
-			InputProcessorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			InputProcessorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			InputProcessorGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			InputProcessorGenericInfo.Location = new System.Drawing.Point ( 400, 75 );
+			InputProcessorGenericInfo.Location = new System.Drawing.Point ( 800, 75 );
 			InputProcessorGenericInfo.Name = "InputProcessorGenericInfo";
 			InputProcessorGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			InputProcessorGenericInfo.TabIndex = 32;
@@ -216,9 +216,9 @@
 			// DataSignerGenericInfo
 			// 
 			DataSignerGenericInfo.AutoSize = true;
-			DataSignerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			DataSignerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			DataSignerGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			DataSignerGenericInfo.Location = new System.Drawing.Point ( 400, 750 );
+			DataSignerGenericInfo.Location = new System.Drawing.Point ( 1200, 75 );
 			DataSignerGenericInfo.Name = "DataSignerGenericInfo";
 			DataSignerGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			DataSignerGenericInfo.TabIndex = 32;
@@ -227,9 +227,9 @@
 			// PacketSenderGenericInfo
 			// 
 			PacketSenderGenericInfo.AutoSize = true;
-			PacketSenderGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			PacketSenderGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			PacketSenderGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			PacketSenderGenericInfo.Location = new System.Drawing.Point ( 800, 75 );
+			PacketSenderGenericInfo.Location = new System.Drawing.Point ( 400, 75 );
 			PacketSenderGenericInfo.Name = "PacketSenderGenericInfo";
 			PacketSenderGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			PacketSenderGenericInfo.TabIndex = 32;
@@ -238,9 +238,9 @@
 			// ShortcutWorkerGenericInfo
 			// 
 			ShortcutWorkerGenericInfo.AutoSize = true;
-			ShortcutWorkerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			ShortcutWorkerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			ShortcutWorkerGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			ShortcutWorkerGenericInfo.Location = new System.Drawing.Point ( 400, 975 );
+			ShortcutWorkerGenericInfo.Location = new System.Drawing.Point ( 1200, 750 );
 			ShortcutWorkerGenericInfo.Name = "ShortcutWorkerGenericInfo";
 			ShortcutWorkerGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			ShortcutWorkerGenericInfo.TabIndex = 32;
@@ -249,7 +249,7 @@
 			// CommandWorkerGenericInfo
 			// 
 			CommandWorkerGenericInfo.AutoSize = true;
-			CommandWorkerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			CommandWorkerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			CommandWorkerGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			CommandWorkerGenericInfo.Location = new System.Drawing.Point ( 800, 750 );
 			CommandWorkerGenericInfo.Name = "CommandWorkerGenericInfo";
@@ -260,7 +260,7 @@
 			// InputReaderGenericInfo
 			// 
 			InputReaderGenericInfo.AutoSize = true;
-			InputReaderGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			InputReaderGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			InputReaderGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			InputReaderGenericInfo.Location = new System.Drawing.Point ( 12, 300 );
 			InputReaderGenericInfo.Name = "InputReaderGenericInfo";
@@ -271,7 +271,7 @@
 			// LowLevelInputGenericInfo
 			// 
 			LowLevelInputGenericInfo.AutoSize = true;
-			LowLevelInputGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			LowLevelInputGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			LowLevelInputGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			LowLevelInputGenericInfo.Location = new System.Drawing.Point ( 12, 75 );
 			LowLevelInputGenericInfo.Name = "LowLevelInputGenericInfo";
@@ -282,9 +282,9 @@
 			// EventVectorGenericInfo
 			// 
 			EventVectorGenericInfo.AutoSize = true;
-			EventVectorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point );
+			EventVectorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			EventVectorGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			EventVectorGenericInfo.Location = new System.Drawing.Point ( 12, 975 );
+			EventVectorGenericInfo.Location = new System.Drawing.Point ( 400, 750 );
 			EventVectorGenericInfo.Name = "EventVectorGenericInfo";
 			EventVectorGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			EventVectorGenericInfo.TabIndex = 32;
@@ -304,7 +304,7 @@
 			AutoScaleDimensions = new System.Drawing.SizeF ( 7F, 15F );
 			AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			BackColor = System.Drawing.Color.Black;
-			ClientSize = new System.Drawing.Size ( 1250, 1186 );
+			ClientSize = new System.Drawing.Size ( 1684, 961 );
 			Controls.Add ( ElapsedTimeLabel );
 			Controls.Add ( MainAppControlsLabel );
 			Controls.Add ( InputSimulatorLabel );

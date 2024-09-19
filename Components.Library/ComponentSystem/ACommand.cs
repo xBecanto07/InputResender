@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Components.Library;
 public abstract class ACommand {
-	public static readonly IReadOnlyCollection<string> HelpSwitches = new string[] { "-h", "?", "help" };
+	public static readonly IReadOnlyCollection<string> HelpSwitches = ["-h", "?", "help"];
 	protected virtual int RequiredUnnamedArgs => 0;
 	public int RequiredArgC => RequiredUnnamedArgs + requiredSwitches.Count + requiredPositionals.Count;
 
@@ -48,50 +48,52 @@ public abstract class ACommand {
 		}
 	}
 
-	public virtual CommandResult Execute ( CommandProcessor context, ArgParser args, int argID = 1 ) {
-		if ( HelpSwitches.Contains ( args.String ( argID, null ) ) )
+	public virtual CommandResult Execute ( CommandProcessor.CmdContext context ) {
+		// empty string should never reach this point, but better to catch any wrongly defined commands
+		if ( context.Args.ArgC < context.ArgID ) return new CommandResult ( new Exception ( "Not enough arguments provided." ) );
+		if ( HelpSwitches.Contains ( context[0] ) )
 			return new CommandResult ( Help + Environment.NewLine + " - " + Description );
-		if ( args.String ( argID, null ) == "clear" ) return ExecCleanup ( context, args, argID );
+		//if ( context[0] == "clear" ) return ExecCleanup ( context );
 
 		// Note that erorr result needs to have exception specified, otherwise it will be treated as a successful result.
-		if ( args.ArgC < RequiredArgC ) return new CommandResult ( new Exception ( $"Invalid argument count. Required: {RequiredArgC}, provided: {args.ArgC}" ) );
+		if ( context.Args.ArgC < RequiredArgC ) return new CommandResult ( new Exception ( $"Invalid argument count. Required: {RequiredArgC}, provided: {context.Args.ArgC}" ) );
 
 		foreach ( string sw in requiredSwitches ) {
-			if ( !args.Present ( sw ) ) return new CommandResult ( new Exception ( $"Switch '{sw}' is required but is not provided." ) );
+			if ( !context.Args.Present ( sw ) ) return new CommandResult ( new Exception ( $"Switch '{sw}' is required but is not provided." ) );
 		}
 
 		if ( requiredPositionals.Count > 0 ) {
 			int maxArg = requiredPositionals.Keys.Max ();
 			for ( int i = 0; i <= maxArg; i++ ) {
 				if ( !requiredPositionals.TryGetValue ( i, out bool rquiresValues ) ) return new CommandResult ( new ArgumentException ( $"Argument #{i} is either considered optional while requesting arguments at higher index or request of value was not defined for it." ) );
-				if ( !args.Present ( i ) ) return new CommandResult ( new Exception ( $"Argument #{i} is required but is not provided." ) );
-				if ( rquiresValues && !args.HasValue ( i, true ) ) return new CommandResult ( new Exception ( $"Argument #{i} requires a value but is not provided." ) );
+				if ( !context.Args.Present ( i ) ) return new CommandResult ( new Exception ( $"Argument #{i} is required but is not provided." ) );
+				if ( rquiresValues && !context.Args.HasValue ( i, true ) ) return new CommandResult ( new Exception ( $"Argument #{i} requires a value but is not provided." ) );
 			}
 		}
-		return ExecIner ( context, args, argID );
+		return ExecIner ( context );
 	}
 
-	public virtual bool SubCommand ( ArgParser args, out ACommand cmd, int argID ) {
+	public virtual bool SubCommand ( ArgParser args, out ACommand cmd, ref int argID ) {
 		string subCmd = args.String ( argID, null ); // This method is returning bool, so it must allow non-existance of subcommand. If subcommand is required, it should be handled as 'if (!SubCommand(...)) return new ErrorCommandResult(...);'.
+		argID++;
 		if ( !string.IsNullOrEmpty ( subCmd ) && subCommands.TryGetValue ( subCmd, out cmd ) ) return true;
+		argID--;
 		cmd = null;
 		return false;
 	}
 
-	protected virtual CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) => null;
-	protected virtual CommandResult ExecCleanup ( CommandProcessor context, ArgParser args, int argID ) => null;
-	public CommandResult Cleanup ( CommandProcessor context, ArgParser args = null, int argID = 0 ) {
-		if ( args == null ) args = new ArgParser ( string.Empty, s => context.ProcessLine ( $"print {s}" ) );
-		return ExecCleanup ( context, args, argID );
-	}
+	protected virtual CommandResult ExecIner ( CommandProcessor.CmdContext context ) => null;
+	protected virtual CommandResult ExecCleanup ( CommandProcessor.CmdContext context ) => null;
+	public CommandResult Cleanup ( CommandProcessor.CmdContext context ) => ExecCleanup ( context );
 
-	public static ACommand Search ( ArgParser args, ICollection<ACommand> commands ) {
-		string command = args.String ( 0, "Command" );
+	public static ACommand Search ( ArgParser args, ICollection<ACommand> commands, ref int argID ) {
+		string command = args.String ( argID, "Command" );
+		argID++;
 		foreach ( ACommand cmd in commands ) {
 			if ( !cmd.commandNames.Contains ( command ) ) continue;
 			ACommand ret = cmd;
 			// It depends on the command itself how it will process subcommands. It can be selected by implementing the SubCommand for unified selection process in this static method (probably later replaced by a service), or it can be done in the Execute method (e.g. switch (args.String(1, "SubCommand" )) { case "sub1": return Sub2Command.Execute (args, 2); ... }).
-			while ( ret.SubCommand ( args, out ACommand sub, 1 ) ) ret = sub;
+			while ( ret.SubCommand ( args, out ACommand sub, ref argID ) ) ret = sub;
 			return ret;
 		}
 		return null;
@@ -111,8 +113,8 @@ public abstract class ACommand<T> : ACommand where T : CommandResult {
 	/// <inheritdoc/>
 	public ACommand ( string parentHelp ) : base ( parentHelp ) { }
 
-	public sealed override T Execute ( CommandProcessor context, ArgParser args, int argID = 1 ) => (T)base.Execute ( context, args, argID );
-	protected override T ExecIner ( CommandProcessor context, ArgParser args, int argID ) => null;
+	public sealed override T Execute ( CommandProcessor.CmdContext context ) => (T)base.Execute ( context );
+	protected override T ExecIner ( CommandProcessor.CmdContext context ) => null;
 }
 
 
@@ -151,5 +153,5 @@ public class ClassCommandResult<T> : CommandResult where T : class {
 }
 
 public class BoolCommandResult : StructCommandResult<bool> {
-	public BoolCommandResult ( bool result, bool isExit = false, Exception expection = null ) : base ( result, null, isExit, expection ) { }
+	public BoolCommandResult ( bool result, string msg = null, bool isExit = false, Exception expection = null ) : base ( result, msg, isExit, expection ) { }
 }

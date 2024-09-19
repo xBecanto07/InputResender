@@ -32,51 +32,42 @@ public class BasicCommands : ACommand<CommandResult> {
 		commandNames.Add ( "argerrorlvl" );
 	}
 
-	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID = 1 ) {
-		argID--;
-		string act = args.String ( argID, "Command" );
-		if ( act == "help" ) {
-			return new CommandResult ( context.Help () );
-		} else if ( act == "print" ) {
-			Print ( args.String ( argID + 1, "Text" ) );
-			return new CommandResult ( args.String ( argID + 1, "Text" ) );
-		} else if ( act == "info" ) {
-			return new CommandResult ( "InputResender v0.1" );
-		} else if ( act == "clear" ) {
-			Clear ();
-			return new CommandResult ( "clear" );
-		} else if ( act == "exit" ) {
-			Exit ();
-			return new CommandResult ( "exit" );
-		} else if ( act == "safemode" ) {
-			string val = args.String ( argID + 1, "Value" );
+	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		// Remember that these are individual commands, so ArgID will be -1 compared to 'norma' subcommand.
+		switch ( context.ParentAction ) {
+		case "help": return new CommandResult ( Help );
+		case "print": Print ( context[0, "Text"] ); return new CommandResult ( context[0] );
+		case "info": return new CommandResult ( "InputResender v0.1" );
+		case "clear": Clear (); return new CommandResult ( "clear" );
+		case "exit": Exit (); return new CommandResult ( "exit" );
+		case "safemode": {
+			string val = context[0, "Value"];
 			switch ( val.ToLower () ) {
-			case "on": case "t": case "1": context.SafeMode = true; return new CommandResult ( "Safe mode on." );
-			case "off": case "f": case "0": context.SafeMode = false; return new CommandResult ( "Safe mode off." );
+			case "on": case "t": case "1": context.CmdProc.SafeMode = true; return new CommandResult ( "Safe mode on." );
+			case "off": case "f": case "0": context.CmdProc.SafeMode = false; return new CommandResult ( "Safe mode off." );
 			default: return new CommandResult ( $"Unknown value '{val}'." );
 			}
-		} else if ( act == "loadall" ) {
-			return context.LoadAllCommands ();
-		} else if ( act == "argParse" ) {
-			// Debug only command, don't add to help
-			return new CommandResult ( $"Entered {args.ArgC} arguments:{Environment.NewLine}{args.Log ()}" );
-		} else if ( act == "argerrorlvl" ) {
-			var lvl = args.EnumC<ArgParser.ErrLvl> ( argID + 1, "Level" );
-			context.ArgErrorLevel = lvl;
+		}
+		case "loadall": return context.CmdProc.LoadAllCommands ();
+		case "argParse": return new CommandResult ( $"Entered {context.Args.ArgC} arguments:{Environment.NewLine}{context.Args.Log ()}" );
+		case "argerrorlvl": {
+			var lvl = context.Args.EnumC<ArgParser.ErrLvl> ( 1, "Level" );
+			context.CmdProc.ArgErrorLevel = lvl;
 			return new CommandResult ( $"ArgParser error log level set to {lvl}." );
-		} else if ( act == "loglevel" ) {
-			if (context.Owner == null) throw new InvalidOperationException ( "Owner core is not set." );
-			CoreBase.LogLevel level = args.EnumC<CoreBase.LogLevel> ( argID + 1, "Level" );
+		}
+		case "loglevel": {
+			if ( context.CmdProc.Owner == null ) throw new InvalidOperationException ( "Owner core is not set." );
+			CoreBase.LogLevel level = context.Args.EnumC<CoreBase.LogLevel> ( 1, "Level" );
 			switch ( level ) {
 			case CoreBase.LogLevel.None:
-				context.Owner.LogFcn = null;
+				context.CmdProc.Owner.LogFcn = null;
 				return new CommandResult ( "Log level set to None." );
 			default:
-				context.Owner.LogFcn = ( msg ) => Print ( $"! {msg}" );
+				context.CmdProc.Owner.LogFcn = ( msg ) => Print ( $"! {msg}" );
 				return new CommandResult ( $"Log level set to {level} (note that only On/Off is supported at the moment)." );
 			}
-		} else {
-			return new CommandResult ( $"Unknown action '{act}'." );
+		}
+		default: return new CommandResult ( $"Unknown action '{context.ParentAction}'." );
 		}
 	}
 }

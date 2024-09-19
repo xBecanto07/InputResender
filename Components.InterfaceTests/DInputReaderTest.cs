@@ -70,4 +70,24 @@ namespace Components.InterfaceTests {
 
 		HHookInfo GenerateHookInfo ( VKChange keyEvent = VKChange.KeyDown, int DeviceID = 1 ) => new HHookInfo ( TestObject, DeviceID, keyEvent );
 	}
+
+	public class MInputReaderTest : DInputReaderTest {
+		MLowLevelInput LowLevelInput;
+
+		public MInputReaderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
+
+		public override CoreBase CreateCoreBase () {
+			var ret = new CoreBaseMock ();
+			LowLevelInput = new MLowLevelInput ( ret );
+			return ret;
+		}
+		public override DInputReader GenerateTestObject () => new MInputReader ( OwnerCore );
+
+		[Fact]
+		public void SimKeyPressPasses () {
+			HInputEventDataHolder inputData = GenerateKeyboardEvent ();
+			ExecOnHook ( inputData, () => ((MInputReader)TestObject).SimulateKeyPress ( inputData.HookInfo, KeyCode.E, VKChange.KeyDown ), true, true );
+			EventList.Should ().HaveCount ( 1 );
+		}
+	}
 }

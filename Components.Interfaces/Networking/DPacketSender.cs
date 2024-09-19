@@ -18,7 +18,11 @@ namespace Components.Interfaces {
 				(nameof(OwnEP), typeof(object)),
 				(nameof(Destroy), typeof(void)),
 				(nameof(IsEPConnected), typeof(bool)),
-				(nameof(IsPacketSenderConnected), typeof(bool))
+				(nameof(IsPacketSenderConnected), typeof(bool)),
+				("add_"+nameof(OnNewConn), typeof(void)),
+				("remove_"+nameof(OnNewConn), typeof(void)),
+				("add_"+nameof(OnError), typeof(void)),
+				("remove_"+nameof(OnError), typeof(void))
 			};
 
 		[Flags]
@@ -124,11 +128,13 @@ namespace Components.Interfaces {
 						return;
 					}
 				}
+				if ( OnReceiveHandlers.Contains ( value ) ) return;
 				OnReceiveHandlers.Add ( value );
 			}
 			remove {
 				if ( value == null ) return;
-				OnReceiveHandlers.Remove ( value );
+				if ( !OnReceiveHandlers.Remove ( value ) )
+					throw new InvalidOperationException ( $"Callback {value.Method.AsString ()} not found in OnReceiveHandlers" );
 			}
 		}
 		public override void Send ( HMessageHolder data ) {

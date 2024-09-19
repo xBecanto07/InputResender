@@ -9,12 +9,6 @@ public static class Program {
 	private static CommandProcessor cmdProcessor;
 	private static ConsoleManager console;
 
-	/*
-	[STAThread]
-	private static void Main ( string[] args ) {
-		Main ( args, null );
-	}*/
-
 	public static void Main ( string[] args, ACommandLoader TLLoader ) {
 		console = new ConsoleManager ( Console.WriteLine, Console.ReadLine, Console.Write );
 		ArgParser parser = new ( string.Join ( " ", args ), console.WriteLine );
@@ -29,7 +23,7 @@ public static class Program {
 		foreach ( var cmd in startCommands ) {
 			console.WriteLine ( $"$> {cmd}" );
 			var res = cmdProcessor.ProcessLine ( cmd );
-			if ( Config.PrintAutoCommands ) PrintResult ( res, console, Config.ResponsePrintFormat, Config.MaxOnelinerLength );
+			if ( Config.PrintAutoCommands ) PrintResult ( res, console, Config.MaxOnelinerLength );
 		}
 
 		console.WriteLine ( "Program started. Type 'help' for a list of commands. Type 'exit' to close the program." );
@@ -46,21 +40,21 @@ public static class Program {
 			var res = cmdProcessor.ProcessLine ( line );
 			cmdProcessor?.Owner?.FlushDelayedMsgs ( console.WriteLine );
 
-			PrintResult ( res, console, Config.ResponsePrintFormat, Config.MaxOnelinerLength );
+			if ( Config.ResponsePrintFormat != Config.PrintFormat.None )
+				PrintResult ( res, console, Config.MaxOnelinerLength );
 		}
 
 		console.WriteLine ( "Program closed." );
 	}
 
 	enum MsgType { None, Result, Error }
-	public static string PrintResult ( CommandResult res, ConsoleManager console, Config.PrintFormat format, int maxOnelinerLength ) {
+	public static string PrintResult ( CommandResult res, ConsoleManager console, int maxOnelinerLength ) {
 		if ( res == null ) throw new ArgumentNullException ( nameof ( res ) );
 		if ( console == null ) throw new ArgumentNullException ( nameof ( console ) );
 
-		if ( format == Config.PrintFormat.None ) return string.Empty;
 		string printRes = null;
 		MsgType msgType = MsgType.None;
-		bool batch = format == Config.PrintFormat.Batch;
+		bool batch = false;
 
 		if ( res == null ) if ( batch ) return string.Empty; else printRes = "<null>";
 

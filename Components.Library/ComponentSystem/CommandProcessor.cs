@@ -3,22 +3,7 @@ using System;
 using System.Collections.Generic;
 
 namespace Components.Library;
-public interface ICommandProcessor {
-	void AddCommand ( ACommand cmd );
-	/// <summary>Find a command based on a callname. This command is passed to callback function. If this function returns null, no more processing is done. If some reference is returned, it will be either added or replaced in 1st level command list. Removing command is not supported since no use-case has been provided.</summary>
-	void ModifyCommand ( string line, Func<ACommand, ACommand> modifyFcn );
-	CommandResult ProcessLine ( string line, bool verbose = false );
-	CommandResult ProcessLine<T> ( string line, out T result, bool verbose = false ) where T : CommandResult;
-	string Help ();
-	CommandResult LoadAllCommands ();
-
-	bool SafeMode { get; set; }
-
-	void SetVar ( string name, object var );
-	T GetVar<T> ( string name );
-}
-
-public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
+public class CommandProcessor : ComponentBase, IDisposable {
 	private readonly HashSet<ACommand> registeredCmds = new ();
 	private Action<string> WriteLine;
 	private Dictionary<string, object> Vars = new ();
@@ -48,7 +33,7 @@ public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
 	// Dispose pattern
 	void Dispose ( bool disposing ) {
 		if ( disposing ) {
-			foreach ( var cmd in registeredCmds ) cmd.Cleanup ( this );
+			foreach ( var cmd in registeredCmds ) cmd.Cleanup ( new ( this, null ) );
 			foreach ( var cmd in registeredCmds ) {
 				if ( cmd is IDisposable disposable ) disposable.Dispose ();
 			}
@@ -64,10 +49,11 @@ public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
 		registeredCmds.Add ( cmd );
 	}
 
-	/// <inheritdoc />
+	/// <summary>Find a command based on a callname. This command is passed to callback function. If this function returns null, no more processing is done. If some reference is returned, it will be either added or replaced in 1st level command list. Removing command is not supported since no use-case has been provided.</summary>
 	public void ModifyCommand ( string line, Func<ACommand, ACommand> modifyFcn ) {
 		ArgParser args = new ( line, WriteLine );
-		var parCmd = ACommand.Search ( args, registeredCmds );
+		int argPos = 0;
+		var parCmd = ACommand.Search ( args, registeredCmds, ref argPos );
 		if ( parCmd == null ) throw new ArgumentException ( $"Parent command '{args.String ( 0, "Parent command" )}' not found." );
 		var newCmd = modifyFcn ( parCmd );
 		if ( newCmd == null ) return;
@@ -98,17 +84,17 @@ public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
 	}
 
 	/// <summary>Processes a line and returns the result. If it's of expected type, output reference is also set to the same result, now with proper type. Retuned and outputed references will be the same only if the result is of expected type.</summary>
-	public CommandResult ProcessLine<T> ( string line, out T result, bool verbose = false ) where T : CommandResult {
+	public CommandResult ProcessLine<T> ( string line, out T result, bool verbose = false, ConsoleManager console = null ) where T : CommandResult {
 		result = null;
 		CommandResult tmpRes = ProcessLine ( line );
 
-		if ( result == null ) return new ErrorCommandResult ( null, new Exception ( "No result." ) );
-		if ( result is not T tResult ) return new ErrorCommandResult ( tmpRes,
+		if ( tmpRes == null ) return new ErrorCommandResult ( null, new Exception ( "No result." ) );
+		if ( tmpRes is not T tResult ) return new ErrorCommandResult ( tmpRes,
 			new Exception ( $"Expected result of type {typeof ( T ).Name}, got {result.GetType ().Name}." ) );
-		else return tResult;
+		else return result = tResult;
 	}
 
-	public CommandResult ProcessLine ( string line, bool verbose = false ) {
+	public CommandResult ProcessLine ( string line, bool verbose = false, ConsoleManager console = null ) {
 		if ( verbose ) WriteLine ( $"Processing line: '{line}'" );
 		ArgParser args = new ( line, WriteLine, ArgErrorLevel );
 		if ( args.ArgC == 0 ) return new CommandResult ( string.Empty, false );
@@ -121,13 +107,16 @@ public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
 			return new ClassCommandResult<CoreBase> ( core, "Active core is now owner of this context." );
 		}
 
-		var cmd = ACommand.Search ( args, registeredCmds );
+		int argPos = 0;
+		var cmd = ACommand.Search ( args, registeredCmds, ref argPos );
 		if ( cmd == null ) return new ErrorCommandResult ( null, new ArgumentException ( $"Command '{args.String ( 0, "Command" )}' not found." ) );
 
-		if ( !SafeMode ) return cmd.Execute ( this, args );
+		// Try to find a good way how to reuse already created ArgParser while allowing to specify argPos
+		CommandProcessor.CmdContext context = new ( this, line, argPos, console, args );
+		if ( !SafeMode ) return cmd.Execute ( context );
 		else {
 			try {
-				return cmd.Execute ( this, args );
+				return cmd.Execute ( context );
 			} catch ( Exception e ) {
 				string fullInfo = $"Error processing '{line}': {e.Message}\n{e.StackTrace}";
 				return new ErrorCommandResult ( null, e );
@@ -136,8 +125,12 @@ public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
 	}
 
 	// Currently no support for scope, so all variables are considered global.
-	public void SetVar ( string name, object var ) => Vars[name] = var;
+	public void SetVar ( string name, object var ) {
+		if ( string.IsNullOrEmpty ( name ) ) throw new ArgumentException ( "Variable name cannot be empty." );
+		Vars[name] = var;
+	}
 	public T GetVar<T> ( string name ) {
+		if ( string.IsNullOrEmpty ( name ) ) throw new ArgumentException ( "Variable name cannot be empty." );
 		if ( name == "all" ) {
 			if ( typeof ( T ) == typeof ( ICollection<string> ) ) return (T)(object)Vars.Keys.ToList ();
 			if ( typeof ( T ) == typeof ( string ) ) return (T)(object)string.Join ( ", ", Vars.Keys );
@@ -148,5 +141,44 @@ public class CommandProcessor : ComponentBase, ICommandProcessor, IDisposable {
 		if ( var is not T tVar )
 			throw new ArgumentException ( $"Variable '{name}' is not of type {typeof ( T ).Name}." );
 		return tVar;
+	}
+
+
+
+	/// <summary>Contains important info to process a command. <para>Please note, that changing any of these values might result in unexpected behaviour. Use as readonly info, unless explicitly stated otherwise for given field.</para></summary>
+	public struct CmdContext {
+		public readonly CommandProcessor CmdProc;
+		public readonly string Line;
+		public readonly int ArgID;
+		public readonly ArgParser Args;
+		public readonly ConsoleManager Console;
+
+		/// <summary>Fetch argument on given position and store it. If name is provided, it will be used in error messages.</summary>
+		public string this[int pos, string name = null] { get {
+				pos += ArgID;
+				if ( !loadedArgs.TryGetValue ( pos, out var res ) ) {
+					res = (Args.String ( pos, name, shouldThrow: true ), name);
+					loadedArgs.Add ( pos, res );
+				}
+				return res.Item1;
+				} }
+
+		/// <summary>Arguments[ArgID-1]</summary>
+		public string ParentAction => ArgID == 0 ? string.Empty : this[-1, "Parent action"];
+		/// <summary>Arguments[ArgID]</summary>
+		public string SubAction => this[0, "Sub action"];
+
+
+		private readonly Dictionary<int, (string, string)> loadedArgs;
+
+		public CmdContext ( CommandProcessor context, string line, int argID = 0, ConsoleManager console = null, ArgParser args = null ) {
+			loadedArgs = new ();
+			CmdProc = context;
+			Line = line ?? string.Empty;
+			ArgID = argID;
+			Console = console;
+			Args = args ?? new ( line, console.WriteLine );
+		}
+		public CmdContext Sub () => new ( CmdProc, Line, ArgID + 1, Console, Args );
 	}
 }

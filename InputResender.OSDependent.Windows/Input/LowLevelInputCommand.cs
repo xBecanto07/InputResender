@@ -8,15 +8,15 @@ public class LowLevelInputCommand : ACommand {
 		commandNames.Add ( "inpll" );
 	}
 
-	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		VWinLowLevelLibs LLInput = context.Owner.Fetch<VWinLowLevelLibs> ();
+	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		VWinLowLevelLibs LLInput = context.CmdProc.Owner.Fetch<VWinLowLevelLibs> ();
 		if ( LLInput == null ) return new CommandResult ( "Low level input library not available." );
 
-		switch ( args.String ( argID + 1, "Action" ) ) {
-		default: return new CommandResult ( $"Invalid action '{args.String ( argID + 1, "Action" )}'." );
+		switch ( context.SubAction ) {
+		default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
 		case "list":
-			switch ( args.String ( argID + 2, "Selector" ) ) {
-			default: return new CommandResult ( $"Invalid selector '{args.String ( argID + 2, "Selector" )}'." );
+			switch ( context[1, "Selector"] ) {
+			default: return new CommandResult ( $"Invalid selector '{context[1]}'." );
 			case "events":
 				string retEv = string.Join ( ", ", VWinLowLevelLibs.EventList.Select ( e => $"{e.nCode}|{e.changeCode} = {e.inputData}" ) );
 				VWinLowLevelLibs.EventList.Clear ();

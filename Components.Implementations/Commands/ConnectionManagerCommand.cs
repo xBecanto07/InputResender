@@ -12,7 +12,7 @@ public class ConnectionManagerCommand : ACommand {
 	enum CBSel { None, Print }
 	CBSel CBSelector = CBSel.Print;
 	override public string Description => "Connection manager.";
-	private ICommandProcessor lastContext;
+	private CommandProcessor.CmdContext lastContext;
 
 	public ConnectionManagerCommand ( string parent = null ) : base ( parent ) {
 		commandNames.Add ( "conns" );
@@ -23,14 +23,15 @@ public class ConnectionManagerCommand : ACommand {
 		interCommands.Add ( "callback" );
 	}
 
-	override protected CommandResult ExecIner ( CommandProcessor context, ArgParser args, int argID ) {
-		var core = context.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		if ( core.Fetch<DPacketSender> () is not VPacketSender sender )
 			return new CommandResult ( "No packet sender available." );
 		if ( sender == null ) return new CommandResult ( "No packet sender available." );
 
-		switch ( args.String ( argID, "Action" ) ) {
+		switch ( context.SubAction ) {
 		case "list": {
+			if ( !sender.ActiveConns.Any () ) return new CommandResult ( "<No connection>" );
 			System.Text.StringBuilder SB = new ();
 			int i = 0;
 			foreach ( var conn in sender.ActiveConns ) {
@@ -39,41 +40,41 @@ public class ConnectionManagerCommand : ACommand {
 			return new CommandResult ( SB.ToString () );
 		}
 		case "send": {
-			byte[] data = System.Text.Encoding.UTF8.GetBytes ( args.String ( argID + 2, "Data" ) );
-			var conn = FindConn ( sender, args, argID, out CommandResult errMsg );
+			byte[] data = System.Text.Encoding.UTF8.GetBytes ( context[1, "Data"] );
+			var conn = FindConn ( sender, context.Args, context.ArgID, out CommandResult errMsg );
 			if ( errMsg != null ) return errMsg;
 
 			if ( !conn.Send ( data ) ) return new CommandResult ( $"Failed to send data to '{conn}'." );
 			return new CommandResult ( $"Sent {data.Length} bytes to '{conn}'." );
 		}
 		case "close": {
-			var conn = FindConn ( sender, args, argID, out CommandResult errMsg );
+			var conn = FindConn ( sender, context.Args, context.ArgID, out CommandResult errMsg );
 			if ( errMsg != null ) return errMsg;
 
 			conn.Close ();
 			return new CommandResult ( $"Connection to '{conn}' should be closed." );
 		}
 		case "callback": {
-			var conn = FindConn ( sender, args, argID, out CommandResult errMsg );
-			if ( errMsg != null ) return errMsg;
-			if ( !Enum.TryParse ( args.String ( argID + 2, "Callback selection" ), true, out CBSelector ) )
-				return new CommandResult ( $"Invalid callback selection." );
+			// Was the intention for this so that there is different callback for different connection??? If so, that isn't quite implemented, is it?
+			//var conn = FindConn ( sender, context.Args, context.ArgID, out CommandResult errMsg );
+			//if ( errMsg != null ) return errMsg;
+			CBSelector = context.Args.EnumC<CBSel> ( context.ArgID + 1, "Callback selection", true );
 			switch ( CBSelector ) {
 			case CBSel.None:
-				if (lastContext == null) return new CommandResult ( "No callback to remove." );
+				if (lastContext.CmdProc == null) return new CommandResult ( "No callback to remove." );
 				sender.OnReceive -= RecvCallback;
-				lastContext = null;
+				lastContext = default;
 				return new CommandResult ( "Callback removed." );
 			default:
-				if ( lastContext != null )
+				if ( lastContext.CmdProc != null )
 					sender.OnReceive -= RecvCallback; // Ensure only one (our) callback is set.
 				lastContext = context;
 				sender.OnReceive += RecvCallback;
-				return new CommandResult ( "Callback set." );
+				return new CommandResult ( $"Callback set to '{CBSelector}'." );
 			}
 		}
 		default:
-			return new CommandResult ( "Unknown action." );
+			return new CommandResult ( $"Unknown action '{context.SubAction}'." );
 		}
 	}
 
@@ -81,7 +82,7 @@ public class ConnectionManagerCommand : ACommand {
 		switch ( CBSelector ) {
 		case CBSel.None: return CallbackResult.Skip | CallbackResult.Stop;
 		case CBSel.Print:
-			lastContext.ProcessLine ( $"print \"{System.Text.Encoding.UTF8.GetString ( data.InnerMsg )}\"" );
+			lastContext.CmdProc.ProcessLine ( $"print \"{System.Text.Encoding.UTF8.GetString ( data.InnerMsg )}\"" );
 			return CallbackResult.None;
 		default: return CallbackResult.Skip;
 		}

@@ -15,9 +15,9 @@ public class CoreCreatorCommand : ACommand<RetT> {
     }
 
 
-    override protected RetT ExecIner ( CommandProcessor context, ArgParser args, int argID = 1 ) {
+    override protected RetT ExecIner ( CommandProcessor.CmdContext context ) {
         var Core = DMainAppCoreFactory.CreateDefault ( ( c ) => new VInputSimulator ( c ) );
-        context.SetVar ( CoreManagerCommand.ActiveCoreVarName, Core );
+        context.CmdProc.SetVar ( CoreManagerCommand.ActiveCoreVarName, Core );
         return new RetT ( Core, "Core created." );
     }
 }

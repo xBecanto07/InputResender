@@ -13,6 +13,15 @@ public class VPacketSenderTest : DPacketSenderTest<VPacketSender> {
 	public VPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 	public override VPacketSender GenerateTestObject () => new VPacketSender ( OwnerCore, Port++ );
 
+	protected override bool IsErrorCritical ( string msg, Exception e, VPacketSender Aobj, object AEP, VPacketSender Bobj, object BEP ) {
+		if ( msg.StartsWith ( "Failed to add " )
+			&& msg.EndsWith ( " as a valid local EP" )
+			&& !msg.Contains ( BEP.ToString () )
+			&& !msg.Contains ( AEP.ToString () )
+			) return false;
+		return true;
+	}
+
 	protected override IEnumerable<INetPoint> GetLocalPoint ( VPacketSender testObj, int port ) {
 		List<INetPoint> allEPs = new ();
 		foreach ( var network in testObj.EPList ) foreach ( var ep in network )  allEPs.Add ( ep );

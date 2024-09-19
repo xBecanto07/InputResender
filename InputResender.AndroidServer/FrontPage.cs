@@ -1,6 +1,5 @@
 using Components.Library;
 using InputResender.CLI;
-using InputResender.Services;
 
 namespace InputResender.AndroidServer;
 
@@ -126,7 +125,7 @@ public class FrontPage : ContentPage {
 		console.WriteLine ( $"$> {line}" );
 		try {
 			var res = cmdProcessor.ProcessLine ( line );
-			string resTxt = Program.PrintResult ( res, console, Config.PrintFormat.Batch, 80 );
+			string resTxt = Program.PrintResult ( res, console, 80 );
 			cmdProcessor?.Owner?.FlushDelayedMsgs ( s => {
 				resTxt += $"\u000C{s}";
 				console.WriteLine ( s );
