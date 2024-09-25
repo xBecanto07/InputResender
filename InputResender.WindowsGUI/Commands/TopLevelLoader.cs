@@ -9,7 +9,7 @@ internal class TopLevelLoader : ACommandLoader {
 	protected override string CmdGroupName => "TopLevel";
 	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => [
 		() => new GUICommands (),
-		() => new ComponentVisualizer.VisualizerCommands (),
+		() => new ComponentVisualizer.ComponentVisualizerCommands (),
 		() => new WindowsCommands (),
 	];
 	protected override IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => new List<(string, Func<ACommand, ACommand>)> {

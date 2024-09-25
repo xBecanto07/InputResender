@@ -5,21 +5,26 @@ using System.Linq;
 using System.Collections.Generic;
 
 namespace InputResender.CLI; 
-public static class Config {
+public class Config {
 	private static string homePath = AppDomain.CurrentDomain.BaseDirectory;
-	private static string SavePath = Path.Combine ( HomePath, "config.xml" );
+	private static string savePath = Path.Combine ( HomePath, "config.xml" );
 	private readonly static Dictionary<string, string[]> autoCommands = new () {
 		{"initCmds", new string[] { "loadall", "clear", "safemode on", "core new", "core own", "loglevel all", "network callback recv print", "network callback newconn print", "hook manager start" } }
 	};
 	private static string autostartName = "initCmds";
+	private static bool printAutoCommands = true;
+	private static int maxOnelinerLength = 90;
+	private static PrintFormat responsePrintFormat = PrintFormat.Normal;
 
 	public enum PrintFormat { None, Batch, ErrOnly, Normal, Full }
 
 	public static string AutostartName { get => autostartName; set { autostartName = value; Save (); } }
 	public static string HomePath { get => homePath; set { homePath = value; Save (); } }
-	public static bool PrintAutoCommands { get; set; } = true;
-	public static int MaxOnelinerLength { get; set; } = 90;
-	public static PrintFormat ResponsePrintFormat { get; set; } = PrintFormat.Normal;
+	public static string SavePath { get => savePath; set { savePath = value; Save (); } }
+	public static bool PrintAutoCommands { get => printAutoCommands; set { printAutoCommands = value; Save (); } }
+	public static int MaxOnelinerLength { get => maxOnelinerLength; set { maxOnelinerLength = value; Save (); } }
+	public static PrintFormat ResponsePrintFormat { get => responsePrintFormat; set { responsePrintFormat = value; Save (); } }
+
 	public static IReadOnlyCollection<string> FetchAutoCommands ( string key ) {
 		if ( string.IsNullOrEmpty ( key ) ) return Array.Empty<string> ();
 		if ( !autoCommands.TryGetValue ( key, out string[] ret ) ) return Array.Empty<string> ();
@@ -37,6 +42,8 @@ public static class Config {
 
 
 	public static void Save () {
+		if ( string.IsNullOrEmpty ( SavePath ) ) return;
+
 		XmlDocument doc = new ();
 		XmlElement root = doc.CreateElement ( "Config" );
 		doc.AppendChild ( root );

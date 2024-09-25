@@ -1,5 +1,6 @@
 ﻿using Components.Interfaces;
 using Components.Library;
+using InputResender.CLI;
 using InputResender.Services;
 using System;
 using System.Windows.Forms;
@@ -7,7 +8,7 @@ using CompGroup = Components.Library.CoreBase.ComponentGroup;
 
 namespace InputResender.WindowsGUI {
 	public partial class MainScreen : Form {
-		private readonly CommandProcessor CmdProcessor;
+		private readonly CliWrapper CLI;
 		private readonly Action<string> StdOut;
 		protected DMainAppCore Core;
 		//protected IPEndPoint TargetEP;
@@ -26,49 +27,57 @@ namespace InputResender.WindowsGUI {
 			throw ex;
 		}
 
-		public MainScreen ( CommandProcessor cmdProc, DMainAppCore core, Action<string> stdout ) {
+		public MainScreen ( CliWrapper cli, DMainAppCore core, Action<string> stdout ) {
 			Core = core;
-			CmdProcessor = cmdProc;
+			CLI = cli;
 			StdOut = stdout;
 			if ( stdout == null ) throw new ArgumentNullException ( nameof ( stdout ) );
 			if ( core == null ) Error (new ArgumentNullException ( nameof ( core ) ) );
-			if ( cmdProc == null ) Error ( new ArgumentNullException ( nameof ( cmdProc ) ) );
+			if ( cli == null ) Error ( new ArgumentNullException ( nameof ( cli ) ) );
 
 			InitializeComponent ();
 			Core.MainAppControls.Log = WriteLine;
 			UpdateModifiers ();
 
 
-			EPListLabel.Text = cmdProc.ProcessLine ( "network hostlist", true ).Message;
+			EPListLabel.Text = cli.ProcessLine ( "network hostlist", true ).Message;
+		}
+
+		public void InvokeOnGUIThread ( Action action ) => Invoke ( action );
+
+		public void RequestStop () {
+			InvokeOnGUIThread ( Close );
+			// Warning, that later on there might be situations that would prevent closing until something is done, either delaying the closing or not closing at all until some other action is taken.
+			// Also some cleanup should be implemented so that GUI can be opened and closed multiple times.
 		}
 
 		public void WriteLine ( string line ) {
 			ConsoleText.Invoke ( () => ConsoleText.AppendText ( line + Environment.NewLine ) );
-			CmdProcessor.ProcessLine ( "visualizer update" );
+			CLI.ProcessLine ( "visualizer update" );
 		}
 
 		private void PsswdUpdateBtn_Click ( object sender, EventArgs e ) {
 			var res = TextPromptDialog.Show ( "Enter new group passphrase:", DMainAppControls.PsswdRegEx, true );
 			if ( !res.DidSubmit ) return;
-			CmdProcessor.ProcessLine ( $"password add {res.Text}" );
-			CmdProcessor.ProcessLine ( "visualizer update" );
+			CLI.ProcessLine ( $"password add {res.Text}" );
+			CLI.ProcessLine ( "visualizer update" );
 		}
 
 		private void EPUpdateBtn_Click ( object sender, EventArgs e ) {
 			var res = TextPromptDialog.Show ( "Enter new end point (IPv4:Port):", "([\\d]{1,3}\\.[\\d]{1,3}\\.[\\d]{1,3}\\.[\\d]{1,3}):([\\d]{1,5})" );
 			if ( !res.DidSubmit ) return;
-			CmdProcessor.ProcessLine ( $"target set {res.Text}" );
-			CmdProcessor.ProcessLine ( "visualizer update" );
+			CLI.ProcessLine ( $"target set {res.Text}" );
+			CLI.ProcessLine ( "visualizer update" );
 		}
 
 		private void IsActiveCheckBox_CheckedChanged ( object sender, EventArgs e ) {
 
-			CmdProcessor.ProcessLine ( "visualizer update" );
+			CLI.ProcessLine ( "visualizer update" );
 		}
 
 		private void ShortcutCheckBox_CheckedChanged ( object sender, EventArgs e ) {
 
-			CmdProcessor.ProcessLine ( "visualizer update" );
+			CLI.ProcessLine ( "visualizer update" );
 		}
 
 		private CoreBase.ComponentInfo[] InputProcessors;
@@ -76,7 +85,7 @@ namespace InputResender.WindowsGUI {
 			int ID = InputProcSelector.SelectedIndex;
 			if ( ID < 0 | ID >= InputProcessors.Length ) return;
 			Core.SelectNewPriority ( InputProcessors, InputProcessors[ID].Component );
-			CmdProcessor.ProcessLine ( "visualizer update" );
+			CLI.ProcessLine ( "visualizer update" );
 		}
 		private void InputProcSelector_DropDown ( object sender, EventArgs e ) => UpdateInputProcessors ();
 		private void AddProcessorBtn_Click ( object sender, EventArgs e ) {
@@ -101,7 +110,7 @@ namespace InputResender.WindowsGUI {
 			foreach ( var processor in InputProcessors ) {
 				InputProcSelector.Items.Add ( processor.TypeTree[^1].Name );
 			}
-			CmdProcessor.ProcessLine ( "visualizer update" );
+			CLI.ProcessLine ( "visualizer update" );
 		}
 
 		private void AddCustModBtn_Click ( object sender, EventArgs e ) {
@@ -166,13 +175,13 @@ namespace InputResender.WindowsGUI {
 			list.Clear ();
 			foreach ( var mod in Core.InputProcessor.Modifiers )
 				list.Add ( new ModifierInfo ( mod.Key, mod.Value.mod, mod.Value.readOnly ) );
-			CmdProcessor.ProcessLine ( "visualizer update" );
+			CLI.ProcessLine ( "visualizer update" );
 		}
 
 		private void VisualizerBtn_Click ( object sender, EventArgs e ) {
-			CmdProcessor.ProcessLine ( "visualizer status", out BoolCommandResult res );
-			if ( res.Result.Value ) CmdProcessor.ProcessLine ( "visualizer stop" );
-			else CmdProcessor.ProcessLine ( "visualizer start" );
+			CLI.ProcessLine ( "visualizer status", out BoolCommandResult res );
+			if ( res.Result.Value ) CLI.ProcessLine ( "visualizer stop" );
+			else CLI.ProcessLine ( "visualizer start" );
 		}
 	}
 }

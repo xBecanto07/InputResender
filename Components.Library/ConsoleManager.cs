@@ -9,6 +9,7 @@ public class ConsoleManager {
 	public const string EOF = "\x04";
 	private readonly Action<string> RealWrite, RealWriteLine;
 	private readonly Func<string> RealReadLine;
+	private readonly Action RealClear;
 	private readonly Task reader;
 
 	private readonly List<string> InputBuffer = new ();
@@ -19,13 +20,15 @@ public class ConsoleManager {
 
 	public int MaxLineLength { get; set; } = 120;
 
-	public ConsoleManager ( Action<string> realWriteLine, Func<string> realReadLine, Action<string> realWrite ) {
-		if ( realWriteLine == null ) throw new ArgumentNullException ( nameof ( realWriteLine ) );
-		if ( realReadLine == null ) throw new ArgumentNullException ( nameof ( realReadLine ) );
-		if ( realWrite == null ) throw new ArgumentNullException ( nameof ( realWrite ) );
+	public ConsoleManager ( Action<string> realWriteLine, Func<string> realReadLine, Action<string> realWrite, Action realClear = null ) {
+		ArgumentNullException.ThrowIfNull ( realWriteLine, nameof ( realWriteLine ) );
+		ArgumentNullException.ThrowIfNull ( realReadLine, nameof ( realReadLine ) );
+		ArgumentNullException.ThrowIfNull ( realWrite, nameof ( realWrite ) );
+
 		RealWriteLine = realWriteLine;
 		RealWrite = realWrite;
 		RealReadLine = realReadLine;
+		RealClear = realClear ?? (() => { });
 		readerWaiter = new AutoResetEvent ( false );
 		reader = new Task ( ReaderTask );
 		reader.Start ();
@@ -38,6 +41,12 @@ public class ConsoleManager {
 		if ( EndsWithEOL ) OutputBuffer.Insert ( 0, text );
 		else OutputBuffer[0] += text;
 		EndsWithEOL = endWithEOL;
+	}
+
+	public void Clear () {
+		OutputBuffer.Clear ();
+		InputBuffer.Clear ();
+		RealClear ();
 	}
 
 	private void ReaderTask () {

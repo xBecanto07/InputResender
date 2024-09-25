@@ -35,7 +35,7 @@ public class BasicCommands : ACommand<CommandResult> {
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		// Remember that these are individual commands, so ArgID will be -1 compared to 'norma' subcommand.
 		switch ( context.ParentAction ) {
-		case "help": return new CommandResult ( Help );
+		case "help": return new CommandResult ( context.CmdProc.Help () );
 		case "print": Print ( context[0, "Text"] ); return new CommandResult ( context[0] );
 		case "info": return new CommandResult ( "InputResender v0.1" );
 		case "clear": Clear (); return new CommandResult ( "clear" );

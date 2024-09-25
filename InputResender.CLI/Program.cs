@@ -6,42 +6,28 @@ using InputResender.Services;
 
 namespace InputResender.CLI;
 public static class Program {
-	private static CommandProcessor cmdProcessor;
-	private static ConsoleManager console;
+	private static CliWrapper cliWrapper;
 
-	public static void Main ( string[] args, ACommandLoader TLLoader ) {
-		console = new ConsoleManager ( Console.WriteLine, Console.ReadLine, Console.Write );
+	public static void Main ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
+		cliWrapper = new ( console );
 		ArgParser parser = new ( string.Join ( " ", args ), console.WriteLine );
 		Config.Load ( parser.String ( "cfg", null ) );
 
-		cmdProcessor = new ( console.WriteLine );
-		cmdProcessor.AddCommand ( new BasicCommands ( console.WriteLine, Console.Clear, () => throw new NotImplementedException () ) );
-		cmdProcessor.AddCommand ( new FactoryCommandsLoader () );
-		if ( TLLoader != null ) cmdProcessor.AddCommand ( TLLoader );
+		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
+		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => throw new NotImplementedException () ) );
+		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
+		if ( TLLoader != null ) cliWrapper.CmdProc.AddCommand ( TLLoader );
 
 		var startCommands = Config.FetchAutoCommands ( Config.AutostartName );
 		foreach ( var cmd in startCommands ) {
-			console.WriteLine ( $"$> {cmd}" );
-			var res = cmdProcessor.ProcessLine ( cmd );
-			if ( Config.PrintAutoCommands ) PrintResult ( res, console, Config.MaxOnelinerLength );
+			if ( Config.PrintAutoCommands ) cliWrapper.ProcessLine ( cmd, true );
+			else cliWrapper.CmdProc.ProcessLine ( cmd );
 		}
 
 		console.WriteLine ( "Program started. Type 'help' for a list of commands. Type 'exit' to close the program." );
 		while ( true ) {
-			if (Config.ResponsePrintFormat == Config.PrintFormat.Normal
-				|| Config.ResponsePrintFormat == Config.PrintFormat.Full)
-				console.Write ( "$> " );
-			string line = console.ReadLineBlocking ();
-			if ( line == ConsoleManager.EOF ) break;
-			line = line.Trim ();
-			if ( line == "exit" ) break;
-			if ( line == string.Empty ) continue;
-
-			var res = cmdProcessor.ProcessLine ( line );
-			cmdProcessor?.Owner?.FlushDelayedMsgs ( console.WriteLine );
-
-			if ( Config.ResponsePrintFormat != Config.PrintFormat.None )
-				PrintResult ( res, console, Config.MaxOnelinerLength );
+			var res = cliWrapper.ProcessLineBlocking ();
+			if ( res == null ) break;
 		}
 
 		console.WriteLine ( "Program closed." );
