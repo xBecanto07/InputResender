@@ -7,8 +7,11 @@ using System.Threading.Tasks;
 namespace Components.Library;
 public class ConsoleManager {
 	public const string EOF = "\x04";
+	public const char PsswdStart = '\x0E';
+	public const char PsswdEnd = '\x0F';
 	private readonly Action<string> RealWrite, RealWriteLine;
 	private readonly Func<string> RealReadLine;
+	private readonly Func<char> RealReadChar;
 	private readonly Action RealClear;
 	private readonly Task reader;
 
@@ -20,7 +23,7 @@ public class ConsoleManager {
 
 	public int MaxLineLength { get; set; } = 120;
 
-	public ConsoleManager ( Action<string> realWriteLine, Func<string> realReadLine, Action<string> realWrite, Action realClear = null ) {
+	public ConsoleManager ( Action<string> realWriteLine, Func<string> realReadLine, Action<string> realWrite, Action realClear = null, Func<char> realReadChar = null ) {
 		ArgumentNullException.ThrowIfNull ( realWriteLine, nameof ( realWriteLine ) );
 		ArgumentNullException.ThrowIfNull ( realReadLine, nameof ( realReadLine ) );
 		ArgumentNullException.ThrowIfNull ( realWrite, nameof ( realWrite ) );
@@ -29,13 +32,22 @@ public class ConsoleManager {
 		RealWrite = realWrite;
 		RealReadLine = realReadLine;
 		RealClear = realClear ?? (() => { });
+		RealReadChar = realReadChar;
 		readerWaiter = new AutoResetEvent ( false );
 		reader = new Task ( ReaderTask );
 		reader.Start ();
 	}
 
 	public void Write ( string text ) { PushOut ( text, false ); RealWrite ( text ); }
-	public void WriteLine ( string text ) { PushOut ( text, true ); RealWriteLine ( text ); }
+	public void WriteLine ( string text ) { 
+		int escStart = text.IndexOf ( PsswdStart );
+		if ( escStart >= 0 ) {
+			int escEnd = text.LastIndexOf ( PsswdEnd );
+			if ( escEnd >= 0 ) text = string.Concat ( text.AsSpan ( 0, escStart ), "***", text.AsSpan ( escEnd + 1 ) );
+		}
+		PushOut ( text, true );
+		RealWriteLine ( text );
+	}
 
 	private void PushOut (string text, bool endWithEOL) {
 		if ( EndsWithEOL ) OutputBuffer.Insert ( 0, text );
@@ -49,6 +61,31 @@ public class ConsoleManager {
 		RealClear ();
 	}
 
+	private string ReadHidden () {
+		if ( RealReadChar == null ) return string.Empty;
+		string hidden = string.Empty;
+		while ( true ) {
+			char c = RealReadChar ();
+			if ( c == '#' ) {
+				RealWriteLine ( string.Empty );
+				return hidden;
+			}
+			if (c == '$') {
+				RealWriteLine ( string.Empty );
+				return hidden + '$';
+			}
+			if ( c == '\x08' ) {
+				if ( hidden.Length > 0 ) {
+					hidden = hidden[..^1];
+					RealWrite ( "\b \b" );
+				}
+			} else {
+				hidden += c;
+				RealWrite ( "*" );
+			}
+		}
+	}
+
 	private void ReaderTask () {
 		while ( true ) {
 			string line = RealReadLine ();
@@ -60,15 +97,23 @@ public class ConsoleManager {
 				}
 			} else if ( string.IsNullOrEmpty ( line ) ) {
 				continue; // Ignore empty lines
-			} else {
-				// Read input and wait for it to be processed
-				lock ( readerWaiter ) {
-					NewInput = line;
-					PushOut ( line, true );
-					InputBuffer.Insert ( 0, line );
+			} else if ( line.EndsWith ( '$' ) ) {
+				line = line[..^1];
+				string hidden = ReadHidden ();
+				line += hidden;
+				if ( line.EndsWith ( '$' ) ) {
+					string end = RealReadLine ();
+					if ( end != null ) line = $"{line[..^1]} {end}";
 				}
-				readerWaiter.WaitOne ();
 			}
+
+			// Read input and wait for it to be processed
+			lock ( readerWaiter ) {
+				NewInput = line;
+				PushOut ( line, true );
+				InputBuffer.Insert ( 0, line );
+			}
+			readerWaiter.WaitOne ();
 		}
 	}
 

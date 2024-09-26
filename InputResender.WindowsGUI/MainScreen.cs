@@ -59,7 +59,7 @@ namespace InputResender.WindowsGUI {
 		private void PsswdUpdateBtn_Click ( object sender, EventArgs e ) {
 			var res = TextPromptDialog.Show ( "Enter new group passphrase:", DMainAppControls.PsswdRegEx, true );
 			if ( !res.DidSubmit ) return;
-			CLI.ProcessLine ( $"password add {res.Text}" );
+			CLI.ProcessLine ( $"password add {ConsoleManager.PsswdStart}{res.Text}{ConsoleManager.PsswdEnd}" );
 			CLI.ProcessLine ( "visualizer update" );
 		}
 

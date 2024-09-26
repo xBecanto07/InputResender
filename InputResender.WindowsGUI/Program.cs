@@ -7,7 +7,7 @@ internal static class Program {
 	[STAThread]
 	static void Main ( string[] args ) {
 		ApplicationConfiguration.Initialize ();
-		ConsoleManager console = new ( Console.WriteLine, Console.ReadLine, Console.Write, Console.Clear );
+		ConsoleManager console = new ( Console.WriteLine, Console.ReadLine, Console.Write, Console.Clear, () => Console.ReadKey ( true ).KeyChar );
 		console.WriteLine ( "Starting Windows version ..." );
 		InputResender.CLI.Program.Main ( args, new TopLevelLoader (), console );
 	}
