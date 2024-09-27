@@ -83,7 +83,7 @@ namespace Components.Interfaces {
 	}
 
 
-	public class Hook : DataHolderBase {
+	public class Hook : DataHolderBase<DLowLevelInput> {
 		public readonly DictionaryKey Key;
 		public nint HookID { get; private set; }
 		public Func<DictionaryKey, HInputData, bool> HLCallback;
@@ -94,7 +94,7 @@ namespace Components.Interfaces {
 		public readonly HHookInfo HookInfo;
 		private readonly GCHandle _gcHandler;
 
-		private DLowLevelInput LLInput { get => (DLowLevelInput)Owner; }
+		private DLowLevelInput LLInput { get => Owner; }
 
 		public Hook ( DLowLevelInput owner, HHookInfo hookInfo, DictionaryKey key, Func<DictionaryKey, HInputData, bool> callback, Action<int, IntPtr, IntPtr> log = null ) : base ( owner ) {
 			Key = key;
@@ -124,7 +124,7 @@ namespace Components.Interfaces {
 			return resend ? LLInput.CallNextHook ( HookID, nCode, wParam, lParam ) : 1;
 		}
 
-		public override DataHolderBase Clone () {
+		public override DataHolderBase<DLowLevelInput> Clone () {
 			var ret = new Hook ( LLInput, HookInfo, Key, HLCallback );
 			ret.HookID = HookID;
 			ret.HLCallback = HLCallback;

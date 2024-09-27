@@ -1,9 +1,8 @@
 ﻿using Components.Library;
 using System.Collections.Immutable;
-using System.Collections.Generic;
 
 namespace Components.Interfaces {
-	public class HHookInfo : DataHolderBase {
+	public class HHookInfo : DataHolderBase<ComponentBase> {
 		/// <summary>Internaly modifiable list of possible input event types.<para>Keep in mind, that hookIDs doesn't need to fit 1to1 with changeMask. That is dependent on low-level specs.</para></summary>
 		protected virtual HashSet<VKChange> changeMask {  get; set; }
 		protected virtual HashSet<DictionaryKey> hookIDs { get; set; }
@@ -30,7 +29,7 @@ namespace Components.Interfaces {
 		public virtual void AddHookID ( DictionaryKey hookID ) => hookIDs.Add ( hookID );
 		public virtual void RemoveHookID ( DictionaryKey hookID ) => hookIDs.Remove ( hookID );
 
-		public override DataHolderBase Clone () {
+		public override DataHolderBase<ComponentBase> Clone () {
 			var ret = new HHookInfo ( Owner, DeviceID, LatestChangeType );
 			foreach ( var hookID in hookIDs ) ret.AddHookID ( hookID );
 			return ret;

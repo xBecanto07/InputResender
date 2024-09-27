@@ -19,6 +19,16 @@ namespace Components.InterfaceTests {
 			return ret;
 		}
 
+		public static HKeyboardEventDataHolder KeyPress ( ComponentBase owner, KeyCode key, VKChange press, int deviceID = 1 ) {
+			HHookInfo hookInfo = new ( owner, deviceID, press );
+			float val = 0, delta = 0;
+			switch ( press ) {
+			case VKChange.KeyDown: val = 1; delta = 1; break;
+			case VKChange.KeyUp: val = 0; delta = -1; break;
+			}
+			return new HKeyboardEventDataHolder ( owner, hookInfo, (int)key, val, delta );
+		}
+
 		[Fact]
 		public void EmptyInputToEmptyOutput () {
 			TestObject.Callback = ProcessedCallback;
@@ -33,9 +43,9 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void CustomModifierRecognized () {
 			var input = new[] {
-				HInputEventDataHolder.KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.E, VKChange.KeyDown),
-				HInputEventDataHolder.KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.D1, VKChange.KeyDown),
-				HInputEventDataHolder.KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.LShiftKey, VKChange.KeyDown)
+				KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.E, VKChange.KeyDown),
+				KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.D1, VKChange.KeyDown),
+				KeyPress (OwnerCore.Fetch<DInputReader> (), KeyCode.LShiftKey, VKChange.KeyDown)
 			};
 			TestObject.SetCustomModifier ( KeyCode.D1, InputData.Modifier.CustMod1 );
 			TestObject.ReadModifiers ( input ).Should ().Be ( InputData.Modifier.CustMod1 | InputData.Modifier.Shift );
@@ -58,8 +68,10 @@ namespace Components.InterfaceTests {
 
 	}
 
-	public class InputDataTest : SerializableDataHolderTestBase<InputData> {
+	public class InputDataTest : SerializableDataHolderTestBase<InputData, ComponentBase> {
 		public InputDataTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
+
+		public override ComponentBase CreateTestObjOwnerComp ( CoreBase core ) => new ComponentMock ( core );
 
 		public override InputData GenerateTestObject ( int variant ) {
 			if ( variant < 0 ) return InputData.Empty ( OwnerComp );

@@ -62,10 +62,10 @@ namespace Components.Interfaces {
 		public override ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
 			var key = keyFactory.NewKey ();
 			CallbackList.Add ( hookInfo, new ( key, mainCB, delayedCB ) );
-			return new DictionaryKey[]{ key };
+			return [key];
 		}
 		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) {
-			if ( CallbackList.TryGetValue ( (item) => input.HookInfo < item, out var info ) ) {
+			if ( CallbackList.TryGetValue ( ( item ) => input.HookInfo < item, out var info ) ) {
 				var data = (HInputEventDataHolder)input.Clone ();
 				info.MainCB ( info.Key, data );
 				if ( info.DelayedCB != null ) info.DelayedCB ( info.Key, data );
@@ -81,11 +81,11 @@ namespace Components.Interfaces {
 			return null;
 		}
 
-		public uint SimulateKeyPress ( HHookInfo hookInfo, KeyCode keyCode, VKChange Pressed ) => SimulateInput ( new HKeyboardEventDataHolder ( this, hookInfo, (int)keyCode, Pressed), false );
+		public uint SimulateKeyPress ( HHookInfo hookInfo, KeyCode keyCode, VKChange Pressed ) => SimulateInput ( new HKeyboardEventDataHolder ( this, hookInfo, (int)keyCode, Pressed ), false );
 
 		public override StateInfo Info => new VStateInfo ( this );
 		public class VStateInfo : DStateInfo {
-			public VStateInfo (MInputReader owner) : base (owner) { }
+			public VStateInfo ( MInputReader owner ) : base ( owner ) { }
 
 			protected override string[] GetHookList () {
 				var InputReader = (MInputReader)Owner;
@@ -97,26 +97,28 @@ namespace Components.Interfaces {
 			}
 		}
 	}
-	
+
 
 
 	public class HKeyboardEventDataHolder : HInputEventDataHolder {
 		public HKeyboardEventDataHolder ( DInputReader owner, HHookInfo hookInfo, int keycode, VKChange change ) : this ( owner, hookInfo, keycode, change == VKChange.KeyDown ? 1 : 0, change == VKChange.KeyDown ? 1 : -1 ) { }
+
 		public HKeyboardEventDataHolder ( DInputReader owner, int deviceID, int keycode, float pressValue, float delta ) : this ( owner, new HHookInfo ( owner, deviceID, pressValue > 1 ? VKChange.KeyDown : VKChange.KeyUp ), keycode, pressValue, delta ) { }
-		public HKeyboardEventDataHolder ( DInputReader owner, HHookInfo hookInfo, int keycode, float pressValue, float delta ) : base ( owner, hookInfo ) {
+
+		public HKeyboardEventDataHolder ( ComponentBase owner, HHookInfo hookInfo, int keycode, float pressValue, float delta ) : base ( owner, hookInfo ) {
 			InputCode = keycode;
 			ValueX = Convert ( pressValue );
 			DeltaX = Convert ( delta );
 			ValueY = ValueZ = DeltaY = DeltaZ = 0;
 		}
 
-		public override DataHolderBase Clone () => new HKeyboardEventDataHolder ( (DInputReader)Owner, HookInfo, InputCode, ValueX / (float)PressThreshold, DeltaX / (float)PressThreshold );
+		public override DataHolderBase<ComponentBase> Clone () => new HKeyboardEventDataHolder ( Owner, HookInfo, InputCode, ValueX / (float)PressThreshold, DeltaX / (float)PressThreshold );
 
 		public override string ToString () => base.ToString ();
 	}
 
 	public class HMouseEventDataHolder : HInputEventDataHolder {
-		public HMouseEventDataHolder (DInputReader owner, HHookInfo hookInfo, int x, int y) : base (owner, hookInfo) {
+		public HMouseEventDataHolder ( ComponentBase owner, HHookInfo hookInfo, int x, int y ) : base ( owner, hookInfo ) {
 			InputCode = (int)KeyCode.MouseMove;
 			ValueX = ValueY = ValueZ = 0;
 			DeltaX = x;
@@ -124,6 +126,6 @@ namespace Components.Interfaces {
 			DeltaZ = 0;
 		}
 
-		public override DataHolderBase Clone () => new HMouseEventDataHolder ( (DInputReader)Owner, HookInfo, DeltaX, DeltaY );
+		public override DataHolderBase<ComponentBase> Clone () => new HMouseEventDataHolder ( Owner, HookInfo, DeltaX, DeltaY );
 	}
 }

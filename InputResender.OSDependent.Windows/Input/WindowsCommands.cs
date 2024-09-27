@@ -25,17 +25,18 @@ public class WindowsCommands : ACommand {
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		switch ( context.SubAction ) {
 		case "load":
+			context.Args.RegisterSwitch ( 'F', "force", null );
 			var actCore = context.CmdProc.GetVar<CoreBase> ( CoreManagerCommand.ActiveCoreVarName );
 			if ( actCore.IsRegistered<DLowLevelInput> () ) {
 				var llInput = actCore.Fetch<DLowLevelInput> ();
 				if ( llInput.GetType () == typeof ( VWinLowLevelLibs ) ) {
 					return new CommandResult ( "Windows dependencies already loaded." );
 				}
-				if ( context[1] == "force" ) {
+				if ( context.Args.Present ( "--force" ) ) {
 					do {
 						actCore.Unregister ( actCore.Fetch<DLowLevelInput> () );
 					} while ( actCore.IsRegistered<DLowLevelInput> () );
-				} else return new CommandResult ( $"LowLevelInput is already registered with variant {llInput.GetType ().Name}. To override, use 'force' hint." );
+				} else return new CommandResult ( $"LowLevelInput is already registered with variant {llInput.GetType ().Name}. To override, use '--force' hint." );
 			}
 			new VWinLowLevelLibs ( actCore );
 			return new CommandResult ( "Windows dependencies loaded." );

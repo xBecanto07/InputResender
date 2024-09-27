@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Components.Interfaces {
 	/// <summary>High-Level version of HInputData</summary>
-	public abstract class HInputEventDataHolder : DataHolderBase {
+	public abstract class HInputEventDataHolder : DataHolderBase<ComponentBase> {
 		public const int PressThreshold = ushort.MaxValue;
 		public HHookInfo HookInfo { get; protected set; }
 		public int InputCode { get; protected set; }
@@ -22,7 +22,7 @@ namespace Components.Interfaces {
 			}
 		}
 
-		public HInputEventDataHolder ( DInputReader owner, HHookInfo hookInfo ) : base ( owner ) { HookInfo = hookInfo; }
+		public HInputEventDataHolder ( ComponentBase owner, HHookInfo hookInfo ) : base ( owner ) { HookInfo = hookInfo; }
 		public static HInputEventDataHolder KeyPress ( DInputReader owner, KeyCode key, VKChange press, int deviceID = 1 ) {
 			HHookInfo hookInfo = new HHookInfo ( owner, deviceID, press );
 			float val = 0, delta = 0;
@@ -62,7 +62,7 @@ namespace Components.Interfaces {
 	}
 
 	/// <summary>Low-Level version of HInputEventDataHolder</summary>
-	public abstract class HInputData : DataHolderBase {
+	public abstract class HInputData : DataHolderBase<ComponentBase> {
 		protected HInputData ( ComponentBase owner ) : base ( owner ) {
 		}
 
@@ -105,7 +105,7 @@ namespace Components.Interfaces {
 		public override int DeviceID { get => deviceID; protected set => deviceID = value; }
 		public override VKChange Pressed { get => data.KeyChange; protected set => data.KeyChange = value; }
 
-		public override DataHolderBase Clone () => new HInputData_Mock ( Owner, (IInputStruct_Mock)data.Clone () );
+		public override DataHolderBase<ComponentBase> Clone () => new HInputData_Mock ( Owner, (IInputStruct_Mock)data.Clone () );
 		public override bool Equals ( object obj ) {
 			if ( obj == null ) return false;
 			if ( obj.GetType () != GetType () ) return false;

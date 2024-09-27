@@ -51,9 +51,9 @@ public class HookManagerCommand : ACommand {
             /// 3. <see cref="VHookManager.FastCB"/> or <see cref="VHookManager.DelayedCB"/> - Loop through all registered callbacks, stop at first consuming one
             /// 4. <see cref="HookManagerCommand.HookCallback(HInputEventDataHolder)"/> - Callback assign via command
 
-            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook add <CbAction={{{string.Join ( "|", Enum.GetNames<CallbackFcn> () )}}}> <VKChange1={{{string.Join ( "|", Enum.GetNames<VKChange> () )}}}> [<VKChange2> ...]", out var helpRes ) ) return helpRes;
+            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook add <CbAction> <VKChange1> [<VKChange2> ...]\n\tCbAction: {{{string.Join ( "|", Enum.GetNames<CallbackFcn> () )}}}\n\tVKChange: {{{string.Join ( "|", Enum.GetNames<VKChange> () )}}}", out var helpRes ) ) return helpRes;
 
-            CallbackFcn cbFcn = context.Args.EnumC<CallbackFcn> ( context.ArgID + 1, "Callback action" );
+            CallbackFcn cbFcn = context.Args.EnumC<CallbackFcn> ( context.ArgID + 1, "Callback action", true );
             lastContext = context;
             CbFcn = cbFcn;
             if ( cbFcn == CallbackFcn.Aggregate ) {

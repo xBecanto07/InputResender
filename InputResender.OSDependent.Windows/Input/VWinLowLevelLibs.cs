@@ -256,7 +256,7 @@ namespace InputResender.WindowsGUI {
 		public override int DeviceID { get ; protected set; }
 		public override VKChange Pressed { get; protected set; }
 
-		public override DataHolderBase Clone () => new WinLLInputData ( Owner, data );
+		public override DataHolderBase<ComponentBase> Clone () => new WinLLInputData ( Owner, data );
 		public override bool Equals ( object obj ) {
 			if ( obj == null ) return false;
 			if ( obj.GetType () != GetType () ) return false;

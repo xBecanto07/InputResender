@@ -108,7 +108,7 @@ namespace Components.Interfaces {
 		}
 	}
 
-	public class InputData : SerializableDataHolderBase {
+	public class InputData : SerializableDataHolderBase<ComponentBase> {
 		public enum Command { None, KeyPress, KeyRelease, MouseMove, Cancel, Type }
 		[Flags]
 		public enum Modifier {
@@ -146,7 +146,7 @@ namespace Components.Interfaces {
 			Y = Z = 0;
 		}
 
-		public override DataHolderBase Clone () => new InputData (Owner) { Cmnd = Cmnd, Key = Key, DeviceID = DeviceID, Modifiers = Modifiers, X = X, Y = Y, Z = Z };
+		public override DataHolderBase<ComponentBase> Clone () => new InputData (Owner) { Cmnd = Cmnd, Key = Key, DeviceID = DeviceID, Modifiers = Modifiers, X = X, Y = Y, Z = Z };
 		public override bool Equals ( object obj ) {
 			if ( obj == null ) return false;
 			if ( obj.GetType () != GetType () ) return false;
@@ -162,7 +162,7 @@ namespace Components.Interfaces {
 		}
 		public override int GetHashCode () => (Cmnd, Key, DeviceID, Modifiers, X, Y, Z).GetHashCode ();
 		public override string ToString () => $"({Cmnd}@{Key}({DeviceID})[{Modifiers}]:{{{X}, {Y}, {Z}}})";
-		public override SerializableDataHolderBase Deserialize ( byte[] Data ) {
+		public override SerializableDataHolderBase<ComponentBase> Deserialize ( byte[] Data ) {
 			return new InputData ( Owner ) {
 				Cmnd = (Command)BitConverter.ToUInt32 ( Data, 0 ),
 				Key = (KeyCode)BitConverter.ToUInt32 ( Data, 4 ),

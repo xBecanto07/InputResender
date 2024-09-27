@@ -137,27 +137,27 @@ namespace Components.Library {
 			string[] GetMethods ( Type type ) => type.GetMethods ().Select ( x => $"{x.ReturnType.Name} {x.Name}" ).ToArray ();
 		}
 	}
-	public abstract class SerializableDataHolderTestBase<T> where T : SerializableDataHolderBase {
+	public abstract class SerializableDataHolderTestBase<dataHolderT, compT> where dataHolderT : SerializableDataHolderBase<compT> where compT : ComponentBase {
 		protected readonly CoreBase CoreBase;
-		protected readonly ComponentBase OwnerComp;
-		private readonly List<T> TestVariants;
+		protected readonly compT OwnerComp;
+		private readonly List<dataHolderT> TestVariants;
 		protected readonly OutpuHelper Output;
 
-		public abstract T GenerateTestObject ( int variant );
+		public abstract dataHolderT GenerateTestObject ( int variant );
 		public virtual CoreBase CreateCoreBase () => new CoreBaseMock ();
-		public virtual ComponentBase CreateTestObjOwnerComp () => new ComponentMock ( CoreBase );
-		public abstract List<T> GetTestData ();
+		public abstract compT CreateTestObjOwnerComp ( CoreBase core );
+		public abstract List<dataHolderT> GetTestData ();
 
 		public SerializableDataHolderTestBase ( OutpuHelper outputHelper ) {
 			Output = outputHelper;
 			CoreBase = CreateCoreBase ();
-			OwnerComp = CreateTestObjOwnerComp ();
+			OwnerComp = CreateTestObjOwnerComp ( CoreBase );
 			TestVariants = GetTestData ();
 		}
 
 		[Fact]
 		public void SerializeDeserialzie () {
-			foreach (T TestObject in TestVariants) {
+			foreach (dataHolderT TestObject in TestVariants) {
 				Output.WriteLine ( $"Testing data {TestObject} ..." );
 				byte[] data = TestObject.Serialize ();
 				var newObj = TestObject.Deserialize ( data );
