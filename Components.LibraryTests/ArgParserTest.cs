@@ -99,7 +99,7 @@ public class ArgParserTest {
 		var parser = new ArgParser ( "-a 5", null );
 		parser.RegisterSwitch ( 'b', "beta", null );
 		parser.Present ( "-b" ).Should ().BeFalse ();
-		AssertError ( () => parser.Int ( "-b", "beta" ), "Switch -b not found.", ArgParser.ErrSwitchCharNotFound );
+		AssertError ( () => parser.Int ( "-b", "beta" ), "Switch '-b' not found.", ArgParser.ErrSwitchCharNotFound );
 	}
 
 	[Fact]

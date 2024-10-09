@@ -16,7 +16,7 @@ namespace Components.Interfaces {
 		/// <param name="hookInfo">Use given info to initialize hook(s). Fills back info about created hooks (e.g. hookIDs).</param>
 		/// <param name="mainCB">Fast callback that is called immediately after input event is recieved. Return value indicates if event should be passed to other hooks (true) or should be consumed (false)</param>
 		/// <param name="delayedCB">Use this callback for more time-consuming processing. It is called from separate task to avoid blocking input processing, but thread safety can not be guaranteed</param>
-		public abstract ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB );
+		public abstract IDictionary<VKChange, DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB );
 		public abstract int ReleaseHook ( HHookInfo hookInfo );
 		/// <summary></summary>
 		/// <returns>Returns number of successfully simulated events</returns>
@@ -59,10 +59,12 @@ namespace Components.Interfaces {
 		public override int ComponentVersion => 1;
 
 		public override int ReleaseHook ( HHookInfo hookInfo ) { return CallbackList.Remove ( hookInfo ) ? 1 : 0; }
-		public override ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
+		public override IDictionary<VKChange, DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
 			var key = keyFactory.NewKey ();
 			CallbackList.Add ( hookInfo, new ( key, mainCB, delayedCB ) );
-			return [key];
+			Dictionary<VKChange, DictionaryKey> ret = new ();
+			foreach ( var vk in hookInfo.ChangeMask ) ret[vk] = key;
+			return ret;
 		}
 		public override uint SimulateInput ( HInputEventDataHolder input, bool allowRecapture ) {
 			if ( CallbackList.TryGetValue ( ( item ) => input.HookInfo < item, out var info ) ) {

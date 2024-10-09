@@ -158,7 +158,7 @@ namespace Components.Implementations {
 				foreach ( var conn in ActiveConns ) SB.AppendLine ( $"  {conn.Value}" );
 				Owner.LogFcn.Invoke ( SB.ToString () );
 			}
-			foreach ( var conn in ActiveConns ) conn.Value.Send ( (byte[])data );
+			foreach ( var conn in ActiveConns ) conn.Value.Send ( data );
 			Task.Delay ( 10 ).Wait ();
 			Owner.FlushDelayedMsgs ();
 		}

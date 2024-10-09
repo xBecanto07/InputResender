@@ -1,6 +1,4 @@
-﻿using Xunit;
-using FluentAssertions;
-using System;
+﻿using System;
 
 namespace Components.Library {
 	public abstract class CoreBase {
@@ -197,56 +195,5 @@ namespace Components.Library {
 
 	public class CoreBaseMock : CoreBase {
 
-	}
-
-	public abstract class CoreTestBase<CoreT> where CoreT : CoreBase {
-		protected readonly CoreT TestCore;
- 
-		public CoreTestBase() {
-			TestCore = GenerateTestCore ();
-		}
-
-		public void Test_RegisterFetchUnregister_Base<CompT> (CompT component) where CompT : ComponentBase<CoreBase> {
-			bool preregistered = TestCore.IsRegistered ( component );
-			if (preregistered) {
-				var compInfo = TestRegistered ( component );
-				TestCore.Unregister ( component );
-				TestUnregistered ( component );
-				TestCore.Register ( compInfo );
-				TestRegistered ( component ).Should ().Be ( compInfo );
-				TestCore[compInfo.GlobalID].Should ().Be ( component );
-			} else {
-				TestUnregistered ( component );
-				DictionaryKey subGroupID = new DictionaryKey ();
-				var origInfo = TestCore.Register ( component, ref subGroupID );
-				TestRegistered ( component ).Should ().Be ( origInfo );
-				TestCore.Unregister ( component );
-				TestUnregistered ( component );
-			}
-		}
-
-		private CoreBase.ComponentInfo TestRegistered<CompT> ( CompT component ) where CompT : ComponentBase<CoreBase> {
-			new CoreBase.ComponentGroup ( TestCore, CoreBase.ComponentGroup.ByType<CompT> () ).Contains ( component ).Should ().BeTrue ();
-			var compInfo = TestCore[component];
-			TestCore[compInfo.GlobalID].Should ().Be ( component );
-			return compInfo;
-		}
-		private void TestUnregistered<CompT> (CompT component) where CompT : ComponentBase<CoreBase> {
-			new CoreBase.ComponentGroup ( TestCore, CoreBase.ComponentGroup.ByType<CompT> () ).Contains ( component ).Should ().BeFalse ();
-			TestCore[component].Should ().BeNull ();
-		}
-
-		public void Test_Availability_Base ( params ComponentBase[] components) {
-			foreach (var component in components) {
-				TestCore.Fetch ( component.GetType () ).Should ().Be ( component );
-			}
-		}
-
-		[Fact]
-		public void Test_RegisterFetchUnregister_MockComponent () {
-			Test_RegisterFetchUnregister_Base ( new ComponentMock ( TestCore ) );
-		}
-
-		public abstract CoreT GenerateTestCore ();
 	}
 }

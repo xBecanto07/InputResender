@@ -1,7 +1,7 @@
 ﻿using InputResender.CLI;
 using Components.Implementations;
 using Components.Interfaces;
-using Components.Library;
+using Components.LibraryTests;
 using Xunit;
 
 namespace InputResender.UnitTests {

@@ -27,5 +27,7 @@ namespace Components.Library {
 		}
 
 		public void PushTrace ( string context ) => Origin?.Add ( (context, new StackTrace ()) );
+
+		public override string ToString () => $"${MsgID}<{ResultType}>({SourceEP}=>{TargetEP})" + (Data != null ? $"[{Data.Length}]" : string.Empty);
 	}
 }

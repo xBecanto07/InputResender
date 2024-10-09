@@ -7,11 +7,11 @@ using System;
 using System.Linq;
 
 namespace InputResender.WindowsGUI {
-	public class VWinLowLevelLibs : DLowLevelInput {
+	public partial class VWinLowLevelLibs : DLowLevelInput {
 		private const int WH_KEYBOARD_LOW_LEVEL = 13;
 		private const int WH_MOUSE_LOW_LEVEL = 14;
 		private static VWinLowLevelLibs mainInstance;
-		private Dictionary<DictionaryKey, int> OwnHooks;
+		private HookGroupCollection OwnHooks;
 		const int MaxLog = 256;
 		public static List<(int nCode, VKChange changeCode, HWInput.KeyboardInput inputData)> EventList = new( MaxLog );
 
@@ -25,29 +25,31 @@ namespace InputResender.WindowsGUI {
 
 		public VWinLowLevelLibs ( CoreBase owner ) : base ( owner ) {
 			mainInstance = this;
-			OwnHooks = new Dictionary<DictionaryKey, int> ();
+			OwnHooks = new HookGroupCollection ( this );
 		}
 
 		public override int ComponentVersion => 1;
 
-		//public override int HookTypeCode => WH_KEYBOARD_LOW_LEVEL; // Could be replaced maybe with something like List<VKChange> SupportedTypes
-		private static int GetChangeCode ( VKChange vKChange ) {
-			// Source: https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
-			switch ( vKChange ) {
-			case VKChange.KeyDown:	return 0x0100;
-			case VKChange.KeyUp:	return 0x0101;
-			case VKChange.MouseMove: return 0x0200;
-			}
-			return -1;
-		}
-		private static VKChange GetChangeType ( int vkCode ) {
-			switch ( vkCode ) {
-			case 0x0100: return VKChange.KeyDown;
-			case 0x0101: return VKChange.KeyUp;
-			case 0x0200: return VKChange.MouseMove;
-			}
-			throw new InvalidCastException ( $"No key change action type corresponds to code {vkCode:X}" );
-		}
+		// Source: https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
+		/*private static int GetChangeCode ( VKChange vKChange ) => vKChange switch {
+				VKChange.KeyDown => 0x0100,
+				VKChange.KeyUp => 0x0101,
+				VKChange.MouseMove => 0x0200,
+				_ => -1,
+			};
+		private static VKChange GetChangeType ( int vkCode ) => vkCode switch {
+			0x0100 => VKChange.KeyDown,
+			0x0101 => VKChange.KeyUp,
+			0x0200 => VKChange.MouseMove,
+			_ => throw new InvalidCastException ( $"No key change action type corresponds to code {vkCode:X}" )
+			};*/
+
+		private static int GetHookType (VKChange vkChange) => vkChange switch {
+			VKChange.KeyDown => WH_KEYBOARD_LOW_LEVEL,
+			VKChange.KeyUp => WH_KEYBOARD_LOW_LEVEL,
+			VKChange.MouseMove => WH_MOUSE_LOW_LEVEL,
+			_ => -1
+		};
 
 		public override HInputEventDataHolder GetHighLevelData ( DictionaryKey hookKey, DInputReader requester, HInputData lowLevelData ) {
 			HWInput llData = (HWInput)lowLevelData.Data;
@@ -58,21 +60,23 @@ namespace InputResender.WindowsGUI {
 			case HWInput.TypeMOUSE:
 				HWInput.MouseInput mouseInfo = llData.Data.mi;
 				return new HMouseEventDataHolder ( requester, HookIDDict[hookKey].HookInfo, mouseInfo.dx, mouseInfo.dy );
-			default: throw new ArgumentOutOfRangeException ( nameof ( llData.Type ), llData.Type, "Type of input is not supported!" );
+			default:
+				ErrorList.Add ( (nameof ( GetHighLevelData ) + " : " + nameof ( llData.Type ), new ArgumentOutOfRangeException ( nameof ( llData.Type ), llData.Type, "Type of input is not supported!" )) );
+				return null;
 			}
 		}
 		public override HInputData GetLowLevelData ( HInputEventDataHolder highLevelData ) {
 			var inputUnion = new HWInput.InputUnion ();
 			uint time = (uint)new TimeSpan ( highLevelData.CreationTime.Ticks ).TotalMilliseconds;
 
-			if (highLevelData is HKeyboardEventDataHolder keyboardInput) {
+			if ( highLevelData is HKeyboardEventDataHolder keyboardInput ) {
 				var keyboardData = new HWInput.KeyboardInput ();
 				keyboardData.time = time;
 				keyboardData.vkCode = (ushort)highLevelData.InputCode;
 				keyboardData.scanCode = (ushort)highLevelData.InputCode;
 				keyboardData.dwFlags = (uint)((highLevelData.Pressed >= 1 ? HWInput.KeyboardInput.CallbackFlags.KeyDown : HWInput.KeyboardInput.CallbackFlags.KeyUp) | HWInput.KeyboardInput.CallbackFlags.ValidCallbackFlags);
 				inputUnion.ki = keyboardData;
-			} else if (highLevelData is HMouseEventDataHolder mouseInput) {
+			} else if ( highLevelData is HMouseEventDataHolder mouseInput ) {
 				var mouseData = new HWInput.MouseInput ();
 				mouseData.time = time;
 				mouseData.dx = mouseInput.DeltaX;
@@ -80,77 +84,132 @@ namespace InputResender.WindowsGUI {
 				mouseData.mouseData = 0; // Use this to set mouse wheel
 				mouseData.dwFlags = 0;
 				inputUnion.mi = mouseData;
-			} else throw new InvalidCastException ( $"High level data of type {highLevelData.GetType ()} is not supported!" );
+			} else {
+				ErrorList.Add ( (nameof ( GetLowLevelData ) + " : " + nameof ( highLevelData ), new InvalidCastException ( $"High level data of type {highLevelData.GetType ()} is not supported!" )) );
+				return null;
+			}
 
 			return new WinLLInputData ( highLevelData.Owner, new HWInput ( 1, inputUnion ) );
 		}
+
 		public override HInputData ParseHookData ( DictionaryKey hookID, nint vkChngCode, nint vkCode ) {
-			if (!OwnHooks.TryGetValue ( hookID, out int hookCode )) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
-			return hookCode switch {
+			VKChange vkChange = (VKChange)vkChngCode;
+			int vkChangeType = GetHookType ( vkChange );
+
+			if ( !OwnHooks.OwnsHookForVKChange ( vkChange ) ) {
+				ErrorList.Add ( (nameof ( ParseHookData ), new KeyNotFoundException ( $"No hook assigned to change code {vkChange} was found!" )) );
+				return null;
+			}
+
+			return vkChangeType switch {
 				WH_KEYBOARD_LOW_LEVEL => WinLLInputData.NewKeyboardData ( this, vkChngCode, vkCode ),
 				WH_MOUSE_LOW_LEVEL => WinLLInputData.NewMouseData ( this, vkChngCode, vkCode ),
-				_ => throw new ArgumentOutOfRangeException ( nameof ( hookCode ), hookCode, "Hook code is not supported!" )
+				_ => throw new ArgumentOutOfRangeException ( nameof ( vkChange ), vkChange, "Hook code is not supported!" )
 			};
 			
 		}
 
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
-		public override nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
 
-		public override Hook[] SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> callback ) {
-			List<int> hookCodes = new ();
-			foreach (var vkChange in hookInfo.ChangeMask) {
+		private nint GetModuleHandleID ( string lpModuleName ) => GetModuleHandle ( lpModuleName );
+
+		private Dictionary<int, List<VKChange>> SortVKChangeByType (ICollection<VKChange> vkChanges) {
+			Dictionary<int, List<VKChange>> ret = new ();
+			foreach ( var vkChange in vkChanges) {
 				int code = vkChange switch {
 					VKChange.KeyDown => WH_KEYBOARD_LOW_LEVEL,
 					VKChange.KeyUp => WH_KEYBOARD_LOW_LEVEL,
 					VKChange.MouseMove => WH_MOUSE_LOW_LEVEL,
 					_ => -1
 				};
-				if ( code > 0 & !hookCodes.Contains ( code ) ) hookCodes.Add ( code );
+				if ( code < 0 ) continue;
+				if ( !ret.TryGetValue ( code, out var vkList ) ) ret.Add ( code, new () { vkChange } );
+				else if ( vkList.Contains (vkChange))
+					ErrorList.Add ( (nameof ( SetHookEx ), new InvalidOperationException ( $"Duplicate request for {vkChange}!" )) );
+				else vkList.Add ( vkChange );
 			}
+			return ret;
+		}
 
-			List<Hook> ret = new ();
+		public override IDictionary<VKChange, Hook>SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> callback ) {
+			var vkTypeDict = SortVKChangeByType ( hookInfo.ChangeMask );
 
-			foreach (int hookCode in hookCodes) {
+			Dictionary<VKChange, Hook> ret = new ();
+			foreach ((int vkType, var changes) in vkTypeDict) {
+				// At first, update already existing hook of proper type with new (supported) VKChange
+				for (int chID = changes.Count -1; chID>=0; chID-- ) {
+					VKChange change = changes[chID];
+					switch ( OwnHooks.TryUpdateWithVKChange(vkType, change )) {
+					case HookGroupCollection.UpdateStatus.KeyNotFound: continue;
+					case HookGroupCollection.UpdateStatus.AlreadyExists:
+						ErrorList.Add ( (nameof ( SetHookEx ), new InvalidOperationException ( $"Duplicate request for {change}!" )) );
+						changes.RemoveAt ( chID );
+						continue;
+					case HookGroupCollection.UpdateStatus.Updated:
+						ret.Add ( change, OwnHooks[change].Item1 );
+						changes.RemoveAt ( chID );
+						continue;
+					}
+				}
+
+				if ( !changes.Any () ) continue;
+
+				// No hook for given type exists, create new
 				var hookKey = HookKeyFactory.NewKey ();
 				var hook = new Hook ( this, hookInfo, hookKey, callback, Log );
-
-				if ( hook == null ) {
-					System.Text.StringBuilder SB = new System.Text.StringBuilder ();
-					SB.AppendLine ( $"Error when creating hook for {hookInfo}!{Environment.NewLine}" );
-					PrintErrors ( ( ss ) => SB.AppendLine ( ss ) );
-					throw new InvalidOperationException ( SB.ToString () );
+				if (hook == null) {
+					ErrorList.Add ( (nameof ( SetHookEx ), new Exception ( $"Failed to create hook for {hookInfo}!" )) );
+					continue;
 				}
 
 				var moduleHandle = GetModuleHandleID ( "user32.dll" );
-				//int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId;
 				int threadID = 0;
-				var hookID = SetWindowsHookEx ( hookCode, hook.Callback, moduleHandle, (uint)threadID );
-				if ( hookID == (IntPtr)null ) {
+				var hookID = SetWindowsHookEx ( vkType, hook.Callback, moduleHandle, (uint)threadID );
+				if (hookID == IntPtr.Zero ) {
+					// new Win32Exception will, by default, use last system error code
 					ErrorList.Add ( (nameof ( SetHookEx ), new Win32Exception ()) );
-					return null;
+					continue;
 				}
-				HookIDDict.Add ( hookKey, hook );
-				OwnHooks.Add ( hookKey, hookCode );
-				hook.UpdateHookID ( hookID );
-				ret.Add ( hook );
+
+				lock (HookIDDict) {
+					HookIDDict.Add ( hookKey, hook );
+				}
+
+				OwnHooks.AddHook ( hook, vkType, changes );
+				hook.UpdateHookID (hookID);
+
+				foreach ( VKChange change in changes )
+					ret.Add ( change, hook );
 			}
-			return ret.ToArray ();
+
+			return ret;
 		}
+
 		public override bool UnhookHookEx ( Hook hookID ) {
-			if ( !HookIDDict.ContainsPair ( hookID.Key, hookID ) ) throw new KeyNotFoundException ( $"Hook with key {hookID.Key} was not found!" );
-			if ( !OwnHooks.ContainsKey ( hookID.Key ) ) throw new KeyNotFoundException ( $"Hook #{hookID.Key} is not owned by this component!" );
+			if ( !HookIDDict.ContainsPair ( hookID.Key, hookID ) ) {
+				ErrorList.Add ( (nameof ( UnhookHookEx ), new KeyNotFoundException ( $"Hook with key {hookID.Key} was not found!" )) );
+				return false;
+			}
+			if ( !OwnHooks.OwnsHookID ( hookID.Key ) ) {
+				ErrorList.Add ( (nameof ( UnhookHookEx ), new KeyNotFoundException ( $"Hook #{hookID.Key} is not owned by this component!" )) );
+				return false;
+			}
 			bool ret;
 			if (!(ret = UnhookWindowsHookEx ( hookID.HookID ))) ErrorList.Add ( (nameof ( UnhookHookEx ), new Win32Exception ()) );
 			HookIDDict.Remove ( hookID.Key );
-			OwnHooks.Remove ( hookID.Key );
+			OwnHooks.RemoveHookByID ( hookID.Key );
 			return ret;
 		}
 
 		public override string PrintHookInfo ( DictionaryKey key ) {
-			if (!OwnHooks.TryGetValue ( key, out int hookCode )) return null;
-			if (!HookIDDict.TryGetValue ( key, out var hook )) return null;
-			return $"WinHook#{key}[{hookCode}]:{hook.HookInfo.DeviceID}<{string.Join ( ", ", hook.HookInfo.ChangeMask )}>";
+			var hookStatus = OwnHooks[key];
+			if ( hookStatus == null ) return $"Hook with key {key} was not found in this component!";
+
+			Hook hook = hookStatus.Item1;
+			int vkType = hookStatus.Item2;
+			List<VKChange> changes = hookStatus.Item3;
+
+			return $"WinHook#{key}[{vkType}]:{hook.HookInfo.DeviceID}<{string.Join ( ", ", changes )}>";
 		}
 
 		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null ) {
@@ -190,18 +249,8 @@ namespace InputResender.WindowsGUI {
 		public override StateInfo Info => new VStateInfo ( this );
 		public class VStateInfo : DStateInfo {
 			public new VWinLowLevelLibs Owner => (VWinLowLevelLibs)base.Owner;
-			public VStateInfo ( VWinLowLevelLibs owner ) : base ( owner) {
-
-			}
-
-			protected override string[] GetHooks () {
-				int N = Owner.OwnHooks.Count;
-				string[] ret = new string[N];
-				int ID = 0;
-				foreach ( var hID in Owner.OwnHooks.Keys )
-					ret[ID++] = $"{hID} => {HookIDDict[hID]}";
-				return ret;
-			}
+			public VStateInfo ( VWinLowLevelLibs owner ) : base ( owner) { }
+			protected override string[] GetHooks () => Owner.OwnHooks.GetInfo ();
 		}
 	}
 

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using MessageHolder = Components.Interfaces.HMessageHolder;
 using InputResender.Services;
 using FluentAssertions;
 using InputResender.Services.NetClientService;
+using System.Threading.Tasks;
 
 namespace InputResender.ServiceTests.NetServices;
 /// <summary>Manages connections between two groups of devices. Fully connected between groups, no connections within groups. A always requests connections, B always accepts.</summary>
@@ -30,10 +32,10 @@ public class NetConnectionGroup {
 		byte[] msgData = new byte[PacketSize];
 		msgData[0] = (byte)info;
 		for ( int i = 1; i < PacketSize; i++ ) msgData[i] = (byte)conv ( i );
-		connA.Send ( msgData ).Should ().BeTrue ();
+		connA.Send ( new MessageHolder ( MessageHolder.MsgFlags.None, msgData ) ).Should ().BeTrue ();
 		var msgFromA = connB.Receive ( 250 );
 		msgFromA.Should ().NotBeNull ();
-		msgFromA.Data.Should ().BeEquivalentTo ( msgData ).And.NotBeSameAs ( msgData );
+		msgFromA.Data.InnerMsg.Should ().BeEquivalentTo ( msgData ).And.NotBeSameAs ( msgData );
 		msgFromA.Error.Should ().Be ( INetDevice.NetworkError.None );
 		msgFromA.SourceEP.Should ().Be ( connA.LocalDevice.EP );
 		msgFromA.TargetEP.Should ().Be ( connA.TargetEP );
@@ -102,7 +104,7 @@ public class NetConnectionGroup {
 		void CloseConn (INetDevice Ad, INetDevice Bd, bool callStop) {
 			var conn = Conns[(Ad.EP, Bd.EP)];
 			if ( callStop ) conn.Close ();
-			//else Thread.Sleep ( 1 );
+			Task.Delay ( 10 ).Wait ();
 			watchers[conn].Assert ();
 			conn.LocalDevice.Should ().BeNull ();
 			conn.TargetEP.Should ().BeNull ();

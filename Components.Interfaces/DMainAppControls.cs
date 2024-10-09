@@ -82,8 +82,10 @@ namespace Components.Interfaces {
 		Action<InputData> recvCallback = null;
 
 		public override Action<InputData> ReceiveCallback { set { recvCallback = value ?? Owner.CommandWorker.Push; } }
+		[Obsolete]
 		public override void ChangeHookStatus ( HHookInfo hookInfo, bool active ) {
-				if ( active ) {
+			throw new NotImplementedException ();
+				/*if ( active ) {
 					var hookIDs = Owner.InputReader.SetupHook ( hookInfo, HookFastCallback, HookCallback );
 					foreach ( var id in hookIDs ) hookInfo.AddHookID ( id );
 				} else {
@@ -91,7 +93,7 @@ namespace Components.Interfaces {
 					foreach ( var id in hookIDs ) hookInfo.RemoveHookID ( id );
 					hookIDs.Clear ();
 					hookIDs = null;
-				}
+				}*/
 		}
 		private bool HookFastCallback ( DictionaryKey key, HInputEventDataHolder inputData ) => HookShouldResend;
 		private void HookCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {

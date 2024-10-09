@@ -1,5 +1,6 @@
 ﻿using Components.Interfaces;
 using Components.Library;
+using Components.LibraryTests;
 using FluentAssertions;
 using System;
 using System.Collections.Generic;
@@ -37,17 +38,19 @@ namespace Components.InterfaceTests {
 
 			var InputReader = OwnerCore.Fetch<DInputReader> ();
 			TestObject.AllowRecapture = true;
-			List<DictionaryKey> hookKeys = new List<DictionaryKey> ();
+			Dictionary<VKChange, DictionaryKey> hookKeys = new Dictionary<VKChange, DictionaryKey> ();
 			CallbackList.Clear ();
-			foreach ( var e in parsed )
-				hookKeys.AddRange ( InputReader.SetupHook ( e.HookInfo, SimpleCallback, null ) );
+			foreach ( var e in parsed ) {
+				var hooks = InputReader.SetupHook ( e.HookInfo, SimpleCallback, null );
+				foreach ( var hookCombo in hooks ) hookKeys.Add ( hookCombo.Key, hookCombo.Value );
+			}
 
 			int N = outputData.Length;
 			TestObject.Simulate ( parsed ).Should ().Be ( N );
 			CallbackList.Should ().HaveCount ( N );
 			for (int i = 0; i < N; i++) {
 				CallbackList[i].Item2.Should ().Be ( outputData[i] );
-				hookKeys.Should ().Contain ( CallbackList[i].Item1 );
+				hookKeys.Should ().ContainValue ( CallbackList[i].Item1 );
 			}
 
 			foreach ( var e in parsed )

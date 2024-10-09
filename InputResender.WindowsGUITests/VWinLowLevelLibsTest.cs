@@ -1,5 +1,6 @@
 using Components.Interfaces;
 using Components.Library;
+using Components.LibraryTests;
 using FluentAssertions;
 using System.Diagnostics;
 using InputResender.WindowsGUI;
@@ -32,6 +33,7 @@ namespace InputResender.GUIComponentTests {
 			TestObject.UnhookHookEx ( hookID );
 			var LL_Data = TestObject.GetLowLevelData ( HL_Data );
 			LL_Data.Should ().Be ( inputData );
+			TestObject.ErrorList.Should ().BeEmpty ();
 		}
 
 		[Fact]
@@ -43,6 +45,7 @@ namespace InputResender.GUIComponentTests {
 				VKChange en = (VKChange)code;
 				en.Should ().Be ( val );
 			}
+			TestObject.ErrorList.Should ().BeEmpty ();
 		}
 
 		[Fact]
@@ -54,6 +57,7 @@ namespace InputResender.GUIComponentTests {
 				.Contain ( ((KeyCode)vals.vkCode).ToString () ).And
 				.Contain ( ((KeyCode)vals.scanCode).ToString () ).And
 				.Contain ( vals.time.ToString () );
+			TestObject.ErrorList.Should ().BeEmpty ();
 		}
 
 		[Fact]
@@ -62,6 +66,20 @@ namespace InputResender.GUIComponentTests {
 
 			TestObject.UnhookHookEx ( hookID );
 			hookID.Should ().NotBe ( (IntPtr)null );
+			TestObject.ErrorList.Should ().BeEmpty ();
+		}
+
+		[Fact]
+		public void HookShouldntDuplicate () {
+			HHookInfo hookInfo1 = new ( TestObject, 1, VKChange.KeyDown );
+			var hooks1 = TestObject.SetHookEx ( hookInfo1, Callback );
+			hooks1.Should ().NotBeNull ().And.HaveCount ( 1 );
+			HHookInfo hookInfo2 = new ( TestObject, 1, VKChange.KeyDown );
+			var hooks2 = TestObject.SetHookEx ( hookInfo2, Callback );
+			hooks2.Should ().NotBeNull ().And.BeEmpty ();
+			TestObject.ErrorList.Should ().HaveCount ( 1 );
+			TestObject.ErrorList[0].Item1.Should ().Be ( nameof ( TestObject.SetHookEx ) );
+			TestObject.ErrorList[0].Item2.Message.Should ().Contain ( $"uplicate request for {nameof ( VKChange.KeyDown )}" );
 		}
 
 		[Fact]
@@ -83,6 +101,7 @@ namespace InputResender.GUIComponentTests {
 			messages[0].Item1.GetHashCode ().Should ().NotBe ( 0 );
 			messages[0].Item2.Pressed.Should ().Be ( VKChange.KeyDown );
 			((HWInput)messages[0].Item2.Data).Data.ki.vkCode.Should ().Be ( (ushort)KeyCode.E );
+			TestObject.ErrorList.Should ().BeEmpty ();
 		}
 
 		public bool Callback ( DictionaryKey hookKey, HInputData inputData ) {
@@ -95,9 +114,9 @@ namespace InputResender.GUIComponentTests {
 
 		public Hook SetupHook () {
 			HHookInfo hookInfo = new HHookInfo ( TestObject, 1, VKChange.KeyDown, VKChange.KeyUp );
-			Hook[] hooks = TestObject.SetHookEx ( hookInfo, Callback );
+			var hooks = TestObject.SetHookEx ( hookInfo, Callback );
 			TestObject.PrintErrors ( Output.WriteLine );
-			return hooks[0];
+			return hooks.Any () ? hooks.First ().Value : null;
 		}
 
 		public WinLLInputData GenerateInputData () => WinLLInputData.NewKeyboardData ( TestObject, (ushort)KeyCode.E, (ushort)KeyCode.E, 0, 123456, TestObject.GetMessageExtraInfoPtr () );

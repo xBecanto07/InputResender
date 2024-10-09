@@ -8,9 +8,9 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="7.0.0-alpha.3" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
-    <PackageReference Include="xunit" Version="2.8.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.1">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -22,8 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
     <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
-    <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
+    <ProjectReference Include="..\Components.LibraryTests\Components.LibraryTests.csproj" />
     <ProjectReference Include="..\InputResender.Services\InputResender.Services.csproj" />
-    <ProjectReference Include="..\InputResender.UserTesting\InputResender.UserTesting.csproj" />
   </ItemGroup>
 </Project>

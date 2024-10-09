@@ -18,7 +18,6 @@ namespace Components.Interfaces {
 				(nameof(SetHookEx), typeof(Hook[])),
 				(nameof(UnhookHookEx), typeof(bool)),
 				(nameof(CallNextHook), typeof(IntPtr)),
-				(nameof(GetModuleHandleID), typeof(IntPtr)),
 				(nameof(ParseHookData), typeof(HInputEventDataHolder)),
 				(nameof(SimulateInput), typeof(uint)),
 				(nameof(GetLowLevelData), typeof(HInputData)),
@@ -29,7 +28,7 @@ namespace Components.Interfaces {
 				(nameof(PrintHookInfo), typeof(string)),
 			};
 
-		protected static Dictionary<DictionaryKey, Hook> HookIDDict = new Dictionary<DictionaryKey, Hook> ();
+		protected static Dictionary<DictionaryKey, Hook> HookIDDict = new ();
 		protected static DictionaryKeyFactory HookKeyFactory = new DictionaryKeyFactory ();
 
 		/// <summary></summary>
@@ -38,7 +37,7 @@ namespace Components.Interfaces {
 		/// <param name="hMod">Hook of DLL containing callback. Must be <see langword="null"/> if in same thread, otherwise following is recommended: <code>LoadLibrary(TEXT("c:\\myapp\\sysmsg.dll"))</code></param>
 		/// <param name="dwThreadId">Process ID on which the hook should operate</param>
 		/// <returns>Hook handle number, ID to this specific hook</returns>
-		public abstract Hook[] SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> lpfn );
+		public abstract IDictionary<VKChange, Hook> SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> lpfn );
 		/// <summary>Stop hook specified by its ID of <paramref name="hhk"/></summary>
 		public abstract bool UnhookHookEx ( Hook hookID );
 		/// <summary>Pass processing to another hook in system queue</summary>
@@ -48,7 +47,6 @@ namespace Components.Interfaces {
 		/// <param name="lParam">Pointer to data. Defined by: https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-kbdllhookstruct?redirectedfrom=MSDN<para>To excess data try: (Windows.Forms.Keys)Marshal.ReadInt32 ( lParam )</para></param>
 		/// <returns></returns>
 		public abstract IntPtr CallNextHook ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
-		public abstract IntPtr GetModuleHandleID ( string lpModuleName );
 		public abstract string PrintHookInfo ( DictionaryKey key );
 		public abstract HInputData ParseHookData ( DictionaryKey hookID, IntPtr vkChngCode, IntPtr vkCode );
 		/// <summary></summary>
@@ -59,10 +57,12 @@ namespace Components.Interfaces {
 		public abstract uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null );
 		public abstract HInputData GetLowLevelData ( HInputEventDataHolder higLevelData );
 		public abstract HInputEventDataHolder GetHighLevelData ( DictionaryKey hookKey, DInputReader requester, HInputData highLevelData );
-		public List<(string, Win32Exception)> ErrorList { get; } = new List<(string, Win32Exception)> ();
+		public List<(string, Exception)> ErrorList { get; } = new ();
 		public void PrintErrors (Action<string> outAct) {
 			foreach ( var error in ErrorList ) {
-				outAct ( $"Error during {error.Item1}: {error.Item2.ErrorCode}" );
+				if (error.Item2 is Win32Exception w32e)
+					outAct ( $"Error during {error.Item1}: {w32e.ErrorCode}" );
+				else outAct ( $"Error during {error.Item1}: {error.Item2.Message}" );
 				outAct ( error.ToString () );
 			}
 			ErrorList.Clear ();

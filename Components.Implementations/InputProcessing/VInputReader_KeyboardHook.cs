@@ -35,8 +35,8 @@ namespace Components.Implementations {
 		public override int ComponentVersion => 1;
 		protected DLowLevelInput LowLevelComponent { get => Owner.Fetch<DLowLevelInput> (); }
 
-		public override ICollection<DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
-			var ret = new HashSet<DictionaryKey> ();
+		public override IDictionary<VKChange, DictionaryKey> SetupHook ( HHookInfo hookInfo, Func<DictionaryKey, HInputEventDataHolder, bool> mainCB, Action<DictionaryKey, HInputEventDataHolder> delayedCB = null ) {
+			var ret = new Dictionary<VKChange, DictionaryKey> ();
 			var hooks = LowLevelComponent.SetHookEx ( hookInfo, LocalCallback );
 
 			if (hooks == null) {
@@ -45,8 +45,8 @@ namespace Components.Implementations {
 			}
 
 			foreach ( var hook in hooks ) {
-				HookSet.Add ( hook.Key, (LowLevelComponent, new ( hook, mainCB, delayedCB ) ) );
-				ret.Add ( hook.Key );
+				HookSet.Add ( hook.Value.Key, (LowLevelComponent, new ( hook.Value, mainCB, delayedCB ) ) );
+				ret.Add ( hook.Key, hook.Value.Key );
 
 				waiter.Reset ();
 				Continue = true;
@@ -57,7 +57,10 @@ namespace Components.Implementations {
 		public override int ReleaseHook ( HHookInfo hookInfo ) {
 			int released = 0;
 			foreach ( var hookID in hookInfo.HookIDs ) {
-				if ( !HookSet.TryGetValue ( hookID, out var hookRef ) ) throw new KeyNotFoundException ( $"Couldn't find a hook ID for Hook Definition: {hookInfo}" );
+				if ( !HookSet.TryGetValue ( hookID, out var hookRef ) ) {
+					Owner.LogFcn?.Invoke ( $"Couldn't find a hook ID for Hook Definition: {hookInfo}" );
+					continue;
+				}
 				if ( HookSet.Remove ( hookID ) )
 					released += LowLevelComponent.UnhookHookEx ( hookRef.Item2.hook ) ? 1 : 0;
 			}

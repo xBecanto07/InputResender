@@ -20,6 +20,7 @@ public abstract class DHookManager : ComponentBase<CoreBase> {
 	public DHookManager ( CoreBase owner ) : base ( owner ) { }
 
 	public abstract IReadOnlyCollection<DictionaryKey> AddHook ( int device, params VKChange[] vkChanges );
+	public abstract HHookInfo GetHook ( int device, VKChange vkChange );
 	public abstract void RemoveHook ( int device, params VKChange[] vkChanges );
 	public abstract void ClearHooks ( int device = 0 );
 	public abstract Dictionary<int, DictionaryKey> ListHooks ();

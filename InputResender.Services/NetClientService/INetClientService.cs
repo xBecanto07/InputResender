@@ -122,15 +122,18 @@ namespace InputResender.Services {
 			if ( ep is not IPEndPoint ) return false;
 			IPEndPoint targ = ep as IPEndPoint;
 			if ( attemptDirect && targ.Address.Equals ( localEP.Address ) && targ.Port == localEP.Port ) {
+				byte[] dataClone = new byte[data.Length];
+				data.CopyTo ( dataClone, 0 );
+				MessageResult msg = new ( dataClone, ep, localEP, true );
 				lock ( this ) {
 					if ( currentCallback != null ) {
-						currentCallback ( new ( data, ep, localEP, true ) );
+						currentCallback ( msg );
 						return true;
 					}
 				}
 			}
 			var targNet = targ.Address.GetNetworkAddr ();
-			if ( targNet.Equals ( localNetwork ) ) {
+			if ( !targNet.Equals ( localNetwork ) ) {
 				if ( viaEP is not IPEndPoint ) return false;
 				IPEndPoint via = viaEP as IPEndPoint;
 				targNet = via.Address.GetNetworkAddr ();
@@ -168,9 +171,14 @@ namespace InputResender.Services {
 		private void RecvTask () {
 			IPEndPoint distEP = new IPEndPoint ( IPAddress.Any, 0 );
 			while ( true ) {
-				var data = UdpClient.Receive ( ref distEP );
-				MessageResult result = new ( data, distEP, localEP, distEP == localEP );
-				currentCallback ( result );
+				try {
+					var data = UdpClient.Receive ( ref distEP );
+					MessageResult result = new ( data, distEP, localEP, distEP == localEP );
+					currentCallback ( result );
+				} catch ( SocketException ) {
+					currentCallback ( new ( MessageResult.Type.Closed, localEP ) );
+					return;
+				}
 			}
 		}
 

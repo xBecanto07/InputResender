@@ -37,7 +37,7 @@ namespace InputResender.UnitTests {
 			Receiver.Initialize ();
 
 			Sender.PacketSender.Connect ( Receiver.PacketSender.OwnEP ( 0, 0 ) );
-			Receiver.PacketSender.Connect ( Sender.PacketSender.OwnEP ( 0, 0 ) );
+			Receiver.PacketSender.IsEPConnected ( Sender.PacketSender.OwnEP ( 0, 0 ) ).Should ().BeTrue ();
 			Receiver.PacketSender.OnReceive += RecvCB;
 		}
 

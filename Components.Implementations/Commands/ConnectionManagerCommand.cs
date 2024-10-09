@@ -44,7 +44,7 @@ public class ConnectionManagerCommand : ACommand {
 			var conn = FindConn ( sender, context.Args, context.ArgID, out CommandResult errMsg );
 			if ( errMsg != null ) return errMsg;
 
-			if ( !conn.Send ( data ) ) return new CommandResult ( $"Failed to send data to '{conn}'." );
+			if ( !conn.Send ( new HMessageHolder ( HMessageHolder.MsgFlags.None, data ) ) ) return new CommandResult ( $"Failed to send data to '{conn}'." );
 			return new CommandResult ( $"Sent {data.Length} bytes to '{conn}'." );
 		}
 		case "close": {

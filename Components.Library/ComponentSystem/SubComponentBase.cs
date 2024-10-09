@@ -1,5 +1,4 @@
-﻿using FluentAssertions;
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace Components.Library {
 	public static class SubComponentFactory<CompT, ValT> where CompT : ComponentBase {

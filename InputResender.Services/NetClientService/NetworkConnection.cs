@@ -84,9 +84,9 @@ namespace InputResender.Services {
 		}
 
 		/// <summary>Instructs local device to send data to the target network point.</summary>
-		public bool Send ( byte[] data ) {
+		public bool Send ( HMessageHolder data ) {
 			if ( Sender == null ) throw new InvalidOperationException ( "Connection is closed" );
-			NetMessagePacket packet = new ( (HMessageHolder)data, TargetEP, LocalDevice.EP );
+			NetMessagePacket packet = new ( data, TargetEP, LocalDevice.EP );
 			return Sender ( packet );
 		}
 

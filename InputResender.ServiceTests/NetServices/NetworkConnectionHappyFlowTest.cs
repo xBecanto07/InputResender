@@ -117,6 +117,6 @@ internal class NetworkCloseWatcher {
     }
 
     public void Assert () {
-        ClosedCount.Should ().Be ( 1 );
+        ClosedCount.Should ().Be ( 1, "because event OnClosed should be raised when closing Connection on both sides" );
     }
 }

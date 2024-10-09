@@ -16,6 +16,7 @@ public static class Program {
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
 		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => throw new NotImplementedException () ) );
 		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
+		cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader () );
 		if ( TLLoader != null ) cliWrapper.CmdProc.AddCommand ( TLLoader );
 
 		var startCommands = Config.FetchAutoCommands ( Config.AutostartName );
@@ -35,14 +36,15 @@ public static class Program {
 
 	enum MsgType { None, Result, Error }
 	public static string PrintResult ( CommandResult res, ConsoleManager console, int maxOnelinerLength ) {
-		if ( res == null ) throw new ArgumentNullException ( nameof ( res ) );
 		if ( console == null ) throw new ArgumentNullException ( nameof ( console ) );
 
 		string printRes = null;
 		MsgType msgType = MsgType.None;
 		bool batch = false;
 
-		if ( res == null ) if ( batch ) return string.Empty; else printRes = "<null>";
+		if ( res == null ) {
+			return batch ? string.Empty : "<null>";
+		}
 
 		if ( string.IsNullOrWhiteSpace ( res.Message ) ) if ( batch ) return string.Empty; else printRes = "<empty>";
 

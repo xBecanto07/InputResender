@@ -1,5 +1,6 @@
 using Components.Interfaces;
 using Components.Library;
+using Components.LibraryTests;
 using FluentAssertions;
 using System.Collections.Generic;
 using System.Threading;
@@ -7,6 +8,7 @@ using System;
 using Xunit;
 using Xunit.Abstractions;
 using System.Runtime.InteropServices;
+using System.Linq;
 
 namespace Components.InterfaceTests {
 	public abstract class DLowLevelInputTest<T> : ComponentTestBase<T> where T : DLowLevelInput {
@@ -59,9 +61,11 @@ namespace Components.InterfaceTests {
 
 		protected void ExecOnHook ( HInputData[] HLData, Action act, bool shouldRetest, bool shouldReceiveEvent ) {
 			EventList.Clear ();
-			Hook[] hooks = TestObject.SetHookEx ( NewHookInfo (), SimpleTestCallback );
-			hooks.Should ().HaveCount ( 1 );
-			Hook hook = hooks[0];
+			var hookInfo = NewHookInfo ();
+			int expHookCnt = hookInfo.ChangeMask.Count;
+			var hooks = TestObject.SetHookEx ( hookInfo, SimpleTestCallback );
+			hooks.Should ().HaveCount ( expHookCnt );
+			Hook hook = hooks.First ().Value;
 			for ( int i = 0; i < HLData.Length; i++ ) HLData[i].UpdateByHook ( TestObject, hook.Key );
 			act ();
 			TestObject.UnhookHookEx ( hook );

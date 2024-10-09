@@ -8,6 +8,7 @@ namespace Components.Implementations;
 public class VHookManager : DHookManager {
 	readonly Dictionary<DeviceID, HookGroup> ActiveHooks = new ();
 	readonly Dictionary<(DeviceID, CBType), HashSet<CallbackHolder>> Callbacks = new ();
+	readonly Dictionary<DictionaryKey, HHookInfo> OwnedHooks = new ();
 
 	public VHookManager ( CoreBase owner ) : base ( owner ) {
 	}
@@ -34,7 +35,19 @@ public class VHookManager : DHookManager {
 			}
 		}
 
-		if ( WinLLHook.Any () ) {
+		if ( !WinLLHook.Any () ) return ret;
+
+		var inputReader = Owner.Fetch<VInputReader_KeyboardHook> ();
+		if ( !ActiveHooks.ContainsKey ( device ) ) ActiveHooks.Add ( device, new HookGroup () );
+
+		while ( WinLLHook.Count > 0 ) {
+			var first = WinLLHook[0];
+			WinLLHook.RemoveAt ( 0 );
+			HHookInfo keyHookInfo = new ( this, device, first, WinLLHook.ToArray () );
+			var hooks = inputReader.SetupHook ( keyHookInfo, FastCB, DelayedCB );
+		}
+
+		/*if ( WinLLHook.Any () ) {
 			var first = WinLLHook[0];
 			WinLLHook.RemoveAt ( 0 );
 			HHookInfo keyHookInfo = new ( this, device, first, WinLLHook.ToArray () );
@@ -42,8 +55,15 @@ public class VHookManager : DHookManager {
 			if ( !ActiveHooks.ContainsKey ( device ) ) ActiveHooks.Add ( device, new HookGroup () );
 			ActiveHooks[device].Add ( WinLLHook, keyHooks );
 			ret.UnionWith ( keyHooks );
-		}
+		}*/
 		return ret;
+	}
+
+	public override HHookInfo GetHook ( DeviceID device, VKChange vKChange ) {
+		if ( !ActiveHooks.ContainsKey ( device ) ) return null;
+		var dev = ActiveHooks[device];
+		//foreach ( var hook in dev.HookList ) if ( hook.Item2 == vKChange ) return hook;
+		return null;
 	}
 
 	public override void ClearHooks ( DeviceID device = 0 ) {

@@ -106,15 +106,6 @@ public class ArgParser {
 				throw new ArgumentException ( $"Unexpected character '{args[i]}' at {i}." );
 			}
 
-			/*if ( nextArg.Name.StartsWith ( '-' ) ) {
-				foreach ( var arg in Args ) {
-					if ( arg.Name != nextArg.Name ) continue;
-					arg.Value = nextArg.Value;
-					//Error ( $"Argument '{nextArg.Name}' is duplicated.", ErrArgDup, true, 0 );
-					//return;
-				}
-			}*/
-
 			Args.Add ( nextArg );
 		}
 	}
@@ -138,13 +129,29 @@ public class ArgParser {
 		return SB.ToString ();
 	}
 
+	private class ArgFetch {
+		public Arg value;
+		public int errCode;
+		public ArgFetch ( Arg val ) { value = val; errCode = 0; }
+		public ArgFetch ( int err ) { errCode = err; value = null; }
+	}
+
 	public int ArgC => Args.Count;
-	private Arg this[int id] => (id >= ArgC | id < -ArgC) ? null : Args[id];
-	private Arg this[string key] {
+	private ArgFetch this[int id] => (id >= ArgC | id < -ArgC) ? new (ErrArgNotFoundByID) : new (Args[id]);
+	private ArgFetch this[string key] {
 		get {
-			if ( key.StartsWith ( "--" ) ) return SwitchesName.ContainsKey ( key ) ? SwitchesName[key] : null;
-			if ( key.StartsWith ( "-" ) && key.Length == 2 ) return SwitchesChar.ContainsKey ( key[1] ) ? SwitchesChar[key[1]] : null;
-			return Args.FirstOrDefault ( arg => arg.Name == key );
+			if ( key.StartsWith ( "--" ) ) {
+				if ( SwitchesName.TryGetValue ( key, out Arg val ) ) return new ( val );
+				val = Args.FirstOrDefault ( arg => arg.Name == key );
+				return val == null ? new ( ErrSwitchNameNotFound ) : new ( val );
+			} else if ( key.StartsWith ( "-" ) && key.Length == 2 ) {
+				if ( SwitchesChar.TryGetValue ( key[1], out Arg val ) ) return new ( val );
+				val = Args.FirstOrDefault ( arg => arg.Name == key );
+				return val == null ? new ( ErrSwitchCharNotFound ) : new ( val );
+			} else {
+				Arg val = Args.FirstOrDefault ( arg => arg.Name == key );
+				return val == null ? new ( ErrArgNotFoundByName ) : new ( val );
+			}
 		}
 	}
 
@@ -154,28 +161,33 @@ public class ArgParser {
 	public const int ErrSwitchNameNotFound = 13;
 	public const int ErrSwitchCharNotFound = 14;
 	private string Get ( string key, string dsc, bool shouldThrow = false ) {
-		Arg arg = null;
-		if ( string.IsNullOrEmpty ( key ) ) return Error ( "Key cannot be empty", ErrEmptyKey, shouldThrow, string.Empty );
-		if ( key.StartsWith ( "--" ) ) {
-			if ( !SwitchesName.ContainsKey ( key ) )
-				return Error ( $"Switch {key} not found.", ErrSwitchNameNotFound, shouldThrow, string.Empty );
-			arg = SwitchesName[key];
-		} else if ( key.StartsWith ( "-" ) && key.Length == 2 ) {
-			if ( !SwitchesChar.ContainsKey ( key[1] ))
-				return Error ($"Switch {key} not found.", ErrSwitchCharNotFound, shouldThrow, string.Empty );
-			arg = SwitchesChar[key[1]];
-		} else arg = this[key];
+		ArgFetch arg = this[key];
+		if ( arg.errCode != 0 && string.IsNullOrEmpty ( dsc ) ) return string.Empty;
+		switch ( arg.errCode ) {
+		case ErrArgNotFoundByName:
+			return Error ( $"Argument '{key}' not found. {dsc}", ErrArgNotFoundByName, shouldThrow, string.Empty );
+		case ErrArgNoValue:
+			return Error ( $"Argument '{key}' has no value. {dsc}", ErrArgNoValue, shouldThrow, string.Empty );
+		case ErrEmptyKey:
+			return Error ( $"Empty key. {dsc}", ErrEmptyKey, shouldThrow, string.Empty );
+		case ErrSwitchNameNotFound:
+			return Error ( $"Switch '{key}' not found. {dsc}", ErrSwitchNameNotFound, shouldThrow, string.Empty );
+		case ErrSwitchCharNotFound:
+			return Error ( $"Switch '{key}' not found. {dsc}", ErrSwitchCharNotFound, shouldThrow, string.Empty );
+		case 0:
+			if ( arg == null ) return dsc == null ? string.Empty : Error ( $"Argument '{key}' not found. {dsc}", ErrArgNotFoundByName, shouldThrow, string.Empty );
 
-		if ( arg == null ) return dsc == null ? string.Empty : Error ( $"Argument '{key}' not found. {dsc}", ErrArgNotFoundByName, shouldThrow, string.Empty );
-
-		if ( !GetSepValue ( arg ) ) return dsc == null ? string.Empty : Error ( $"Argument '{key}' has no value. {dsc}", ErrArgNoValue, shouldThrow, string.Empty );
-		return arg.Value;
+			if ( !GetSepValue ( arg.value ) ) return dsc == null ? string.Empty : Error ( $"Argument '{key}' has no value. {dsc}", ErrArgNoValue, shouldThrow, string.Empty );
+			return arg.value.Value;
+		default:
+			return Error ( $"Unknown error code {arg.errCode} for '{key}'. {dsc}", arg.errCode, shouldThrow, string.Empty );
+		}
 	}
 	public const int ErrArgNotFoundByID = 4;
 	private string Get ( int id, string dsc = null, bool shouldThrow = false ) {
 		var arg = this[id];
-		if ( arg == null ) return dsc == null ? string.Empty : Error ( $"Argument #{id} not found. {dsc}", ErrArgNotFoundByID, shouldThrow, string.Empty );
-		return string.IsNullOrEmpty ( arg.Value ) ? arg.Name : arg.Value;
+		if ( arg?.value == null ) return dsc == null ? string.Empty : Error ( $"Argument #{id} not found. {dsc}", ErrArgNotFoundByID, shouldThrow, string.Empty );
+		return string.IsNullOrEmpty ( arg.value.Value ) ? arg.value.Name : arg.value.Value;
 	}
 
 	private bool GetSepValue ( Arg arg ) {
@@ -229,16 +241,17 @@ public class ArgParser {
 			return Error ( $"Argument '{key}'({ret}) is too short. {dsc}", ErrStringTooShortByName, shouldThrow, string.Empty );
 		return ret;
 	}
-	public bool Present ( int id ) => this[id] != null;
-	public bool Present ( string key ) => this[key] != null;
+	public bool Present ( int id ) => this[id]?.errCode == 0;
+	public bool Present ( string key ) => this[key]?.errCode == 0;
 
 	public bool HasValue ( int id, bool tryLoadValue ) => HasValue ( this[id], tryLoadValue );
 	public bool HasValue ( string key, bool tryLoadValue ) => HasValue ( this[key], tryLoadValue );
-	private bool HasValue ( Arg arg, bool tryLoadValue ) {
+	private bool HasValue ( ArgFetch arg, bool tryLoadValue ) {
 		if ( arg == null ) return false;
-		if ( !string.IsNullOrEmpty ( arg.Value ) ) return true;
+		if ( arg.errCode != 0 ) return false;
+		if ( !string.IsNullOrEmpty ( arg.value.Value ) ) return true;
 		if ( !tryLoadValue ) return false;
-		return GetSepValue ( arg );
+		return GetSepValue ( arg.value );
 	}
 
 	public string Log () {

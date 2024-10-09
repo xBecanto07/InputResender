@@ -69,12 +69,25 @@ public class ArgParserTest {
 	}
 
 
-
 	[Theory]
 	[InlineData ( null )]
 	[InlineData ( "" )]
 	public void ReadingOfEmptyLine ( string line ) {
-		ReadingValidArgs ( line, new ( 0, "Non-existing argument #1", null ), new ( "nonexisting", "Non-existing argument #2", null ) );
+		System.Text.StringBuilder SB = new ();
+		ArgParser parser = new ( line, ( s ) => SB.AppendLine ( s ) );
+		string arg1Dsc = "Non-existing argument #1";
+		parser.String ( 0, arg1Dsc ).Should ().NotBeNull ().And.BeEmpty ();
+		SB.ToString ().Should ().ContainAny ( "issing", "not found" ).And.Contain ( arg1Dsc );
+		SB.Clear ();
+		parser.String ( 0, null ).Should ().NotBeNull ().And.BeEmpty ();
+		SB.ToString ().Should ().BeEmpty ();
+
+		string arg2Dsc = "Non-existing argument #2";
+		parser.String ( "nonexisting", arg2Dsc ).Should ().NotBeNull ().And.BeEmpty ();
+		SB.ToString ().Should ().ContainAny ( "issing", "not found" ).And.Contain ( arg2Dsc );
+		SB.Clear ();
+		parser.String ( "nonexisting", null ).Should ().NotBeNull ().And.BeEmpty ();
+		SB.ToString ().Should ().BeEmpty ();
 	}
 
 	[Theory]

@@ -1,10 +1,12 @@
 ﻿using Components.Interfaces;
 using Components.Library;
+using Components.LibraryTests;
 using FluentAssertions;
 using InputResender.Services;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 using static Components.Interfaces.DPacketSender;
@@ -12,7 +14,7 @@ using static Components.Interfaces.DPacketSender;
 namespace Components.InterfaceTests {
 	public abstract class DPacketSenderTest<TestObjT> : ComponentTestBase<TestObjT> where TestObjT : DPacketSender {
 		public override CoreBase CreateCoreBase () => new CoreBaseMock ();
-		protected List<string> Received = new List<string> ();
+		protected Dictionary<byte, string> Received = new ();
 		protected AutoResetEvent resetEvent = new AutoResetEvent (false);
 		bool TestFinished = false;
 
@@ -54,13 +56,14 @@ namespace Components.InterfaceTests {
 				if ( logger != null ) ((DLogger)logger).Print ( Output.WriteLine );
 
 				Received.Should ().HaveCount ( reps );
-				for ( int i = 0; i < reps; i++ ) {
+				for ( byte i = 0; i < reps; i++ ) {
 					byte[] bData = data.InnerMsg;
 					bData[0] = (byte)reps;
-					bData[1] = (byte)i;
+					bData[1] = i;
 					HMessageHolder specificData = new ( data.Flags, bData );
 					long hash = specificData.Span.CalcHash ();
 					string expected = $"{reps};{i};{hash}";
+					Received.Should ().ContainKey ( i );
 					Received[i].Should ().Be ( expected );
 				}
 				//receiver.Errors.Should ().BeEmpty ();
@@ -80,7 +83,13 @@ namespace Components.InterfaceTests {
 		}
 
 		protected CallbackResult SimpleCallback ( HMessageHolder data, bool processed ) {
-			Received.Add ( $"{data.InnerMsg[0]};{data.InnerMsg[1]};{data.Span.CalcHash ()}" );
+			try {
+				Received.Add ( data.InnerMsg[1], $"{data.InnerMsg[0]};{data.InnerMsg[1]};{data.Span.CalcHash ()}" );
+			} catch ( ArgumentException e ) {
+				if ( e.Message.Contains ( "item with the same key" ) )
+					throw new ArgumentException ( $"Msg#{data.InnerMsg[1]} was already received. Currently known messages are: {string.Join ( ", ", Received.Keys )}" );
+				else throw;
+			}
 			resetEvent.Set ();
 			return TestFinished ? CallbackResult.Stop : CallbackResult.None;
 		}

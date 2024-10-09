@@ -8,15 +8,14 @@ using System.Collections.Generic;
 
 namespace InputResender.CLI; 
 public class FactoryCommandsLoader : ACommandLoader {
-	protected override string CmdGroupName => "compfactory";
-	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => new Func<ACommand>[] {
+	protected override string CmdGroupName => "generalCmds";
+	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => [
 		() => new CoreManagerCommand (),
 		() => new ConnectionManagerCommand (),
 		() => new ComponentCommandLoader (),
 		() => new ContextVarCommands (),
-		() => new HookManagerCommand (),
 		() => new DebugCommand ()
-	};
+	];
 	protected override IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => new List<(string, Func<ACommand, ACommand>)> {
 		( "core", ( ACommand parent ) => {
 			if ( parent is CoreManagerCommand cmdCore )
@@ -24,4 +23,12 @@ public class FactoryCommandsLoader : ACommandLoader {
 			return null;
 		})
 	};
+}
+
+public class InputCommandsLoader : ACommandLoader {
+	protected override string CmdGroupName => "inputCmds";
+	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => [
+		() => new InputSimulatorCommand (),
+		() => new HookManagerCommand ()
+	];
 }

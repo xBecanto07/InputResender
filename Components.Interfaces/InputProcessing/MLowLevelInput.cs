@@ -8,7 +8,6 @@ namespace Components.Interfaces {
 		private bool UnhookResult = true;
 		private IntPtr SetHookResult = 1;
 		private nint CallNextResult = 1;
-		private nint moduleHandleResult = 1;
 		private bool ProcessCallbacks = true;
 		Dictionary<DictionaryKey, Hook> HookList;
 		int LastID = 1;
@@ -56,10 +55,9 @@ namespace Components.Interfaces {
 			return true;
 		}
 
-		public override nint GetModuleHandleID ( string lpModuleName ) => moduleHandleResult;
 		public override HInputData ParseHookData ( DictionaryKey hookID, nint vkChngCode, nint vkCode ) => new HInputData_Mock ( this, hookID, GetChangeType ( (int)vkChngCode ), Marshal.ReadIntPtr ( vkCode ) );
 		/// <inheritdoc />
-		public override Hook[] SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> callback ) {
+		public override IDictionary<VKChange, Hook> SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> callback ) {
 			if ( SetHookResult < 0 ) return null;
 			var hookKey = HookKeyFactory.NewKey ();
 			var hookID = LastID++;
@@ -67,7 +65,9 @@ namespace Components.Interfaces {
 			hook.UpdateHookID ( hookID );
 			HookList.Add ( hookKey, hook );
 			HookIDDict.Add ( hookKey, hook );
-			return new Hook[1] { hook };
+			Dictionary<VKChange, Hook> ret = new ();
+			foreach ( VKChange change in hookInfo.ChangeMask ) ret.Add ( change, hook );
+			return ret;
 		}
 		/// <inheritdoc />
 		public override bool UnhookHookEx ( Hook hookID ) {
@@ -93,7 +93,6 @@ namespace Components.Interfaces {
 			case Part.Unhook: UnhookResult = validReturn; break;
 			case Part.SetHookEx: SetHookResult = validReturn ? 1 : (IntPtr)null; break;
 			case Part.CallNextHookEx: CallNextResult = validReturn ? 1 : 0; break;
-			case Part.GetModuleHandle: moduleHandleResult = validReturn ? 1 : 0; break;
 			case Part.NCode: ProcessCallbacks = validReturn; break;
 			}
 		}

@@ -15,9 +15,9 @@ namespace Components.InterfaceTests {
 		public HHookInfoTest () {
 			coreHelpObj = new CoreBaseMock ();
 			compHelpObj = new ComponentMock ( coreHelpObj );
-			testObj = new HHookInfo ( compHelpObj, 0, VKChange.KeyDown, VKChange.KeyDown );
-			testObj.AddHookID ( new DictionaryKey ( 0 ) );
-			testObj.AddHookID ( new DictionaryKey ( 1 ) );
+			testObj = new HHookInfo ( compHelpObj, 0, VKChange.KeyDown, VKChange.KeyUp );
+			testObj.AddHookID ( new DictionaryKey ( 0 ), VKChange.KeyDown );
+			testObj.AddHookID ( new DictionaryKey ( 1 ), VKChange.KeyUp );
 		}
 
 		[Fact]
@@ -31,7 +31,7 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void ContainsSubset () {
 			HHookInfo smaller = new HHookInfo ( compHelpObj, 0, VKChange.KeyDown );
-			testObj.AddHookID ( new DictionaryKey ( 0 ) );
+			testObj.AddHookID ( new DictionaryKey ( 0 ), VKChange.KeyDown );
 			(smaller < testObj).Should ().BeTrue ();
 			(testObj > smaller).Should ().BeTrue ();
 		}
@@ -39,9 +39,9 @@ namespace Components.InterfaceTests {
 		[Fact]
 		public void ContainsSubsetSelective () {
 			HHookInfo smaller = new HHookInfo ( compHelpObj, 0, VKChange.KeyDown );
-			testObj.AddHookID ( new DictionaryKey ( 0 ) );
-			testObj.AddHookID ( new DictionaryKey ( 1 ) );
-			testObj.AddHookID ( new DictionaryKey ( 2 ) );
+			testObj.AddHookID ( new DictionaryKey ( 0 ), VKChange.KeyDown );
+			testObj.AddHookID ( new DictionaryKey ( 1 ), VKChange.KeyUp );
+			testObj.AddHookID ( new DictionaryKey ( 2 ), VKChange.MouseMove );
 			((smaller, new DictionaryKey ( 1 )) < testObj).Should ().BeTrue ();
 			((testObj, new DictionaryKey ( 1 )) > smaller).Should ().BeTrue ();
 		}

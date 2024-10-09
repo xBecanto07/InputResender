@@ -23,18 +23,9 @@ namespace Components.Interfaces {
 		}
 
 		public HInputEventDataHolder ( ComponentBase owner, HHookInfo hookInfo ) : base ( owner ) { HookInfo = hookInfo; }
-		public static HInputEventDataHolder KeyPress ( DInputReader owner, KeyCode key, VKChange press, int deviceID = 1 ) {
-			HHookInfo hookInfo = new HHookInfo ( owner, deviceID, press );
-			float val = 0, delta = 0;
-			switch ( press ) {
-			case VKChange.KeyDown: val = 1; delta = 1; break;
-			case VKChange.KeyUp: val = 0; delta = -1; break;
-			}
-			return new HKeyboardEventDataHolder ( owner, hookInfo, (int)key, val, delta );
-		}
 
-		public void AddHookIDs (ICollection<DictionaryKey> hooks) {
-			foreach ( var hook in hooks ) HookInfo.AddHookID ( hook );
+		public void AddHookIDs (IDictionary<VKChange, DictionaryKey> hooks) {
+			foreach ( var hook in hooks ) HookInfo.AddHookID ( hook.Value, hook.Key );
 		}
 		public void SetNewValue ( int X, int Y, int Z ) {
 			DeltaX = X - ValueX; DeltaY = Y - ValueY; DeltaZ = Z - ValueZ;
