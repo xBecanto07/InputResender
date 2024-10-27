@@ -1,6 +1,7 @@
 ﻿using Components.Interfaces;
 using Components.Library;
 using Components.LibraryTests;
+using InputResender.Services.NetClientService;
 using FluentAssertions;
 using System;
 using Xunit;

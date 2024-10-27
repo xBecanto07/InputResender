@@ -1,4 +1,4 @@
-﻿using Components.Interfaces;
+﻿using InputResender.Services.NetClientService;
 using Components.Library;
 using System;
 using System.Collections.Generic;

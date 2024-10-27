@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
-using MessageHolder = Components.Interfaces.HMessageHolder;
 using InputResender.Services;
 using FluentAssertions;
 using InputResender.Services.NetClientService;
@@ -32,7 +31,7 @@ public class NetConnectionGroup {
 		byte[] msgData = new byte[PacketSize];
 		msgData[0] = (byte)info;
 		for ( int i = 1; i < PacketSize; i++ ) msgData[i] = (byte)conv ( i );
-		connA.Send ( new MessageHolder ( MessageHolder.MsgFlags.None, msgData ) ).Should ().BeTrue ();
+		connA.Send ( new HMessageHolder ( HMessageHolder.MsgFlags.None, msgData ) ).Should ().BeTrue ();
 		var msgFromA = connB.Receive ( 250 );
 		msgFromA.Should ().NotBeNull ();
 		msgFromA.Data.InnerMsg.Should ().BeEquivalentTo ( msgData ).And.NotBeSameAs ( msgData );

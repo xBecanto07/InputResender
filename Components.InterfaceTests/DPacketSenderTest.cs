@@ -2,7 +2,7 @@
 using Components.Library;
 using Components.LibraryTests;
 using FluentAssertions;
-using InputResender.Services;
+using InputResender.Services.NetClientService;
 using System;
 using System.Collections.Generic;
 using System.Threading;

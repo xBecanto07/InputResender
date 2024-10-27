@@ -1,5 +1,5 @@
 ﻿using Components.Library;
-using System.Collections.ObjectModel;
+using InputResender.Services.NetClientService;
 
 namespace Components.Interfaces {
 	public abstract class DPacketSender : ComponentBase<CoreBase> {
@@ -22,7 +22,8 @@ namespace Components.Interfaces {
 				("add_"+nameof(OnNewConn), typeof(void)),
 				("remove_"+nameof(OnNewConn), typeof(void)),
 				("add_"+nameof(OnError), typeof(void)),
-				("remove_"+nameof(OnError), typeof(void))
+				("remove_"+nameof(OnError), typeof(void)),
+				(nameof(GetEPInfo), typeof(string))
 			};
 
 		[Flags]
@@ -41,6 +42,7 @@ namespace Components.Interfaces {
 		public abstract event Action<object> OnNewConn;
 		public abstract void Destroy ();
 		public abstract bool IsEPConnected ( object ep );
+		public abstract string GetEPInfo ( object ep );
 		public abstract event Action<string, Exception> OnError;
 		/// <summary>Returns true if at least one connection to any of target EPs is active</summary>
 		public bool IsPacketSenderConnected (DPacketSender packetSender) {
@@ -155,6 +157,12 @@ namespace Components.Interfaces {
 				if (MsgQueue.Count >= 16 ) MsgQueue.Dequeue ();
 				MsgQueue.Enqueue ( msg );
 			}
+		}
+
+		public override string GetEPInfo ( object ep ) {
+			if ( ep is not MPacketSender mp ) return $"Object '{ep}' is not valid EP ({nameof ( MPacketSender )}).";
+			if ( mp == this ) return $"{nameof ( MPacketSender )} loopback ({this})";
+			return $"{ep} ({(ConnList.Contains ( ep ) ? "Connected" : "Not connected")}";
 		}
 
 		public override void Destroy () {

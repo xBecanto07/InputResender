@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
+﻿using System.Net;
 using Components.Interfaces;
 using Components.Library;
 using InputResender.Services;
-using NetClient = System.Net.Sockets.UdpClient;
-using ClientType = InputResender.Services.ClientType;
+using InputResender.Services.NetClientService;
 using NetList = InputResender.Services.NetworkFinderService;
 using InputResender.Services.NetClientService.InMemNet;
 using System.Collections.Concurrent;
@@ -30,6 +25,25 @@ namespace Components.Implementations {
 
 		private event Action<string, Exception> OnErrorLocal;
 		public override event Action<string, Exception> OnError { add => OnErrorLocal += value; remove => OnErrorLocal -= value; }
+
+		public override string GetEPInfo ( object ep ) {
+			if ( ep is not INetPoint NP ) return $"Object '{ep}' is not valid EP.";
+			(int i, int j) = FindEP ( ep );
+			if ( i < 0 ) return $"EndPoint '{NP}' is not registered under this component.";
+			var EP = NetList[i][j];
+
+			if ( !Clients.OwnedDevices.TryGetValue ( EP, out var netDevice ) ) return $"No client associated with '{EP}'[{i},{j}]";
+			return $"{this}[{i},{j}]=>{netDevice}:{netDevice.GetInfo ()}";
+		}
+
+		private (int, int) FindEP (object ep) {
+			for (int i = 0; i < NetList.Count; i++ ) {
+				for (int j = 0; j < NetList[i].Length; j++ ) {
+					if ( ep.Equals ( NetList[i][j] ) ) return (i, j);
+				}
+			}
+			return (-1, -1);
+		}
 
 		public VPacketSender ( CoreBase owner, int port = -1, Action<string, Exception> onErrorSub = null ) : base ( owner ) {
 			if ( !Owner.IsRegistered ( nameof ( DLogger ) ) ) new VLogger ( Owner );

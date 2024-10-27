@@ -24,9 +24,9 @@ public class VPacketSenderTest : DPacketSenderTest<VPacketSender> {
 
 	protected override IEnumerable<INetPoint> GetLocalPoint ( VPacketSender testObj, int port ) {
 		List<INetPoint> allEPs = new ();
-		foreach ( var network in testObj.EPList ) foreach ( var ep in network )  allEPs.Add ( ep );
-
-		List<InMemNetPoint> inMemNetPoints = allEPs.OfType<InMemNetPoint> ().ToList ();
+		foreach ( var network in testObj.EPList )
+			foreach ( var ep in network )
+				if ( !allEPs.Contains ( ep ) ) allEPs.Add ( ep );
 
 
 		InMemNetPoint IMEP = allEPs.OfType<InMemNetPoint> ().FirstOrDefault ( ep => true, null );
@@ -48,6 +48,7 @@ public class VPacketSenderTest : DPacketSenderTest<VPacketSender> {
 			if ( bytes[0] == 10 ) return true;
 			if ( bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31 ) return true;
 			if ( bytes[0] == 192 && bytes[1] == 168 ) return true;
+			if ( bytes[0] == 169 && bytes[1] == 254 ) return true;
 			return false;
 		} else throw new System.NotImplementedException ();
 	}

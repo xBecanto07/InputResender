@@ -11,4 +11,9 @@ internal static class Program {
 		console.WriteLine ( "Starting Windows version ..." );
 		InputResender.CLI.Program.Main ( args, new TopLevelLoader (), console );
 	}
+
+	static void OverwriteConsoleLine (string text) {
+		if (Console.CursorTop > 0) Console.SetCursorPosition ( 0, Console.CursorTop - 1 );
+		Console.WriteLine ( $"\r{new string ( ' ', Console.WindowWidth - 1 )}\r{text}" );
+	}
 }

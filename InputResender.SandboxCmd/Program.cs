@@ -1,9 +1,7 @@
 ﻿using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
-using InputResender.Services;
-using InputResender.Services.NetClientService.InMemNet;
-using InputResender.ServiceTests.NetServices;
+using InputResender.Services.NetClientService;
 using System;
 using Xunit.Abstractions;
 using static Components.Interfaces.DPacketSender;

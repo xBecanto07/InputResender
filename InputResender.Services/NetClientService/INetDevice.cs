@@ -40,6 +40,8 @@ namespace InputResender.Services {
 		bool SharedWith ( INetDevice device ) => Equals ( device );
 		/// <summary>Raised just before closing the device.</summary>
 		event Action<INetDevice, INetPoint> OnClosed;
+
+		public string GetInfo ();
 	}
 
 	public abstract class ANetDeviceLL<T> where T : INetPoint {
@@ -78,86 +80,4 @@ namespace InputResender.Services {
 
 		public override string ToString () => $"{GetType ().Name}({LocalEP}){(LastError != ErrorType.None ? $"[{LastError}]" : "")}";
 	}
-
-#if USE_TCP
-	public class TCPDevice : INetDevice {
-		public INetPoint EP => ipEP;
-		private TcpClient Client;
-		private TcpListener Listener;
-		private IPNetPoint ipEP;
-		private List<TCPConnection> connections = new();
-
-		public event Action<INetDevice, INetPoint> OnClosed;
-		public event EventHandler<INetworkConnection> OnConnectionClosed;
-		public bool Listening { get; private set; } = false;
-
-		public TCPDevice () {
-			ipEP = null;
-			Listener = null;
-		}
-
-		public void Bind ( INetPoint ep ) {
-			if ( ep == null ) throw new ArgumentNullException ( nameof ( ep ) );
-			if ( ipEP != null ) throw new InvalidOperationException ( "Already bound" );
-			ipEP = ep as IPNetPoint;
-			Client = new TcpClient ();
-			Client.Client.Bind ( ipEP.LowLevelEP () );
-			Listener = new TcpListener ( ipEP.LowLevelEP () );
-		}
-
-		public void Close () {
-			if ( ipEP == null ) return;
-			Client.Close ();
-			Client.Dispose ();
-			Client = null;
-			if ( Listener != null ) Listener.Stop ();
-			OnClosed?.Invoke ( this, ipEP );
-			ipEP = null;
-		}
-
-		public INetworkConnection Connect ( INetPoint ep ) {
-			if ( ep == null ) throw new ArgumentNullException ( nameof ( ep ) );
-			if ( ipEP == null ) throw new InvalidOperationException ( "Not bound" );
-			if ( ep is not IPNetPoint ) throw new ArgumentException ( $"{nameof ( ep )} is not of type {nameof ( IPNetPoint )}" );
-			return new TCPConnection ( this, ep as IPNetPoint );
-		}
-
-		public void AcceptAsync ( Action<INetworkConnection> callback, CancellationToken ct ) {
-			if ( ipEP == null ) throw new InvalidOperationException ( "Not bound" );
-			if ( callback == null ) throw new ArgumentNullException ( nameof ( callback ) );
-
-			Listener.BeginAcceptTcpClient ( ( ar ) => {
-				var client = Listener.EndAcceptTcpClient ( ar );
-				callback ( new TCPConnection ( this, new IPNetPoint ( client.Client.RemoteEndPoint as IPEndPoint ) ) );
-			}, null );
-		}
-
-		public void Dispose () {
-			if ( ipEP != null ) Close ();
-			if ( Client != null ) Client.Dispose ();
-		}
-
-		public void RegisterConnection ( INetworkConnection connection ) {
-			if ( connection is not TCPConnection tcp ) throw new ArgumentException ( $"{nameof ( connection )} is not of type {nameof ( TCPConnection )}" );
-
-		}
-
-		public override bool Equals ( object obj ) {
-			if ( obj == null ) return false;
-			if ( obj is not TCPDevice tcp ) return false;
-			bool ret = ipEP == null ? tcp.ipEP == null : ipEP.Equals ( tcp.ipEP );
-			ret &= Client == null ? tcp.Client == null : Client.Equals ( tcp.Client );
-			ret &= Listener == null ? tcp.Listener == null : Listener.Equals ( tcp.Listener );
-			ret &= connections.Count == tcp.connections.Count;
-			return ret;
-		}
-		public override int GetHashCode () => HashCode.Combine ( ipEP, Client, Listener, connections );
-
-		bool INetDevice.SharedWith ( INetDevice device ) {
-			if ( device is not TCPDevice tcp ) return false;
-			if ( ipEP == null || tcp.ipEP == null ) return false;
-			return ipEP.Equals ( tcp.ipEP );
-		}
-	}
-#endif
 }

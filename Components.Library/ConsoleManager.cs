@@ -9,7 +9,7 @@ public class ConsoleManager {
 	public const string EOF = "\x04";
 	public const char PsswdStart = '\x0E';
 	public const char PsswdEnd = '\x0F';
-	private readonly Action<string> RealWrite, RealWriteLine;
+	private readonly Action<string> RealWrite, RealWriteLine, RealOverwriteLastLine;
 	private readonly Func<string> RealReadLine;
 	private readonly Func<char> RealReadChar;
 	private readonly Action RealClear;
@@ -23,7 +23,7 @@ public class ConsoleManager {
 
 	public int MaxLineLength { get; set; } = 120;
 
-	public ConsoleManager ( Action<string> realWriteLine, Func<string> realReadLine, Action<string> realWrite, Action realClear = null, Func<char> realReadChar = null ) {
+	public ConsoleManager ( Action<string> realWriteLine, Func<string> realReadLine, Action<string> realWrite, Action realClear = null, Func<char> realReadChar = null, Action<string> realOverwriteLastLine = null ) {
 		ArgumentNullException.ThrowIfNull ( realWriteLine, nameof ( realWriteLine ) );
 		ArgumentNullException.ThrowIfNull ( realReadLine, nameof ( realReadLine ) );
 		ArgumentNullException.ThrowIfNull ( realWrite, nameof ( realWrite ) );
@@ -33,6 +33,7 @@ public class ConsoleManager {
 		RealReadLine = realReadLine;
 		RealClear = realClear ?? (() => { });
 		RealReadChar = realReadChar;
+		RealOverwriteLastLine = realOverwriteLastLine ?? realWriteLine;
 		readerWaiter = new AutoResetEvent ( false );
 		reader = new Task ( ReaderTask );
 		reader.Start ();
@@ -152,7 +153,6 @@ public class ConsoleManager {
 		if ( OutputBuffer.Any () ) OutputBuffer[0] = fullLine;
 		else OutputBuffer.Add ( fullLine );
 		EndsWithEOL = endsWithEOL;
-		if (Console.CursorTop > 0) Console.SetCursorPosition ( 0, Console.CursorTop - 1 ); // Replace this with injection
-		RealWriteLine ( $"\r{new string ( ' ', Console.WindowWidth - 1 )}\r{fullLine}" );
+		RealOverwriteLastLine ( fullLine );
 	}
 }

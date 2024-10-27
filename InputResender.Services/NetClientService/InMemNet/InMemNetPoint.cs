@@ -1,5 +1,4 @@
-﻿using Components.Interfaces;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace InputResender.Services.NetClientService.InMemNet {
@@ -87,8 +86,8 @@ namespace InputResender.Services.NetClientService.InMemNet {
 		}
 
 		/// <summary>Finds next available InMemNetPoint. That is a combination of <paramref name="id"/> and <paramref name="port"/> that is not yet used by any created InMemNetPoint. The returned InMemNetPoint is reserved and will not be returned by this method again. This method is thread-safe.</summary>
-		public static InMemNetPoint NextAvailable ( int id = 0 ) {
-			int port = 1;
+		public static InMemNetPoint NextAvailable ( int port = 1 ) {
+			int id = 873;
 			InMemNetPoint ret;
 			lock ( ReservedPoints ) {
 				while ( ReservedPoints.ContainsKey ( GetKey ( id, port ) ) ) port++;
@@ -96,5 +95,10 @@ namespace InputResender.Services.NetClientService.InMemNet {
 			}
 			return new InMemNetPoint ( id, port );
 		}
+
+		public override bool Equals ( object obj ) => obj is InMemNetPoint point && ID == point.ID && _port == point._port;
+		public override int GetHashCode () => HashCode.Combine ( ID, _port );
+		public static bool operator == ( InMemNetPoint left, InMemNetPoint right ) => left.Equals ( right );
+		public static bool operator != ( InMemNetPoint left, InMemNetPoint right ) => !left.Equals ( right );
 	}
 }

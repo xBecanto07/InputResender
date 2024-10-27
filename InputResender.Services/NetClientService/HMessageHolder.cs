@@ -1,11 +1,6 @@
-﻿using Components.Library;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
 
-namespace Components.Interfaces;
+namespace InputResender.Services.NetClientService;
 public class HMessageHolder {
 	public const int HeaderSize = 1;
 	[Flags]

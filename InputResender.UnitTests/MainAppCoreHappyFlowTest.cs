@@ -1,4 +1,5 @@
 ﻿using InputResender.CLI;
+using InputResender.Services.NetClientService;
 using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
@@ -8,14 +9,14 @@ using Xunit;
 using OutpuHelper = Xunit.Abstractions.ITestOutputHelper;
 
 namespace InputResender.UnitTests {
-	public abstract class DHappyFlowTest<AppCore> where AppCore : DMainAppCore {
+	public abstract class DMainAppCoreHappyFlowTest<AppCore> where AppCore : DMainAppCore {
 		protected AppCore Sender, Receiver;
 		protected List<InputData> SentInput, ReceivedInput;
 		protected byte[] Key, IV;
 		protected AutoResetEvent receivedEvent;
 		protected readonly OutpuHelper Output;
 
-		public DHappyFlowTest( OutpuHelper outputHelper ) {
+		public DMainAppCoreHappyFlowTest( OutpuHelper outputHelper ) {
 			Output = outputHelper;
 			receivedEvent = new AutoResetEvent ( false );
 			SentInput = new List<InputData>();
@@ -111,15 +112,15 @@ namespace InputResender.UnitTests {
 		}
 	}
 
-	public class MHappyFlowTest : DHappyFlowTest<MMainAppCore> {
-		public MHappyFlowTest ( OutpuHelper outputHelper ) : base ( outputHelper ) { } 
+	public class MMainAppCoreHappyFlowTest : DMainAppCoreHappyFlowTest<MMainAppCore> {
+		public MMainAppCoreHappyFlowTest ( OutpuHelper outputHelper ) : base ( outputHelper ) { } 
 		protected override MMainAppCore GenerateAppCore () => DMainAppCore.CreateMock ( DMainAppCore.CompSelect.All );
 	}
 
-	public class VHappyFlowTest : DHappyFlowTest<VMainAppCore> {
+	public class VMainAppCoreHappyFlowTest : DMainAppCoreHappyFlowTest<VMainAppCore> {
 		DMainAppCoreFactory CoreFactory;
 
-		public VHappyFlowTest ( OutpuHelper outputHelper ) : base ( outputHelper ) { }
+		public VMainAppCoreHappyFlowTest ( OutpuHelper outputHelper ) : base ( outputHelper ) { }
 		protected override VMainAppCore GenerateAppCore () {
 			if ( CoreFactory == null ) CoreFactory = new DMainAppCoreFactory ();
 			var ret = CoreFactory.CreateVMainAppCore ( DMainAppCore.CompSelect.All & ~DMainAppCore.CompSelect.LLInput );

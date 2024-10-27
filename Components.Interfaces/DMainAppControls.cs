@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Net;
-using System.Reflection;
+using InputResender.Services.NetClientService;
 using Components.Library;
 using static Components.Interfaces.DPacketSender;
 

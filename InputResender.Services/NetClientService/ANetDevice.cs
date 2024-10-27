@@ -143,6 +143,13 @@ namespace InputResender.Services.NetClientService {
 			} else return LogRecvError ( msg, "No connection to source" );
 		}
 
+		public string GetInfo () {
+			return $"({GetType ()}:{locEP}|{boundedLLDevice})";
+			//System.Text.StringBuilder sb = new ();
+			//sb.Append ( GetType () );
+			//return sb.ToString ();
+		}
+
 		public override string ToString () {
 			if ( string.IsNullOrEmpty ( DeviceName ) ) return $"NetDevice@{locEP}";
 			return $"(NetDevice '{DeviceName}' @{locEP})";

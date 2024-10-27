@@ -1,5 +1,6 @@
 ﻿using Components.Library;
 using InputResender.Commands;
+using InputResender.Services.NetClientService.InMemNet;
 using System.Net;
 
 namespace Components.Interfaces;
@@ -30,7 +31,7 @@ public class PasswordManagerCommand : ACommand {
 }
 
 public class TargetManagerCommand : ACommand {
-	protected IPEndPoint TargetEP;
+	protected object TargetEP;
 	public override string Description => "Target management";
 	public TargetManagerCommand ( ACommand parent = null ) : base ( parent?.CallName ) {
 		commandNames.Add ( "target" );
@@ -43,19 +44,26 @@ public class TargetManagerCommand : ACommand {
 		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		switch ( context.SubAction ) {
 		case "set":
-			if ( context[1, "Target end point"] == "none") {
+			if ( context[1, "Target end point"] == "none" ) {
 				if ( TargetEP != null ) core.PacketSender.Disconnect ( TargetEP );
 				TargetEP = null;
 				return new CommandResult ( "Target disconnected." );
 			}
-			if ( !IPEndPoint.TryParse ( context[1], out IPEndPoint EP ) )
-				return new CommandResult ( $"Provided target '{context[1]}' is not a valid end point." );
-			if ( TargetEP != null ) {
-				try { core.PacketSender.Disconnect ( TargetEP ); } catch { }
-			}
-			TargetEP = EP;
-			core.PacketSender.Connect ( TargetEP );
-			return new CommandResult ( $"Target set to {TargetEP}" );
+			if ( IPEndPoint.TryParse ( context[1], out var IPEP ) ) {
+				if ( TargetEP != null ) {
+					try { core.PacketSender.Disconnect ( TargetEP ); } catch { }
+				}
+				TargetEP = IPEP;
+				try { core.PacketSender.Connect ( TargetEP ); } catch { TargetEP = null; }
+				return new CommandResult ( $"Target set to IP end point {TargetEP}" );
+			} else if ( InMemNetPoint.TryParse ( context[1], out var INMEP ) ) {
+				if ( TargetEP != null ) {
+					try { core.PacketSender.Disconnect ( TargetEP ); } catch { }
+				}
+				TargetEP = INMEP;
+				try { core.PacketSender.Connect ( TargetEP ); } catch { TargetEP = null; }
+				return new CommandResult ( $"Target set to InMemNet point {TargetEP}" );
+			} else return new CommandResult ( $"Provided target '{context[1]}' is not a valid end point." );
 		default:
 			return new CommandResult ( "Missing or unknown subcommand." );
 		}

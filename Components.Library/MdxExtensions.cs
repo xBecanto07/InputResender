@@ -176,7 +176,7 @@ public static class MdxExtensions {
 				7 => 0xFE,
 				_ => 0xff,
 			};
-			prefix >>= 3;
+			prefix -= 8;
 		}
 		return new IPAddress ( bAr );
 	}

@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using InputResender.Services.NetClientService;
-using Components.Interfaces;
 
 namespace InputResender.Services {
 	public class UDPDevice : ANetDevice<IPNetPoint> {
