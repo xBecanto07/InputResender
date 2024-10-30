@@ -33,4 +33,11 @@ public class BaseIntegrationTest {
 		oldLine += text;
 		StdOut.Add ( oldLine );
 	}
+
+	public CommandResult AssertExec (string cmd, string expRes) {
+		var res = cliWrapper.ProcessLine ( cmd );
+		res.Should ().NotBeNull ();
+		res.Message.Should ().Be ( expRes );
+		return res;
+	}
 }

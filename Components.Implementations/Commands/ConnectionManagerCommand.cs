@@ -38,16 +38,17 @@ public class ConnectionManagerCommand : ACommand {
 			return new CommandResult ( SB.ToString () );
 		}
 		case "send": {
-			byte[] data = System.Text.Encoding.UTF8.GetBytes ( context[1, "Data"] );
+			byte[] data = System.Text.Encoding.UTF8.GetBytes ( context[2, "Data"] );
 			var conn = FindConn ( sender, context.Args, context.ArgID, out CommandResult errMsg );
 			if ( errMsg != null ) return errMsg;
 
 			if ( !conn.Send ( new HMessageHolder ( HMessageHolder.MsgFlags.None, data ) ) ) return new CommandResult ( $"Failed to send data to '{conn}'." );
-			return new CommandResult ( $"Sent {data.Length} bytes to '{conn}'." );
+			return new CommandResult ( $"Sent {data.Length} bytes to '{conn.TargetEP}'." );
 		}
 		case "close": {
 			var conn = FindConn ( sender, context.Args, context.ArgID, out CommandResult errMsg );
 			if ( errMsg != null ) return errMsg;
+			if ( conn == null ) return new ( "Unexpected error while finding connection to use" );
 
 			conn.Close ();
 			return new CommandResult ( $"Connection to '{conn}' should be closed." );
@@ -105,7 +106,7 @@ public class ConnectionManagerCommand : ACommand {
 			target = sender.ActiveConns.ElementAt ( index ).Key.ToString ();
 		}
 
-		var ret = sender.ActiveConns.FirstOrDefault ( x => x.Key.ToString () == target, new ( null, null ) );
+		var ret = sender.ActiveConns.FirstOrDefault ( x => x.Key.FullNetworkPath == target, new ( null, null ) );
 		if ( ret.Key == null ) {
 			errMsg = new CommandResult ( $"Target '{target}' not found." );
 			return null;

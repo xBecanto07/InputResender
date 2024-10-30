@@ -1,9 +1,12 @@
 ﻿using Components.Library;
+using InputResender.Services;
 using InputResender.Services.NetClientService;
 
 namespace Components.Interfaces {
 	public abstract class DPacketSender : ComponentBase<CoreBase> {
 		public DPacketSender ( CoreBase owner ) : base ( owner ) { }
+
+		public delegate CallbackResult OnReceiveHandler ( HMessageHolder data, bool wasProcessed );
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(Connect), typeof(void)),
@@ -37,8 +40,8 @@ namespace Components.Interfaces {
 		public abstract void Send ( HMessageHolder data );
 		/// <summary>Direct receive</summary>
 		public abstract void Recv ( byte[] data );
-		/// <summary>List of all recv handlers. Will be iterated from newest to oldest. (binary data, was procesed)=>CallbackResult</summary>
-		public abstract event Func<HMessageHolder, bool, CallbackResult> OnReceive;
+		/// <summary>List of all recv handlers. Will be iterated from newest to oldest. (NetPacket data, was procesed)=>CallbackResult</summary>
+		public abstract event OnReceiveHandler OnReceive;
 		public abstract event Action<object> OnNewConn;
 		public abstract void Destroy ();
 		public abstract bool IsEPConnected ( object ep );
@@ -104,7 +107,7 @@ namespace Components.Interfaces {
 		public override IReadOnlyList<IReadOnlyList<MPacketSender>> EPList { get => new []{ this }.AsReadonly2D (); }
 		public override IReadOnlyCollection<(string msg, Exception e)> Errors { get => new List<(string msg, Exception e)> ().AsReadOnly (); }
 		public override bool IsEPConnected ( object ep ) => ConnList.Contains ( ep );
-		private readonly List<Func<HMessageHolder, bool, CallbackResult>> OnReceiveHandlers = new ();
+		private readonly List<OnReceiveHandler> OnReceiveHandlers = new ();
 
 		public override void Connect ( object ep ) {
 			if ( ep is not MPacketSender mpSender ) throw new InvalidCastException ( $"Unexpected object type: {ep.GetType ().Name}." );
@@ -120,7 +123,7 @@ namespace Components.Interfaces {
 			if ( !ConnList.Remove ( mpSender ) ) throw new InvalidOperationException ( $"No active connection to {ep}" );
 			if ( !mpSender.ConnList.Remove ( this ) ) throw new InvalidOperationException ( $"{mpSender.Name} is not connected to this" );
 		}
-		public override event Func<HMessageHolder, bool, CallbackResult> OnReceive {
+		public override event OnReceiveHandler OnReceive {
 			add {
 				if ( value == null ) return;
 				while ( MsgQueue.Count > 0 ) {
@@ -146,7 +149,7 @@ namespace Components.Interfaces {
 		public override void Recv ( byte[] data ) {
 			bool proc = false;
 			var msg = (HMessageHolder)data;
-			List<Func<HMessageHolder, bool, CallbackResult>> removedCBs = new ();
+			List<OnReceiveHandler> removedCBs = new ();
 			foreach ( var Callback in OnReceiveHandlers ) {
 				var ret = Callback ( msg, proc );
 				proc |= !ret.HasFlag ( CallbackResult.Skip );

@@ -44,28 +44,39 @@ public class TargetManagerCommand : ACommand {
 		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		switch ( context.SubAction ) {
 		case "set":
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"target set <EndPoint>: Set target end point\n\tEndPoint: IP end point or InMemNet point", out var helpRes ) ) return helpRes;
 			if ( context[1, "Target end point"] == "none" ) {
 				if ( TargetEP != null ) core.PacketSender.Disconnect ( TargetEP );
 				TargetEP = null;
-				return new CommandResult ( "Target disconnected." );
+				return new ( "Target disconnected." );
 			}
 			if ( IPEndPoint.TryParse ( context[1], out var IPEP ) ) {
 				if ( TargetEP != null ) {
 					try { core.PacketSender.Disconnect ( TargetEP ); } catch { }
 				}
 				TargetEP = IPEP;
-				try { core.PacketSender.Connect ( TargetEP ); } catch { TargetEP = null; }
-				return new CommandResult ( $"Target set to IP end point {TargetEP}" );
+				try {
+					core.PacketSender.Connect ( TargetEP );
+					return new ( $"Target set to IP end point {TargetEP}" );
+				} catch {
+					TargetEP = null;
+					return new ( $"Failed to connect to IP end point {IPEP}" );
+				}
 			} else if ( InMemNetPoint.TryParse ( context[1], out var INMEP ) ) {
 				if ( TargetEP != null ) {
 					try { core.PacketSender.Disconnect ( TargetEP ); } catch { }
 				}
 				TargetEP = INMEP;
-				try { core.PacketSender.Connect ( TargetEP ); } catch { TargetEP = null; }
-				return new CommandResult ( $"Target set to InMemNet point {TargetEP}" );
-			} else return new CommandResult ( $"Provided target '{context[1]}' is not a valid end point." );
+				try {
+					core.PacketSender.Connect ( TargetEP );
+					return new ( $"Target set to InMemNet point {TargetEP}" );
+				} catch ( Exception e ) {
+					TargetEP = null;
+					return new ( $"Failed to connect to InMemNet point {INMEP}: {e.Message}" );
+				}
+			} else return new ( $"Provided target '{context[1]}' is not a valid end point." );
 		default:
-			return new CommandResult ( "Missing or unknown subcommand." );
+			return new ( "Missing or unknown subcommand." );
 		}
 	}
 }

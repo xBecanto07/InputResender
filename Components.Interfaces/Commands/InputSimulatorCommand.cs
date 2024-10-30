@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 
 namespace Components.Interfaces.Commands; 
-public class InputSimulatorCommand : ACommand<CommandResult> {
+public class InputSimulatorCommand : ACommand {
 	public override string Description => "Can simulate user hardware input";
 
 	public InputSimulatorCommand ( string parentDsc = null ) : base ( parentDsc ) {

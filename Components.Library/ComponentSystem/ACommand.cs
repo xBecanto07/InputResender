@@ -82,7 +82,7 @@ public abstract class ACommand {
 		return false;
 	}
 
-	protected virtual CommandResult ExecIner ( CommandProcessor.CmdContext context ) => null;
+	protected virtual CommandResult ExecIner ( CommandProcessor.CmdContext context ) => new ( $"{context.ParentAction}.{context.SubAction} command ({CallName}) not implemented." );
 	protected virtual CommandResult ExecCleanup ( CommandProcessor.CmdContext context ) => null;
 	public CommandResult Cleanup ( CommandProcessor.CmdContext context ) => ExecCleanup ( context );
 
@@ -107,14 +107,6 @@ public abstract class ACommand {
 		helpRes = new CommandResult ( "Usage: " + helpFcn () );
 		return true;
 	}
-}
-
-public abstract class ACommand<T> : ACommand where T : CommandResult {
-	/// <inheritdoc/>
-	public ACommand ( string parentHelp ) : base ( parentHelp ) { }
-
-	public sealed override T Execute ( CommandProcessor.CmdContext context ) => (T)base.Execute ( context );
-	protected override T ExecIner ( CommandProcessor.CmdContext context ) => null;
 }
 
 

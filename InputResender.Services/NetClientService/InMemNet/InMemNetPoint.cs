@@ -58,7 +58,7 @@ namespace InputResender.Services.NetClientService.InMemNet {
 
 		private static string GetAddress (int id) => $"IMN#{id}";
 		private static string GetKey (int id, int port) => $"{GetAddress ( id )}:{port}";
-		public override string ToString () => GetKey ( ID, _port ) + (string.IsNullOrWhiteSpace ( DscName ) ? "" : $" ({DscName})");
+		public override string ToString () => GetKey ( ID, _port ) + (string.IsNullOrWhiteSpace ( DscName ) ? "" : $"({DscName})");
 		public static bool TryParse ( string ss, out InMemNetPoint IMEP ) {
 			IMEP = null;
 			if ( string.IsNullOrWhiteSpace ( ss ) ) return false;
@@ -67,6 +67,9 @@ namespace InputResender.Services.NetClientService.InMemNet {
 			if ( sep < 0 ) return false;
 			if ( !int.TryParse ( ss[4..sep], out int id ) ) return false;
 			if ( !int.TryParse ( ss[(sep + 1)..], out int port ) ) return false;
+
+			if ( BoundedPoints.TryGetValue ( GetKey ( id, port ), out IMEP ) ) return true;
+			if ( ReservedPoints.TryGetValue ( GetKey ( id, port ), out IMEP ) ) return true;
 			IMEP = new InMemNetPoint ( id, port, false );
 			return true;
 		}
@@ -86,14 +89,13 @@ namespace InputResender.Services.NetClientService.InMemNet {
 		}
 
 		/// <summary>Finds next available InMemNetPoint. That is a combination of <paramref name="id"/> and <paramref name="port"/> that is not yet used by any created InMemNetPoint. The returned InMemNetPoint is reserved and will not be returned by this method again. This method is thread-safe.</summary>
-		public static InMemNetPoint NextAvailable ( int port = 1 ) {
-			int id = 873;
-			InMemNetPoint ret;
+		public static InMemNetPoint NextAvailable ( int id = 873, int port = 1 ) {
+			if ( id < 1 ) id = 873;
+			if ( port < 1 ) port = 1;
 			lock ( ReservedPoints ) {
 				while ( ReservedPoints.ContainsKey ( GetKey ( id, port ) ) ) port++;
-				ret = new InMemNetPoint ( id, port );
+				return new ( id, port );
 			}
-			return new InMemNetPoint ( id, port );
 		}
 
 		public override bool Equals ( object obj ) => obj is InMemNetPoint point && ID == point.ID && _port == point._port;

@@ -5,7 +5,7 @@ using InputResender.Services.NetClientService;
 using InputResender.Services.NetClientService.InMemNet;
 
 namespace Components.Interfaces.Commands;
-public class NetworkManagerCommand : ACommand<CommandResult> {
+public class NetworkManagerCommand : ACommand {
 	public enum Act { HostList, Connect, Disconnect }
 	override public string Description => "Manages network connections.";
 
@@ -21,7 +21,7 @@ public class NetworkManagerCommand : ACommand<CommandResult> {
 	public static string CreateCommand ( Act act ) => $"NetworkManager {act.ToString ().ToLower ()}";
 }
 
-public class ListHostsNetworkCommand : ACommand<CommandResult> {
+public class ListHostsNetworkCommand : ACommand {
 	override public string Description => "Lists available local hosts.";
 
 	public ListHostsNetworkCommand ( NetworkManagerCommand parentHelp ) : base ( parentHelp.CallName ) {
@@ -81,6 +81,9 @@ public class NetworkCallbacks : ACommand {
 	private CallbackType RecvCB = CallbackType.None;
 	private CommandProcessor.CmdContext lastContext;
 
+	public const string RECVCBVarName = "RecvCB";
+	public const string NEWCONNCBVarName = "NewConnCB";
+
 	override public string Description => "Manages network callbacks.";
 
 	public NetworkCallbacks ( NetworkManagerCommand parent ) : base ( parent.CallName ) {
@@ -101,7 +104,7 @@ public class NetworkCallbacks : ACommand {
 		case "list":
 			return new CommandResult ( $"New connection callback (newconn): {NewConnCB}\nReceive callback (recv): {RecvCB}" );
 		case "recv":
-			var recvcb = context.Args.EnumC<CallbackType> ( context.ArgID + 1, "Callback (onReceive) type" );
+			var recvcb = context.Args.EnumC<CallbackType> ( context.ArgID + 1, "Callback (onReceive) type", true );
 			if ( recvcb == RecvCB ) return new CommandResult ( $"Callback already set to {recvcb}." );
 			else if ( recvcb == CallbackType.None ) {
 				RecvCB = CallbackType.None;
@@ -113,7 +116,7 @@ public class NetworkCallbacks : ACommand {
 				return new CommandResult ( $"Callback set to {recvcb}." );
 			}
 		case "newconn":
-			var newconncb = context.Args.EnumC<CallbackType> ( context.ArgID + 1, "Callback (onNewConn) type" );
+			var newconncb = context.Args.EnumC<CallbackType> ( context.ArgID + 1, "Callback (onNewConn) type", true );
 			if ( newconncb == NewConnCB ) return new CommandResult ( $"Callback already set to {newconncb}." );
 			else if ( newconncb == CallbackType.None ) {
 				NewConnCB = CallbackType.None;
@@ -139,8 +142,14 @@ public class NetworkCallbacks : ACommand {
 			lastContext.CmdProc.ProcessLine ( $"print \"{printInfo}\"" );
 			return DPacketSender.CallbackResult.None;
 		case CallbackType.Fcn:
-			lastContext.CmdProc.Owner.PushDelayedError ( "Calling extra function to process callbacks is not yet supported.", new NotImplementedException () );
-			return DPacketSender.CallbackResult.Skip;
+			try {
+				var CB = lastContext.CmdProc.GetVar<DPacketSender.OnReceiveHandler> ( RECVCBVarName );
+				var ret = CB ( msg, wasProcessed );
+				return ret;
+			} catch ( Exception ex ) {
+				lastContext.CmdProc.Owner.PushDelayedError ( "Issue with Recv callback function.", ex );
+				return DPacketSender.CallbackResult.Skip;
+			}
 		default: return DPacketSender.CallbackResult.Skip;
 		}
 	}
@@ -149,7 +158,14 @@ public class NetworkCallbacks : ACommand {
 		switch ( NewConnCB ) {
 		case CallbackType.None: return;
 		case CallbackType.Print: lastContext.CmdProc.ProcessLine ( $"print \"New connection: {connInfo}\"" ); return;
-		case CallbackType.Fcn: lastContext.CmdProc.Owner.PushDelayedError ( "Calling extra function to process callbacks is not yet supported.", new NotImplementedException () ); return;
+		case CallbackType.Fcn:
+			try {
+				var CB = lastContext.CmdProc.GetVar<Action<object>> ( NEWCONNCBVarName );
+				CB ( connInfo );
+			} catch (Exception ex) {
+				lastContext.CmdProc.Owner.PushDelayedError ( "Issue with NewConn callback function.", ex );
+			}
+			return;
 		}
 	}
 }
@@ -165,6 +181,7 @@ public class EndPointInfoCommand : ACommand {
 		var sender = core.Fetch<DPacketSender> ();
 		if ( sender == null ) return new CommandResult ( "No packet sender available." );
 		string ret = string.Empty;
+		// This is now constructing new EP, which therefore will not have reference to proper NetDevice, thus throwing NotBoundException... (at least with InMemNetPoint, might work with IPNetPoint)
 		if ( InMemNetPoint.TryParse ( context[0, "EndPoint"], out var IMEP ) )
 			ret = sender.GetEPInfo ( IMEP );
 		else if ( IPNetPoint.TryParse ( context[0, "EndPoint"], out var IPP ) )

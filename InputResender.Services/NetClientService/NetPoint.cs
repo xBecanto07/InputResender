@@ -30,7 +30,7 @@ namespace InputResender.Services {
 			int N = ar.Length;
 			if ( typeof ( T ) == typeof ( InMemNetPoint ) ) {
 				if ( !int.TryParse ( addr, out int id ) ) id = 0;
-				for ( int i = 0; i < N; i++ ) ar[i] = InMemNetPoint.NextAvailable ( id );
+				for ( int i = 0; i < N; i++ ) ar[i] = InMemNetPoint.NextAvailable ( id, wantedPort );
 
 			} else if ( typeof ( T ) == typeof ( IPNetPoint ) ) {
 				if ( !IPAddress.TryParse ( addr, out IPAddress ip ) ) ip = IPAddress.Loopback;

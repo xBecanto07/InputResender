@@ -7,7 +7,7 @@ using System.Windows.Forms;
 using InputResender.CLI;
 
 namespace InputResender.WindowsGUI.Commands;
-public class GUICommands : ACommand<RetT> {
+public class GUICommands : ACommand {
     public static string MainFormVarName = "MainForm";
     public static string MainFormThreadVarName = "MainFormThread";
     private MainScreen mainScreen;

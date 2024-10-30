@@ -1,0 +1,134 @@
+﻿using Xunit;
+using Xunit.Abstractions;
+using FluentAssertions;
+using System.Text.RegularExpressions;
+using InputResender.Services.NetClientService.InMemNet;
+using Components.Interfaces;
+using Components.Interfaces.Commands;
+using InputResender.Services.NetClientService;
+using System.Collections.Concurrent;
+using InputResender.Services;
+using System.Text;
+
+namespace InputResender.UnitTests.IntegrationTests;
+public class NetworkConnectionTest {
+	protected List<string> Errors = new ();
+	protected readonly BaseIntegrationTest sender, receiver;
+	protected static readonly Regex InMemNetReg = new ( ".*(IMN#\\d+:\\d+)" );
+	protected readonly ITestOutputHelper Output;
+
+	public NetworkConnectionTest (ITestOutputHelper output) {
+		Output = output;
+		sender = initObj ( "sender" );
+		receiver = initObj ( "receiver" );
+
+		BaseIntegrationTest initObj ( string objName ) {
+			BaseIntegrationTest ret = new ( BaseIntegrationTest.GeneralInitCmds );
+			var core = ret.cliWrapper.CmdProc.Owner;
+			core.Name = $"{objName} ({core.Name})";
+			core.OnError += msg => Errors.Add ( $"{objName}:: {msg}" );
+			return ret;
+		}
+	}
+
+	/// <summary>Cmd 'network hostlist' should return at least one INM endpoint, extract and return it</summary>
+	private InMemNetPoint GetEP (BaseIntegrationTest obj) {
+		var res = obj.cliWrapper.ProcessLine ( "network hostlist" );
+		res.Should ().NotBeNull ();
+		res.Message.Should ().NotBeNullOrWhiteSpace ();
+		var regexMatch = InMemNetReg.Match ( res.Message );
+		regexMatch.Success.Should ().BeTrue ();
+		InMemNetPoint.TryParse ( regexMatch.Value, out var ret ).Should ().BeTrue ();
+		return ret;
+	}
+
+	private void SetNetworkCallback ( BaseIntegrationTest obj, Action<object> onNewConn, DPacketSender.OnReceiveHandler onRecv ) {
+		obj.cliWrapper.CmdProc.SetVar ( NetworkCallbacks.NEWCONNCBVarName, onNewConn );
+		obj.cliWrapper.CmdProc.SetVar ( NetworkCallbacks.RECVCBVarName, onRecv );
+		obj.AssertExec ( "network callback newconn fcn", "Callback set to Fcn." );
+		obj.AssertExec ( "network callback recv fcn", "Callback set to Fcn." );
+	}
+
+	private NetworkConnection AssertConn (BlockingCollection<object> connList, INetPoint sender, INetPoint receiver) {
+		CancellationTokenSource cts = new ( 200 );
+		NetworkConnection conn;
+		try {
+			var tmp = connList.Take ( cts.Token );
+			if (tmp is not NetworkConnection)
+				throw new Exception ( $"Expected {typeof(NetworkConnection)},\n     got {tmp.GetType ()}" );
+			conn = tmp as NetworkConnection;
+		} catch ( OperationCanceledException e ) {
+			throw new Exception ( $"Timeout waiting for connection{Environment.NewLine}{string.Join ( Environment.NewLine + "  ", Errors )}", e );
+		} finally { cts.Dispose (); }
+		conn.Should ().NotBeNull ();
+		conn.LocalDevice.EP.Should ().Be ( sender );
+		conn.TargetEP.Should ().Be ( receiver );
+		return conn;
+	}
+
+	private byte[] AssertMessage (BlockingCollection<(HMessageHolder, bool)> recvList, string expMsg, INetPoint from, INetPoint to ) {
+		CancellationTokenSource cts = new ( 200 );
+		NetworkConnection conn;
+		HMessageHolder msg;
+		try {
+			(msg, _) = recvList.Take ( cts.Token );
+		} catch ( OperationCanceledException e ) {
+			throw new Exception ( $"Timeout waiting for message{Environment.NewLine}{string.Join ( Environment.NewLine + "  ", Errors )}", e );
+		} finally { cts.Dispose (); }
+		msg.Should ().NotBeNull ();
+		msg.InnerMsg.Should ().Equal ( Encoding.UTF8.GetBytes ( expMsg ) );
+		//msg.Sender.Should ().Be ( from );
+		//msg.Target.Should ().Be ( to );
+		Assert.Fail ( "Cannot test sender/target right now!" ); // DPacketSender is expected to change from using Object to INetPoint
+		return msg.InnerMsg;
+	}
+
+	[Fact]
+	public void HappyFlow () {
+		var EPA = GetEP ( sender );
+		var EPB = GetEP ( receiver );
+		EPA.Should ().NotBeNull ();
+		EPB.Should ().NotBeNull ();
+		EPA.Should ().NotBeSameAs ( EPB ).And.NotBe ( EPB );
+		EPA.DscName = "A";
+		EPB.DscName = "B";
+		Output.WriteLine ( $"Using EPs: {EPA} and {EPB}" );
+
+		BlockingCollection<object> connsA = new (), connsB = new ();
+		BlockingCollection<(HMessageHolder, bool)> recvA = new (), recvB = new ();
+		SetNetworkCallback ( sender,( obj ) => {
+			connsA.Add ( obj );
+			}, ( data, wasProcessed ) => {
+				recvA.Add ( (data, wasProcessed) );
+				return DPacketSender.CallbackResult.None;
+			}
+			);
+		SetNetworkCallback ( receiver, ( obj ) => {
+			connsB.Add ( obj );
+			}, ( data, wasProcessed ) => {
+				recvB.Add ( (data, wasProcessed) );
+				return DPacketSender.CallbackResult.None;
+			}
+			);
+
+		// Connect A to B
+		// Assert existing connection on both sides
+		// Send simple textual message both ways to test the connection
+		// Set up callbacks for hooks
+		// Send command to simulate keypress
+
+		var statusA = sender.cliWrapper.ProcessLine ( $"network info " + EPA.FullNetworkPath );
+		var statusB = receiver.cliWrapper.ProcessLine ( $"network info " + EPB.FullNetworkPath );
+		Output.WriteLine ( statusA.Message );
+		Output.WriteLine ( statusB.Message );
+
+		var targSetCmd = sender.cliWrapper.ProcessLine ( $"target set {EPB.FullNetworkPath}" );
+		targSetCmd.Should ().NotBeNull ();
+		targSetCmd.Message.Should ().Be ( $"Target set to InMemNet point {EPB}" );
+		var A_B = AssertConn ( connsA, EPA, EPB );
+		var B_A = AssertConn ( connsB, EPB, EPA );
+
+		sender.AssertExec ( $"conns send {EPB.FullNetworkPath} \"Hello, World!\"", $"Sent 13 bytes to '{EPB}'." );
+		AssertMessage ( recvB, "Hello, World!", EPA, EPB );
+	}
+}

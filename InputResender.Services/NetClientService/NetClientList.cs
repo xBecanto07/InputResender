@@ -104,8 +104,7 @@ public class NetClientList {
 		if ( !Devices.TryGetValue ( locEP, out var locDev ) ) throw new InvalidOperationException ( $"No device for {locEP}" );
 
 		var conn = locDev.Connect ( targEP, null, timeout );
-		conn.OnClosed += ( _, ep ) => Conns.Remove ( ep );
-		Conns.Add ( targEP, conn );
+		ConnAccepter ( conn );
 		return conn;
 	}
 	public void UnregisterConnection ( NetworkConnection connection ) {

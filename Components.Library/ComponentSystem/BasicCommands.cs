@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Components.Library; 
-public class BasicCommands : ACommand<CommandResult> {
+public class BasicCommands : ACommand {
 	override public string Description => "Basic commands.";
 	override public string Help => "help - Show this help." + Environment.NewLine +
 		"info - Show info." + Environment.NewLine +

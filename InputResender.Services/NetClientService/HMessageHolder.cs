@@ -5,7 +5,6 @@ public class HMessageHolder {
 	public const int HeaderSize = 1;
 	[Flags]
 	public enum MsgFlags { None = 0, Encrypted = 1 }
-	public readonly object Sender, Target;
 	private readonly byte[] Data;
 	private readonly MsgFlags flags;
 

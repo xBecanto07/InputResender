@@ -74,6 +74,7 @@ public static class Program {
 			if ( canAppend ) canAppend &= lastMsg != null;
 			if ( canAppend ) canAppend &= lastMsg.StartsWith ( "$> " );
 			if ( canAppend ) canAppend &= lastMsg.Length + oneLiner.Length < maxOnelinerLength;
+			if ( canAppend ) console.Append ( oneLiner );
 			else {
 				oneLiner = msgType switch {
 					MsgType.Error => $" - Error: {printRes.PrefixAllLines ( " ! " )}",
@@ -81,7 +82,7 @@ public static class Program {
 					_ => printRes
 				};
 
-				if (oneLiner.Length < maxOnelinerLength && !oneLiner.Contains ( "\r\n" ) && !oneLiner.Contains ( '\n' ) ) {
+				if ( oneLiner.Length < maxOnelinerLength && !oneLiner.Contains ( "\r\n" ) && !oneLiner.Contains ( '\n' ) ) {
 					console.WriteLine ( ret = oneLiner );
 				} else {
 					printRes = msgType switch {

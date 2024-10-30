@@ -3,7 +3,7 @@ using System.Linq;
 using RetT = Components.Library.ClassCommandResult<Components.Library.CoreBase>;
 
 namespace InputResender.Commands;
-public class CoreManagerCommand : ACommand<RetT> {
+public class CoreManagerCommand : ACommand {
 	public const string ActiveCoreVarName = "ActCore";
 	public enum Act { Create, Select, Delete, List }
 	override public string Description => "Offers access to Core functionalities";

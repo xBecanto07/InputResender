@@ -144,7 +144,7 @@ namespace InputResender.Services.NetClientService {
 		}
 
 		public string GetInfo () {
-			return $"({GetType ()}:{locEP}|{boundedLLDevice})";
+			return $"(T<{GetType ().Name}> locEP'{locEP}'|boundLL'{boundedLLDevice}')";
 			//System.Text.StringBuilder sb = new ();
 			//sb.Append ( GetType () );
 			//return sb.ToString ();

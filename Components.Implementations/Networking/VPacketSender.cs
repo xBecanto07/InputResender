@@ -17,7 +17,7 @@ namespace Components.Implementations {
 		List<(string msg, Exception e)> errors;
 		public IReadOnlyDictionary<INetPoint, NetworkConnection> ActiveConns;
 		private readonly BlockingCollection<NetMessagePacket> PacketBuffer;
-		private readonly List<Func<HMessageHolder, bool, CallbackResult>> OnReceiveHandlers = new ();
+		private readonly List<OnReceiveHandler> OnReceiveHandlers = new ();
 		private List<INetPoint[]> NetList;
 
 		private event Action<NetworkConnection> OnNewConnLocal;
@@ -33,7 +33,7 @@ namespace Components.Implementations {
 			var EP = NetList[i][j];
 
 			if ( !Clients.OwnedDevices.TryGetValue ( EP, out var netDevice ) ) return $"No client associated with '{EP}'[{i},{j}]";
-			return $"{this}[{i},{j}]=>{netDevice}:{netDevice.GetInfo ()}";
+			return $"{GetType ().Name} '{this}' (ttl:[{i},{j}]) :: {netDevice}:{netDevice.GetInfo ()}";
 		}
 
 		private (int, int) FindEP (object ep) {
@@ -51,7 +51,7 @@ namespace Components.Implementations {
 			if ( onErrorSub != null ) OnError += onErrorSub;
 			Port = port < 0 ? DefPort++ : port;
 			NetList = new NetList ().ToList ( Port );
-			NetList.Insert ( 0, INetPoint.NextAvailable<InMemNetPoint> ( 1, Port, DefPort.ToString () ) );
+			NetList.Insert ( 0, INetPoint.NextAvailable<InMemNetPoint> ( 1, Port ) );
 			PacketBuffer = new ( MaxBufferSize );
 			Clients = new ();
 			Clients.OnLog += (packet, msg) => Owner.PushDelayedMsg (packet == null ? $"{msg} (no packet)" : $"{msg} {packet.SourceEP}->{packet.TargetEP}");
@@ -76,6 +76,7 @@ namespace Components.Implementations {
 
 		private void OnNewConnection (NetworkConnection conn) {
 			conn.OnReceive += LocalReceiver;
+			OnNewConnLocal?.Invoke ( conn );
 		}
 		private void PrintError (string msg, Exception e) {
 			errors.Add ( (msg, e) );
@@ -142,7 +143,7 @@ namespace Components.Implementations {
 			}
 		}
 
-		public override event Func<HMessageHolder, bool, CallbackResult> OnReceive {
+		public override event OnReceiveHandler OnReceive {
 			add {
 				if ( value == null ) return;
 				lock (PacketBuffer) {

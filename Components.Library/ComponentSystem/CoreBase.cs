@@ -10,6 +10,7 @@ namespace Components.Library {
 		public Action<string> LogFcn = null;
 		private readonly List<string> DelayedMessages = new ();
 		public enum LogLevel { None, Error, Warning, Info, Debug, All }
+		public event Action<string> OnError, OnMessage;
 
 		public class ComponentInfo {
 			public readonly ComponentBase Component;
@@ -173,9 +174,12 @@ namespace Components.Library {
 
 		public void PushDelayedMsg ( string msg ) {
 			lock ( DelayedMessages ) DelayedMessages.Add ( msg );
+			OnMessage?.Invoke ( msg );
 		}
 		public void PushDelayedError ( string msg, Exception ex ) {
-			lock ( DelayedMessages ) DelayedMessages.Add ( $"{msg}: {ex.Message}{Environment.NewLine}{ex.StackTrace}" );
+			msg = $"{msg}: {ex.Message}{Environment.NewLine}{ex.StackTrace}";
+			lock ( DelayedMessages ) DelayedMessages.Add ( msg );
+			OnError?.Invoke ( msg );
 		}
 		public void FlushDelayedMsgs ( Action<string> printer = null ) {
 			lock ( DelayedMessages ) {
