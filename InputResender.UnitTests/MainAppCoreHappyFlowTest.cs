@@ -78,10 +78,23 @@ namespace InputResender.UnitTests {
 		}
 
 		[Fact]
+		public void EncryptDecrtypt () {
+			Init ();
+			var data = new InputData ( Receiver.Fetch<DPacketSender> () ) { Cmnd = InputData.Command.KeyPress, DeviceID = 1, Key = KeyCode.E, X = 1 };
+			var serialized = data.Serialize ();
+			var msg = new HMessageHolder ( HMessageHolder.MsgFlags.None, serialized );
+			var packet = Sender.DataSigner.Encrypt ( msg, IV );
+
+			HMessageHolder decoded = Receiver.DataSigner.Decrypt ( packet, IV );
+			var recreated = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded.InnerMsg );
+			recreated.Should ().Be ( data );
+		}
+
+		[Fact]
 		public void SendRecv () {
 			Init ();
 			var data = new InputData ( Receiver.Fetch<DPacketSender> () ) { Cmnd = InputData.Command.KeyPress, DeviceID = 1, Key = KeyCode.E, X = 1 };
-			var packet = Sender.DataSigner.Encrypt ( (HMessageHolder)data.Serialize (), IV );
+			var packet = Sender.DataSigner.Encrypt ( new HMessageHolder ( HMessageHolder.MsgFlags.None, data.Serialize () ), IV );
 			Sender.PacketSender.Send ( packet );
 			receivedEvent.WaitOne ();
 			ReceivedInput.Should ().HaveCount ( 1 );

@@ -91,7 +91,7 @@ public class NetConnectionGroup {
 	}
 
 	public void CloseConnection () {
-		Dictionary<NetworkConnection, NetworkCloseWatcher> watchers = new ();
+		Dictionary<NetworkConnection, NetworkCloseWatcher> watchers = new ( ReferenceEqualityComparer.Instance );
 		foreach ( var conn in Conns ) watchers[conn.Value] = new NetworkCloseWatcher ( conn.Value );
 		foreach ( var a in A) {
 			foreach ( var b in B ) {

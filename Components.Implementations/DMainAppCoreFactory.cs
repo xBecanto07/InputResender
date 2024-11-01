@@ -12,7 +12,7 @@ public class DMainAppCoreFactory {
 			( core ) => new MInputParser ( core ),
 			( core ) => new MInputProcessor ( core ),
 			( core ) => new MDataSigner ( core ),
-			( core ) => new MPacketSender ( core ),
+			( core ) => MPacketSender.Fetch ( 0, core ),
 			( core ) => new VMainAppControls ( core ),
 			( core ) => new VShortcutWorker ( core ),
 			( core ) => new VCommandWorker ( core ),

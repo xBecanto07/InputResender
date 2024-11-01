@@ -44,6 +44,17 @@ namespace InputResender.Services {
 				throw new ArgumentException ( $"Type {typeof ( T ).Name} is not supported" );
 			}
 		}
+
+		public static INetPoint Parse ( object epObj, int defPort ) {
+			if ( epObj is INetPoint INP ) return INP;
+			if ( epObj is IPEndPoint IP ) return new IPNetPoint ( IP );
+			if ( epObj is string sEP ) {
+				if ( InMemNetPoint.TryParse ( sEP, out var IMEP ) ) return IMEP;
+				if ( IPAddress.TryParse ( sEP, out var IPAddr ) ) return new IPNetPoint ( IPAddr, defPort );
+				if ( IPNetPoint.TryParse ( sEP, out var IPP ) ) return IPP;
+			}
+			throw new InvalidCastException ( $"Unexpected object type: {epObj.GetType ().Name}. Currently supported: {nameof ( INetPoint )}, {nameof ( IPEndPoint )}." );
+		}
 	}
 	public class IPNetPoint : INetPoint {
 		readonly IPEndPoint ep;

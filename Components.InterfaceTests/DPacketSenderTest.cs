@@ -2,6 +2,7 @@
 using Components.Library;
 using Components.LibraryTests;
 using FluentAssertions;
+using InputResender.Services;
 using InputResender.Services.NetClientService;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ namespace Components.InterfaceTests {
 		protected AutoResetEvent resetEvent = new AutoResetEvent (false);
 		bool TestFinished = false;
 
-		protected abstract IEnumerable<object> GetLocalPoint ( TestObjT testObj, int port );
+		protected abstract IEnumerable<INetPoint> GetLocalPoint ( TestObjT testObj, int port );
 
 		/// <summary>Inform if error found on receiver (B) can be disregarded as minor one or is deemed critical to fail the test.<para>Minor error might be e.g. failure to connect to network, that is not being tested.</para></summary>
 		protected virtual bool IsErrorCritical (string msg, Exception e, TestObjT Aobj, object AEP, TestObjT Bobj, object BEP ) => true;
@@ -32,24 +33,26 @@ namespace Components.InterfaceTests {
 			//UDPDeviceLL.OnMessage += Output.WriteLine;
 
 			HMessageHolder data = SetupTest ( out var sender, out var receiver );
-			var aEPIter = GetLocalPoint ( sender, 0 ).GetEnumerator ();
-			var bEPIter = GetLocalPoint ( receiver, 0 ).GetEnumerator ();
+			var aEPIter = GetLocalPoint ( sender, 1 ).GetEnumerator ();
+			var bEPIter = GetLocalPoint ( receiver, 2 ).GetEnumerator ();
 			Output.WriteLine ( $"Starting test with {reps} repetitions, A: {sender}, B: {receiver}" );
 			while ( true ) {
 				if ( !aEPIter.MoveNext () ) break;
 				if ( !bEPIter.MoveNext () ) break;
+				aEPIter.Current.DscName = "A";
+				bEPIter.Current.DscName = "B";
 				Output.WriteLine ( $"Testing {aEPIter.Current} -> {bEPIter.Current}" );
 				Connect ( sender, receiver, aEPIter.Current, bEPIter.Current );
 				receiver.OnReceive += SimpleCallback;
 				for ( int i = 0; i < reps; i++ ) {
 					Output.WriteLine ( $"Sending message #{i}" );
-					receiver.OnReceive += SimpleCallback;
 					byte[] bData = data.InnerMsg;
 					bData[0] = (byte)reps;
 					bData[1] = (byte)i;
 					HMessageHolder specificData = new ( data.Flags, bData );
 					sender.Send ( specificData );
 				}
+				receiver.OnReceive -= SimpleCallback;
 				Disconnect ( sender, receiver, aEPIter.Current, bEPIter.Current );
 
 				var logger = OwnerCore.Fetch ( typeof ( DLogger ) );
@@ -107,7 +110,7 @@ namespace Components.InterfaceTests {
 			return new ( HMessageHolder.MsgFlags.None, GenData ( 32 ) );
 		}
 
-		protected void Connect ( TestObjT A, TestObjT B, object aEP, object bEP ) {
+		protected void Connect ( TestObjT A, TestObjT B, INetPoint aEP, INetPoint bEP ) {
 			A.Connect ( bEP );
 			//B.Connect ( aEP ); // Connection is establish both ways
 			A.Connections.Should ().Be ( 1 );
@@ -115,7 +118,7 @@ namespace Components.InterfaceTests {
 			A.IsEPConnected ( bEP ).Should ().BeTrue ();
 			B.IsEPConnected ( aEP ).Should ().BeTrue ();
 		}
-		protected void Disconnect ( TestObjT A, TestObjT B, object aEP, object bEP ) {
+		protected void Disconnect ( TestObjT A, TestObjT B, INetPoint aEP, INetPoint bEP ) {
 			A.Disconnect ( bEP );
 			A.Connections.Should ().Be ( 0 );
 			B.Connections.Should ().Be ( 0 );
@@ -126,7 +129,7 @@ namespace Components.InterfaceTests {
 
 	public class MPacketSenderTest : DPacketSenderTest<MPacketSender> {
 		public MPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
-		public override MPacketSender GenerateTestObject () => new MPacketSender ( OwnerCore );
+		public override MPacketSender GenerateTestObject () => MPacketSender.Fetch ( 0, OwnerCore );
 		protected override IEnumerable<MPacketSender> GetLocalPoint ( MPacketSender testObj, int port ) {
 			yield return testObj;
 		}

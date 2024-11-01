@@ -55,10 +55,10 @@ namespace Components.Interfaces
 			return BitConverter.GetBytes ( ret );
 		}
 		public override HMessageHolder Decrypt ( HMessageHolder data, byte[] IV = null ) {
-            // Data size should be checked in integrity test
-            if ( !TestIntegrity ( data ) ) return null;
+			// Data size should be checked in integrity test
+			if ( !TestIntegrity ( data ) ) throw new CryptographicException ( "Failed data integrity test!" );
 			if ( IV == null ) IV = data.InnerMsg.SubArray ( ChecksumSize - KeySize, KeySize );
-            if ( !TestPsswd ( data, IV ) ) return null;
+			if ( !TestPsswd ( data, IV ) ) throw new CryptographicException ( "Incorrect password!" );
 			byte[] ret = new byte[data.InnerMsg.Length - ChecksumSize];
             CryptFunc ( data.InnerMsg, IV, ( val, i ) => ret[i] = val, ChecksumSize );
             return new (HMessageHolder.MsgFlags.None, ret );

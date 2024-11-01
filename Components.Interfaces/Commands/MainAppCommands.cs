@@ -1,5 +1,6 @@
 ﻿using Components.Library;
 using InputResender.Commands;
+using InputResender.Services;
 using InputResender.Services.NetClientService.InMemNet;
 using System.Net;
 
@@ -31,7 +32,7 @@ public class PasswordManagerCommand : ACommand {
 }
 
 public class TargetManagerCommand : ACommand {
-	protected object TargetEP;
+	protected INetPoint TargetEP;
 	public override string Description => "Target management";
 	public TargetManagerCommand ( ACommand parent = null ) : base ( parent?.CallName ) {
 		commandNames.Add ( "target" );
@@ -54,7 +55,7 @@ public class TargetManagerCommand : ACommand {
 				if ( TargetEP != null ) {
 					try { core.PacketSender.Disconnect ( TargetEP ); } catch { }
 				}
-				TargetEP = IPEP;
+				TargetEP = new IPNetPoint ( IPEP );
 				try {
 					core.PacketSender.Connect ( TargetEP );
 					return new ( $"Target set to IP end point {TargetEP}" );

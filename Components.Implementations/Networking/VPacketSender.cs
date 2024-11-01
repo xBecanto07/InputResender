@@ -20,13 +20,12 @@ namespace Components.Implementations {
 		private readonly List<OnReceiveHandler> OnReceiveHandlers = new ();
 		private List<INetPoint[]> NetList;
 
-		private event Action<NetworkConnection> OnNewConnLocal;
-		public override event Action<object> OnNewConn { add => OnNewConnLocal += value; remove => OnNewConnLocal -= value; }
+		public override event Action<NetworkConnection> OnNewConn;
 
 		private event Action<string, Exception> OnErrorLocal;
 		public override event Action<string, Exception> OnError { add => OnErrorLocal += value; remove => OnErrorLocal -= value; }
 
-		public override string GetEPInfo ( object ep ) {
+		public override string GetEPInfo ( INetPoint ep ) {
 			if ( ep is not INetPoint NP ) return $"Object '{ep}' is not valid EP.";
 			(int i, int j) = FindEP ( ep );
 			if ( i < 0 ) return $"EndPoint '{NP}' is not registered under this component.";
@@ -76,7 +75,7 @@ namespace Components.Implementations {
 
 		private void OnNewConnection (NetworkConnection conn) {
 			conn.OnReceive += LocalReceiver;
-			OnNewConnLocal?.Invoke ( conn );
+			OnNewConn?.Invoke ( conn );
 		}
 		private void PrintError (string msg, Exception e) {
 			errors.Add ( (msg, e) );
@@ -87,17 +86,16 @@ namespace Components.Implementations {
 		public override int Connections => Clients.Connections.Count;
 		public override IReadOnlyCollection<(string msg, Exception e)> Errors => errors.AsReadOnly ();
 		public override IReadOnlyList<IReadOnlyList<INetPoint>> EPList => NetList.AsReadOnly ();
-		public override bool IsEPConnected ( object ep ) => ep is INetPoint iep ? Clients.Connections.ContainsKey ( iep ) : false;
+		public override bool IsEPConnected ( INetPoint ep ) => ep is INetPoint iep ? Clients.Connections.ContainsKey ( iep ) : false;
 
 		public override INetPoint OwnEP ( int TTL, int network = 0 ) => NetList[network][TTL];
 
-		public override void Connect ( object epObj ) {
+		public override void Connect ( INetPoint epObj ) {
 			if ( epObj == null ) throw new ArgumentNullException ( nameof ( epObj ) );
-			var INetPoint = ParseEP ( epObj );
 			NetworkConnection conn = null;
 			for (int i = 0; i < 5; i++ ) {
 				try {
-					conn = Clients.Connect ( INetPoint );
+					conn = Clients.Connect ( epObj );
 					break;
 				} catch (OperationCanceledException e) {
 					if ( i == 4 ) throw new InvalidOperationException ( $"Failed to connect to {epObj}", e );
@@ -108,25 +106,13 @@ namespace Components.Implementations {
 			//else ActiveConns.Add ( epObj, conn );
 			conn.OnReceive += LocalReceiver;
 		}
-		public override void Disconnect ( object epObj ) {
+		public override void Disconnect ( INetPoint epObj ) {
 			if ( epObj == null ) throw new ArgumentNullException ( nameof ( epObj ) );
-			var INetPoint = ParseEP ( epObj );
-			if ( !Clients.Connections.TryGetValue ( INetPoint, out var conn ) )
+			if ( !Clients.Connections.TryGetValue ( epObj, out var conn ) )
 				throw new InvalidOperationException ( $"No active connection to {epObj}" );
 			conn.OnReceive -= LocalReceiver;
 			conn.Close ();
 			//ActiveConns.Remove ( epObj );
-		}
-
-		private INetPoint ParseEP ( object epObj ) {
-			if ( epObj is INetPoint INP ) return INP;
-			if ( epObj is IPEndPoint IP ) return new IPNetPoint ( IP );
-			if ( epObj is string sEP ) {
-				if ( InMemNetPoint.TryParse ( sEP, out var IMEP ) ) return IMEP;
-				if ( IPAddress.TryParse ( sEP, out var IPAddr ) ) return new IPNetPoint ( IPAddr, Port );
-				if ( IPNetPoint.TryParse ( sEP, out var IPP ) ) return IPP;
-			}
-			throw new InvalidCastException ( $"Unexpected object type: {epObj.GetType ().Name}. Currently supported: {nameof ( INetPoint )}, {nameof ( IPEndPoint )}." );
 		}
 
 		private INetDevice.ProcessResult LocalReceiver ( NetMessagePacket msg ) {

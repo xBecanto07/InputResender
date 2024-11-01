@@ -16,6 +16,7 @@ namespace InputResender.Services {
 		public event INetDevice.MessageHandler OnReceive;
 		/// <summary>Event that is triggered when the connection is closed.</summary>
 		public event Action<INetDevice, INetPoint> OnClosed;
+		public bool WasClosed { get; private set; }
 
 		/// <summary>Private delegate for sending messages, created by local device that created this connection.</summary>
 		public delegate bool MessageSender ( NetMessagePacket data );
@@ -119,6 +120,7 @@ namespace InputResender.Services {
 			}
 			//var oldEP = TargetEP;
 			//var oldDev = LocalDevice;
+			WasClosed = true;
 			OnClosed?.Invoke ( LocalDevice, TargetEP );
 			TargetEP = null;
 			LocalDevice = null;
@@ -126,6 +128,12 @@ namespace InputResender.Services {
 		}
 
 		public override string ToString () => $"{LocalDevice}-->{TargetEP}";
+		/// <summary>Compare if two connections are between same endpoints. Those might still be different instances with different event registrations. To check this consider ReferenceEquals</summary>
+		public override bool Equals ( object obj ) => obj is NetworkConnection conn && conn.LocalDevice == LocalDevice && conn.TargetEP == TargetEP;
+		public override int GetHashCode () => HashCode.Combine ( LocalDevice, TargetEP );
+		/// <inheritdoc cref="Equals(object)"/>
+		public static bool operator == ( NetworkConnection left, NetworkConnection right ) => left is null ? right is null : left.Equals ( right );
+		public static bool operator != ( NetworkConnection left, NetworkConnection right ) => !(left == right);
 	}
 
 

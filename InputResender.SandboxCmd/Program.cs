@@ -1,6 +1,7 @@
 ﻿using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
+using InputResender.Services;
 using InputResender.Services.NetClientService;
 using System;
 using Xunit.Abstractions;
@@ -47,7 +48,8 @@ public class Program {
 			if ( parser.String ( 1, "Target EP", 4 ) == null ) return true;
 			else {
 				try {
-					packetSender.Connect ( parser.String ( 1, null ) );
+					var EP = INetPoint.Parse ( parser.String ( 1, null ), packetSender.Port );
+					packetSender.Connect ( EP );
 					WriteLine ( "Connected" );
 					return true;
 				} catch ( Exception e ) {

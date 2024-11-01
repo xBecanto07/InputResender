@@ -31,21 +31,21 @@ namespace Components.Interfaces {
 
 		[Flags]
 		public enum CallbackResult { None = 0, Skip = 1, Stop = 2, Fallback = 4 }
-		public abstract IReadOnlyList<IReadOnlyList<object>> EPList { get; }
+		public abstract IReadOnlyList<IReadOnlyList<INetPoint>> EPList { get; }
 		public abstract IReadOnlyCollection<(string msg, Exception e)> Errors { get; }
 		public abstract int Connections { get; }
-		public abstract object OwnEP ( int TTL, int network );
-		public abstract void Connect ( object ep );
-		public abstract void Disconnect ( object ep );
+		public abstract INetPoint OwnEP ( int TTL, int network );
+		public abstract void Connect ( INetPoint ep );
+		public abstract void Disconnect ( INetPoint ep );
 		public abstract void Send ( HMessageHolder data );
 		/// <summary>Direct receive</summary>
 		public abstract void Recv ( byte[] data );
 		/// <summary>List of all recv handlers. Will be iterated from newest to oldest. (NetPacket data, was procesed)=>CallbackResult</summary>
 		public abstract event OnReceiveHandler OnReceive;
-		public abstract event Action<object> OnNewConn;
+		public abstract event Action<NetworkConnection> OnNewConn;
 		public abstract void Destroy ();
-		public abstract bool IsEPConnected ( object ep );
-		public abstract string GetEPInfo ( object ep );
+		public abstract bool IsEPConnected ( INetPoint ep );
+		public abstract string GetEPInfo ( INetPoint ep );
 		public abstract event Action<string, Exception> OnError;
 		/// <summary>Returns true if at least one connection to any of target EPs is active</summary>
 		public bool IsPacketSenderConnected (DPacketSender packetSender) {
@@ -87,120 +87,6 @@ namespace Components.Interfaces {
 			public readonly string[] EPList;
 			public readonly string[] Errors;
 			public override string AllInfo () => $"{base.AllInfo ()}{BR}EP List:{BR}{string.Join ( BR, EPList )}{BR}Connections:{BR}{string.Join ( BR, Connections )}{BR}Buffer:{BR}{string.Join ( BR, Buffers )}{BR}Errors:{BR}{string.Join ( BR, Errors )}";
-		}
-	}
-
-	/// <summary>Thread unsafe!</summary>
-	public class MPacketSender : DPacketSender {
-		List<MPacketSender> ConnList = new List<MPacketSender> ();
-		Queue<HMessageHolder> MsgQueue = new Queue<HMessageHolder> ();
-
-		private event Action<MPacketSender> OnNewConnLocal;
-		public override event Action<object> OnNewConn {  add => OnNewConnLocal += value; remove => OnNewConnLocal -= value; }
-
-		public MPacketSender ( CoreBase owner ) : base ( owner ) { }
-
-		public override event Action<string, Exception> OnError { add { } remove { } }
-		public override int ComponentVersion => 1;
-		public override MPacketSender OwnEP ( int TTL, int network ) => this;
-		public override int Connections => ConnList.Count;
-		public override IReadOnlyList<IReadOnlyList<MPacketSender>> EPList { get => new []{ this }.AsReadonly2D (); }
-		public override IReadOnlyCollection<(string msg, Exception e)> Errors { get => new List<(string msg, Exception e)> ().AsReadOnly (); }
-		public override bool IsEPConnected ( object ep ) => ConnList.Contains ( ep );
-		private readonly List<OnReceiveHandler> OnReceiveHandlers = new ();
-
-		public override void Connect ( object ep ) {
-			if ( ep is not MPacketSender mpSender ) throw new InvalidCastException ( $"Unexpected object type: {ep.GetType ().Name}." );
-			if ( mpSender == this ) throw new InvalidOperationException ( "Cannot connect to self" );
-			if ( ConnList.Contains ( mpSender ) ) throw new InvalidOperationException ( $"Already connected to {mpSender.Name}" );
-			if ( mpSender.ConnList.Contains ( this ) ) throw new InvalidOperationException ( $"{mpSender.Name} is already connected to this" );
-
-			ConnList.Add ( mpSender );
-			mpSender.ConnList.Add ( this );
-		}
-		public override void Disconnect ( object ep ) {
-			if ( ep is not MPacketSender mpSender ) throw new InvalidCastException ( $"Unexpected object type: {ep.GetType ().Name}." );
-			if ( !ConnList.Remove ( mpSender ) ) throw new InvalidOperationException ( $"No active connection to {ep}" );
-			if ( !mpSender.ConnList.Remove ( this ) ) throw new InvalidOperationException ( $"{mpSender.Name} is not connected to this" );
-		}
-		public override event OnReceiveHandler OnReceive {
-			add {
-				if ( value == null ) return;
-				while ( MsgQueue.Count > 0 ) {
-					var ret = value ( MsgQueue.Dequeue (), false );
-					if ( ret.HasFlag ( CallbackResult.Stop ) ) {
-						// Caller does no longer want to receive
-						return;
-					}
-				}
-				if ( OnReceiveHandlers.Contains ( value ) ) return;
-				OnReceiveHandlers.Add ( value );
-			}
-			remove {
-				if ( value == null ) return;
-				if ( !OnReceiveHandlers.Remove ( value ) )
-					throw new InvalidOperationException ( $"Callback {value.Method.AsString ()} not found in OnReceiveHandlers" );
-			}
-		}
-		public override void Send ( HMessageHolder data ) {
-			foreach ( MPacketSender receiver in ConnList )
-				receiver.Recv ( (byte[])data );
-		}
-		public override void Recv ( byte[] data ) {
-			bool proc = false;
-			var msg = (HMessageHolder)data;
-			List<OnReceiveHandler> removedCBs = new ();
-			foreach ( var Callback in OnReceiveHandlers ) {
-				var ret = Callback ( msg, proc );
-				proc |= !ret.HasFlag ( CallbackResult.Skip );
-				if ( !ret.HasFlag (CallbackResult.Stop) ) removedCBs.Add ( Callback );
-			}
-			foreach ( var Callback in removedCBs ) OnReceive -= Callback;
-			if (!proc) {
-				if (MsgQueue.Count >= 16 ) MsgQueue.Dequeue ();
-				MsgQueue.Enqueue ( msg );
-			}
-		}
-
-		public override string GetEPInfo ( object ep ) {
-			if ( ep is not MPacketSender mp ) return $"Object '{ep}' is not valid EP ({nameof ( MPacketSender )}).";
-			if ( mp == this ) return $"{nameof ( MPacketSender )} loopback ({this})";
-			return $"{ep} ({(ConnList.Contains ( ep ) ? "Connected" : "Not connected")}";
-		}
-
-		public override void Destroy () {
-			ConnList.Clear (); MsgQueue.Clear ();
-			OnReceiveHandlers.Clear (); MsgQueue = null; ConnList = null;
-		}
-
-		public override StateInfo Info => new VStateInfo ( this );
-		public class VStateInfo : DStateInfo {
-			public new MPacketSender Owner => (MPacketSender)base.Owner;
-			public VStateInfo ( MPacketSender owner ) : base ( owner ) {
-				//LocalCallback = Owner.Callback.Method.AsString ();
-				LocalCallbacks = new string[Owner.OnReceiveHandlers.Count];
-				for ( int i = 0; i < Owner.OnReceiveHandlers.Count; i++ )
-					LocalCallbacks[i] = Owner.OnReceiveHandlers[i].Method.AsString ();
-			}
-
-			public string[] LocalCallbacks;
-
-			protected override string[] GetConnections () {
-				int N = Owner.ConnList.Count;
-				string[] ret = new string[N];
-				for ( int i = 0; i < N; i++ )
-					ret[i] = $"MPacketSender {{{Owner.ConnList[i].Name}}}";
-				return ret;
-			}
-			protected override string[] GetBuffers () {
-				int N = Owner.MsgQueue.Count;
-				string[] ret = new string[N];
-				int ID = 0;
-				foreach ( var msg in Owner.MsgQueue )
-					ret[ID++] = msg.Span.ToHex ();
-				return ret;
-			}
-			public override string AllInfo () => $"{base.AllInfo ()}{BR}Callback:{BR}{string.Join (", ", LocalCallbacks)}";
 		}
 	}
 }

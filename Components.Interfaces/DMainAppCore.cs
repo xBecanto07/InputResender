@@ -85,7 +85,7 @@ public abstract class DMainAppCore : CoreBase {
 			( core ) => new MInputParser ( core ),
 			( core ) => new MInputProcessor ( core ),
 			( core ) => new MDataSigner ( core ),
-			( core ) => new MPacketSender ( core ),
+			( core ) => MPacketSender.Fetch ( 0, core ),
 			( core ) => new VMainAppControls ( core ),
 			( core ) => null,
 			( core ) => new VCommandWorker ( core ),
