@@ -77,11 +77,11 @@ public class ConnectionManagerCommand : ACommand {
 		}
 	}
 
-	private CallbackResult RecvCallback ( HMessageHolder data, bool wasProcessed ) {
+	private CallbackResult RecvCallback ( NetMessagePacket data, bool wasProcessed ) {
 		switch ( CBSelector ) {
 		case CBSel.None: return CallbackResult.Skip | CallbackResult.Stop;
 		case CBSel.Print:
-			lastContext.CmdProc.ProcessLine ( $"print \"{System.Text.Encoding.UTF8.GetString ( data.InnerMsg )}\"" );
+			lastContext.CmdProc.ProcessLine ( $"print \"{System.Text.Encoding.UTF8.GetString ( data.Data.InnerMsg )}\"" );
 			return CallbackResult.None;
 		default: return CallbackResult.Skip;
 		}

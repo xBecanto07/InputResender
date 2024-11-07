@@ -98,7 +98,7 @@ public class NetClientList {
 	public NetworkConnection Connect ( INetPoint targEP, int timeout = 1000 ) {
 		if ( targEP == null ) throw new ArgumentNullException ( nameof ( targEP ) );
 		INetPoint locEP = SelectProperLocalPoint ( targEP );
-		if ( locEP == null ) throw new InvalidOperationException ( $"No local point available for {targEP}" );
+		if ( locEP == null ) throw new InvalidOperationException ( $"No local point available for {targEP}\nAvailable are: {string.Join ( " | ", Devices.Keys )}" );
 		if ( Conns.ContainsKey ( targEP ) ) throw new InvalidOperationException ( $"Connection to {targEP} already exists" );
 
 		if ( !Devices.TryGetValue ( locEP, out var locDev ) ) throw new InvalidOperationException ( $"No device for {locEP}" );

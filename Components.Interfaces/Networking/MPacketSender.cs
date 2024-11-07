@@ -65,11 +65,10 @@ public class MPacketSender : DPacketSender, INetPoint, INetDevice {
 	public override bool IsEPConnected ( INetPoint ep ) => Conns.ContainsKey ( (MPacketSender)ep );
 	public override INetPoint OwnEP ( int TTL, int network ) => this;
 
-	public override void Recv ( byte[] data ) {
+	public override void Recv ( NetMessagePacket data ) {
 		bool proc = false;
-		var msg = (HMessageHolder)data;
 		List<OnReceiveHandler> removedCBs = new ();
-		OnReceive?.Invoke ( msg, false );
+		OnReceive?.Invoke ( data, false );
 		// This doesn't support buffering nor requesting listening cancelation, if not explicitly required (e.g. by tests), this should be enough for mocks
 	}
 
@@ -143,7 +142,7 @@ public class MPacketSender : DPacketSender, INetPoint, INetDevice {
 		if ( packet.TargetEP is not MPacketSender mp ) return false;
 		if ( !Conns.TryGetValue ( mp, out var connInfo ) ) return false;
 		if ( connInfo.Connection == null ) return false;
-		mp.Recv ( (byte[])packet.Data );
+		mp.Recv ( packet );
 		return true;
 		//return connInfo.Receiver?.Invoke ( packet ) == INetDevice.ProcessResult.Accepted;
 	}

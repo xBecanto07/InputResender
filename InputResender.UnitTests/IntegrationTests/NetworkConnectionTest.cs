@@ -5,10 +5,12 @@ using System.Text.RegularExpressions;
 using InputResender.Services.NetClientService.InMemNet;
 using Components.Interfaces;
 using Components.Interfaces.Commands;
-using InputResender.Services.NetClientService;
-using System.Collections.Concurrent;
 using InputResender.Services;
+using System;
 using System.Text;
+using System.Threading;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace InputResender.UnitTests.IntegrationTests;
 public class NetworkConnectionTest {
@@ -66,21 +68,24 @@ public class NetworkConnectionTest {
 		return conn;
 	}
 
-	private byte[] AssertMessage (BlockingCollection<(HMessageHolder, bool)> recvList, string expMsg, INetPoint from, INetPoint to ) {
+	private byte[] AssertMessage (BlockingCollection<(NetMessagePacket, bool)> recvList, string expMsg, INetPoint from, INetPoint to ) {
 		CancellationTokenSource cts = new ( 200 );
 		NetworkConnection conn;
-		HMessageHolder msg;
+		NetMessagePacket msg;
 		try {
 			(msg, _) = recvList.Take ( cts.Token );
 		} catch ( OperationCanceledException e ) {
 			throw new Exception ( $"Timeout waiting for message{Environment.NewLine}{string.Join ( Environment.NewLine + "  ", Errors )}", e );
 		} finally { cts.Dispose (); }
 		msg.Should ().NotBeNull ();
-		msg.InnerMsg.Should ().Equal ( Encoding.UTF8.GetBytes ( expMsg ) );
+		msg.Data.InnerMsg.Should ().Equal ( Encoding.UTF8.GetBytes ( expMsg ) );
 		//msg.Sender.Should ().Be ( from );
 		//msg.Target.Should ().Be ( to );
-		Assert.Fail ( "Cannot test sender/target right now!" ); // DPacketSender is expected to change from using Object to INetPoint
-		return msg.InnerMsg;
+		msg.IsFrom ( from ).Should ().BeTrue ();
+		msg.IsFor ( to ).Should ().BeTrue ();
+		msg.IsFor ( from ).Should ().BeFalse ();
+		msg.IsFrom ( to ).Should ().BeFalse ();
+		return msg.Data.InnerMsg;
 	}
 
 	[Fact]
@@ -95,7 +100,7 @@ public class NetworkConnectionTest {
 		Output.WriteLine ( $"Using EPs: {EPA} and {EPB}" );
 
 		BlockingCollection<object> connsA = new (), connsB = new ();
-		BlockingCollection<(HMessageHolder, bool)> recvA = new (), recvB = new ();
+		BlockingCollection<(NetMessagePacket, bool)> recvA = new (), recvB = new ();
 		SetNetworkCallback ( sender,( obj ) => {
 			connsA.Add ( obj );
 			}, ( data, wasProcessed ) => {

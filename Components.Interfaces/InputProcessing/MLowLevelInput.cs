@@ -46,6 +46,7 @@ namespace Components.Interfaces {
 			return ret;
 		}
 		private bool SimulateSingleInput ( HInputData data, int nCode ) {
+			Owner.PushDelayedMsg ( $"Trying to simulate input {data} with nCode:{nCode}" );
 			if ( data == null || data.Data == null ) return false;
 			var innerData = data.Data;
 			var values = (HInputData_Mock.IInputStruct_Mock)innerData;
@@ -86,7 +87,7 @@ namespace Components.Interfaces {
 			if ( HookList.TryGetValue ( hookID, out var hook ) ) {
 				int nnCode = nCode < 0 ? -1 : 1;
 				hook.Callback ( nnCode, wParam, lParam );
-			}
+			} else Owner.PushDelayedMsg ( $"Hook with key {hookID} was not found!" );
 		}
 		public void SetMockReturn ( Part part, bool validReturn ) {
 			switch ( part ) {

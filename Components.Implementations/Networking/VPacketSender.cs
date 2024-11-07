@@ -11,7 +11,8 @@ namespace Components.Implementations {
 	/// <summary>This serves mostly as a translation layer between the DPacketSender and the NetClientList</summary>
 	public class VPacketSender : DPacketSender {
 		public const int MaxBufferSize = 32;
-		public static int DefPort = 45256;
+		private object lockObj = new ();
+		private static int DefPort = 45256;
 		public readonly int Port;
 		readonly NetClientList Clients;
 		List<(string msg, Exception e)> errors;
@@ -48,7 +49,9 @@ namespace Components.Implementations {
 			if ( !Owner.IsRegistered ( nameof ( DLogger ) ) ) new VLogger ( Owner );
 			errors = new List<(string msg, Exception e)> ();
 			if ( onErrorSub != null ) OnError += onErrorSub;
-			Port = port < 0 ? DefPort++ : port;
+			lock (lockObj) {
+				Port = port < 0 ? DefPort++ : port;
+			}
 			NetList = new NetList ().ToList ( Port );
 			NetList.Insert ( 0, INetPoint.NextAvailable<InMemNetPoint> ( 1, Port ) );
 			PacketBuffer = new ( MaxBufferSize );
@@ -62,9 +65,9 @@ namespace Components.Implementations {
 				foreach ( var node in network ) {
 					// Skip if already added
 					if ( Clients.OwnedDevices.Keys.Any ( ep => node.Equals ( ep ) ) ) continue;
-					Owner.Fetch<DLogger> ().Log ( $"Trying to add {node} '{node.DscName}' as a valid local EP" );
 					try {
 						Clients.AddEP ( node );
+						Owner.Fetch<DLogger> ().Log ( $"Added {node} '{node.DscName}' as a valid local EP" );
 					} catch ( Exception e ) {
 						PrintError ( $"Failed to add {node} as a valid local EP", e );
 					}
@@ -79,6 +82,7 @@ namespace Components.Implementations {
 		}
 		private void PrintError (string msg, Exception e) {
 			errors.Add ( (msg, e) );
+			Owner.Fetch<DLogger> ().Log ( $"ERROR: {msg} ({e.Message})" );
 			OnErrorLocal?.Invoke ( msg, e );
 		}
 
@@ -119,7 +123,7 @@ namespace Components.Implementations {
 			lock ( PacketBuffer ) {
 				//if ( Receiver != null ) return Receiver ( msg.Data ) ? INetDevice.ProcessResult.Accepted : INetDevice.ProcessResult.Skiped;
 				foreach ( var handler in OnReceiveHandlers ) {
-					var ret = handler ( msg.Data, false );
+					var ret = handler ( msg, false );
 					if ( ret.HasFlag ( CallbackResult.Skip ) ) return INetDevice.ProcessResult.Skiped;
 					if ( !ret.HasFlag ( CallbackResult.Stop ) ) return INetDevice.ProcessResult.Accepted;
 				}
@@ -136,7 +140,7 @@ namespace Components.Implementations {
 					List<NetMessagePacket> declined = new ();
 					while ( PacketBuffer.Count > 0 ) {
 						var msg = PacketBuffer.Take ();
-						var ret = value ( msg.Data, false );
+						var ret = value ( msg, false );
 						if ( !ret.HasFlag ( CallbackResult.Skip) ) declined.Add ( msg );
 						if ( ret.HasFlag( CallbackResult.Stop) ) return; // Caller does no longer want to receive (might be due to a full buffer, error or received specific message)
 					}
@@ -151,7 +155,7 @@ namespace Components.Implementations {
 				}
 			}
 		}
-		public override void Recv ( byte[] data ) => throw new NotImplementedException ();
+		public override void Recv ( NetMessagePacket data ) => throw new NotImplementedException ();
 		public override void Send ( HMessageHolder data ) {
 			if ( Owner.LogFcn != null ) {
 				System.Text.StringBuilder SB = new ();

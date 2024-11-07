@@ -113,6 +113,7 @@ namespace Components.Interfaces {
 		private nint LLCallback ( int nCode, IntPtr wParam, IntPtr lParam ) {
 			MsgID++;
 			Log?.Invoke ( nCode, wParam, lParam );
+			Owner.Owner.PushDelayedMsg ($"Callback for input: {nCode}, {wParam}, {lParam}");
 			if ( (int)wParam == 0x0101 ) {
 				;
 			}

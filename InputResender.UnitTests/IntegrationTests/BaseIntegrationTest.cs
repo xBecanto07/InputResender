@@ -20,7 +20,7 @@ public class BaseIntegrationTest {
 		console = new ( StdOut.Add, StdIn.Take, Write, null, null );
 		cliWrapper = new ( console );
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
-		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => throw new NotImplementedException () ) );
+		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => throw new System.NotImplementedException () ) );
 		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
 		cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader () );
 

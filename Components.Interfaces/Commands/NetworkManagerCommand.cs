@@ -131,12 +131,12 @@ public class NetworkCallbacks : ACommand {
 		}
 	}
 
-	private DPacketSender.CallbackResult RecvCallback ( HMessageHolder msg, bool wasProcessed ) {
-		byte[] binData = msg.InnerMsg;
+	private DPacketSender.CallbackResult RecvCallback ( NetMessagePacket msg, bool wasProcessed ) {
+		byte[] binData = msg.Data.InnerMsg;
 		switch ( RecvCB ) {
 		case CallbackType.None: return DPacketSender.CallbackResult.Skip;
 		case CallbackType.Print:
-			string printInfo = $"Received {msg.Size} bytes ({(wasProcessed ? "already processed" : "not processed")}): ";
+			string printInfo = $"Received {binData.Length} bytes ({(wasProcessed ? "already processed" : "not processed")}): ";
 			if ( binData.All ( b => b >= 32 && b < 127 ) ) printInfo += $"'{System.Text.Encoding.UTF8.GetString ( binData )}'";
 			else printInfo += $"{binData.ToHex ()}";
 			lastContext.CmdProc.ProcessLine ( $"print \"{printInfo}\"" );

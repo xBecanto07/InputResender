@@ -182,12 +182,13 @@ namespace Components.Library {
 			OnError?.Invoke ( msg );
 		}
 		public void FlushDelayedMsgs ( Action<string> printer = null ) {
+			var cmdProc = Fetch<CommandProcessor> ();
+			if ( cmdProc == null ) return;
+
 			lock ( DelayedMessages ) {
 				if ( !DelayedMessages.Any () ) return;
 				var PrintFcn = printer ?? LogFcn;
 				if ( PrintFcn == null ) {
-					var cmdProc = Fetch<CommandProcessor> ();
-					if ( cmdProc == null ) throw new Exception ( "No printer function available!" );
 					PrintFcn = ( msg ) => cmdProc.ProcessLine ( $"print \"{msg}\"" );
 				}
 

@@ -85,12 +85,12 @@ namespace Components.InterfaceTests {
 			}
 		}
 
-		protected CallbackResult SimpleCallback ( HMessageHolder data, bool processed ) {
+		protected CallbackResult SimpleCallback ( NetMessagePacket data, bool processed ) {
 			try {
-				Received.Add ( data.InnerMsg[1], $"{data.InnerMsg[0]};{data.InnerMsg[1]};{data.Span.CalcHash ()}" );
+				Received.Add ( data.Data.InnerMsg[1], $"{data.Data.InnerMsg[0]};{data.Data.InnerMsg[1]};{data.Data.Span.CalcHash ()}" );
 			} catch ( ArgumentException e ) {
 				if ( e.Message.Contains ( "item with the same key" ) )
-					throw new ArgumentException ( $"Msg#{data.InnerMsg[1]} was already received. Currently known messages are: {string.Join ( ", ", Received.Keys )}" );
+					throw new ArgumentException ( $"Msg#{data.Data.InnerMsg[1]} was already received. Currently known messages are: {string.Join ( ", ", Received.Keys )}" );
 				else throw;
 			}
 			resetEvent.Set ();
@@ -113,15 +113,15 @@ namespace Components.InterfaceTests {
 		protected void Connect ( TestObjT A, TestObjT B, INetPoint aEP, INetPoint bEP ) {
 			A.Connect ( bEP );
 			//B.Connect ( aEP ); // Connection is establish both ways
-			A.Connections.Should ().Be ( 1 );
-			B.Connections.Should ().Be ( 1 );
+			A.Connections.Should ().Be ( 1, "A should be connected only to B" );
+			B.Connections.Should ().Be ( 1, "B should be connected only to A" );
 			A.IsEPConnected ( bEP ).Should ().BeTrue ();
 			B.IsEPConnected ( aEP ).Should ().BeTrue ();
 		}
 		protected void Disconnect ( TestObjT A, TestObjT B, INetPoint aEP, INetPoint bEP ) {
 			A.Disconnect ( bEP );
-			A.Connections.Should ().Be ( 0 );
-			B.Connections.Should ().Be ( 0 );
+			A.Connections.Should ().Be ( 0, "the only connection (A->B) should have been closed" );
+			B.Connections.Should ().Be ( 0, "the only connection (A->B) should have been closed on both ends" );
 			A.IsEPConnected ( bEP ).Should ().BeFalse ();
 			B.IsEPConnected ( aEP ).Should ().BeFalse ();
 		}

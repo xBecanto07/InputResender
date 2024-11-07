@@ -15,7 +15,7 @@ namespace InputResender.Services {
 		string FullNetworkPath { get; }
 		int PrefixLength { get; }
 
-		public static INetPoint NextAvailable<T> ( int wantedPort, string addr = null ) where T : INetPoint => NextAvailable<T> ( 0, wantedPort, addr )[0];
+		public static INetPoint NextAvailable<T> ( int wantedPort, string addr = null ) where T : INetPoint => NextAvailable<T> ( 1, wantedPort, addr )[0];
 
 		public static INetPoint[] NextAvailable<T> ( int N, int wantedPort, string addr = null ) where T : INetPoint {
 			var ar = new INetPoint[N];

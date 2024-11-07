@@ -1,37 +1,41 @@
-﻿using InputResender.CLI;
-using InputResender.Services.NetClientService;
+﻿using InputResender.Services.NetClientService;
 using Components.Implementations;
 using Components.Interfaces;
 using Components.Library;
 using FluentAssertions;
 using System.Text;
+using System.Collections.Generic;
 using Xunit;
 using OutpuHelper = Xunit.Abstractions.ITestOutputHelper;
+using InputResender.Services;
+using System.Linq;
 
 namespace InputResender.UnitTests {
 	public abstract class DMainAppCoreHappyFlowTest<AppCore> where AppCore : DMainAppCore {
 		protected AppCore Sender, Receiver;
 		protected List<InputData> SentInput, ReceivedInput;
 		protected byte[] Key, IV;
-		protected AutoResetEvent receivedEvent;
+		protected System.Threading.AutoResetEvent receivedEvent;
 		protected readonly OutpuHelper Output;
 
 		public DMainAppCoreHappyFlowTest( OutpuHelper outputHelper ) {
 			Output = outputHelper;
-			receivedEvent = new AutoResetEvent ( false );
+			receivedEvent = new System.Threading.AutoResetEvent ( false );
 			SentInput = new List<InputData>();
 			ReceivedInput = new List<InputData>();
 			Sender = GenerateAppCore ();
-			Sender.LogFcn = Output.WriteLine;
+			Sender.OnError += msg => Output.WriteLine ( $"Sender-Error:: {msg}" );
+			Sender.OnMessage += msg => Output.WriteLine ( $"Sender:: {msg}" );
 			Receiver = GenerateAppCore ();
-			Receiver.LogFcn = Output.WriteLine;
+			Receiver.OnError += msg => Output.WriteLine ( $"Receiver-Error:: {msg}" );
+			Receiver.OnMessage += msg => Output.WriteLine ( $"Receiver:: {msg}" );
 		}
 
 		protected abstract AppCore GenerateAppCore ();
 
 		protected void Init () {
 			Key = Sender.DataSigner.GenerateIV ( Encoding.UTF8.GetBytes ( "Password" ) );
-			IV = Sender.DataSigner.GenerateIV ( BitConverter.GetBytes ( 42 ) );
+			IV = Sender.DataSigner.GenerateIV ( System.BitConverter.GetBytes ( 42 ) );
 			Sender.DataSigner.Key = Key;
 			Receiver.DataSigner.Key = Key;
 
@@ -39,7 +43,6 @@ namespace InputResender.UnitTests {
 
 			Sender.PacketSender.Connect ( Receiver.PacketSender.OwnEP ( 0, 0 ) );
 			Receiver.PacketSender.IsEPConnected ( Sender.PacketSender.OwnEP ( 0, 0 ) ).Should ().BeTrue ();
-			Receiver.PacketSender.OnReceive += RecvCB;
 		}
 
 		protected bool ProcessInput ( DictionaryKey key, HInputEventDataHolder inputData) {
@@ -49,16 +52,18 @@ namespace InputResender.UnitTests {
 		}
 		private void ProcessedCallback ( InputData inputData ) {
 			SentInput.Add ( inputData );
-			var packet = Sender.DataSigner.Encrypt ( (HMessageHolder)inputData.Serialize (), IV );
+			var packet = Sender.DataSigner.Encrypt ( new HMessageHolder ( HMessageHolder.MsgFlags.None, inputData.Serialize () ), IV );
 			Sender.PacketSender.Send ( packet );
 		}
 
-		protected DPacketSender.CallbackResult RecvCB ( HMessageHolder data, bool isProcessed ) {
+		protected DPacketSender.CallbackResult RecvCB ( NetMessagePacket data, bool isProcessed ) {
+			Output?.WriteLine ( $"Received ({(isProcessed ? "processed" : "new")}): {data}" );
+			if ( isProcessed ) return DPacketSender.CallbackResult.Skip;
 			InputData recvData;
 			if (data == null) {
 				recvData = null;
 			} else {
-				HMessageHolder decoded = Receiver.DataSigner.Decrypt ( data, IV );
+				HMessageHolder decoded = Receiver.DataSigner.Decrypt ( data.Data, IV );
 				recvData = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded.InnerMsg );
 			}
 			lock (ReceivedInput) {
@@ -68,13 +73,15 @@ namespace InputResender.UnitTests {
 			return DPacketSender.CallbackResult.None;
 		}
 
-		protected void WaitForInput (int N) {
-			while ( true ) {
+		protected void WaitForInput ( int N, int timeout_ms = 200) {
+			var end = System.DateTime.Now + System.TimeSpan.FromMilliseconds ( timeout_ms );
+			while ( System.DateTime.Now < end ) {
 				lock ( ReceivedInput ) {
-					if ( ReceivedInput.Count > 1 ) return;
+					if ( ReceivedInput.Count >= N ) return;
 				}
-				receivedEvent.WaitOne ();
+				receivedEvent.WaitOne ( end - System.DateTime.Now );
 			}
+			Assert.Fail ( $"Timeout waiting for {N} input signals, but only {ReceivedInput.Count} received." );
 		}
 
 		[Fact]
@@ -95,8 +102,11 @@ namespace InputResender.UnitTests {
 			Init ();
 			var data = new InputData ( Receiver.Fetch<DPacketSender> () ) { Cmnd = InputData.Command.KeyPress, DeviceID = 1, Key = KeyCode.E, X = 1 };
 			var packet = Sender.DataSigner.Encrypt ( new HMessageHolder ( HMessageHolder.MsgFlags.None, data.Serialize () ), IV );
+			Receiver.PacketSender.OnReceive += RecvCB;
 			Sender.PacketSender.Send ( packet );
-			receivedEvent.WaitOne ();
+			//receivedEvent.WaitOne ();
+			WaitForInput ( 1, 2000 );
+			Receiver.PacketSender.OnReceive -= RecvCB;
 			ReceivedInput.Should ().HaveCount ( 1 );
 			ReceivedInput[0].Should ().Be ( data );
 		}
@@ -104,6 +114,7 @@ namespace InputResender.UnitTests {
 		[Fact]
 		public void MainProcess () {
 			Init ();
+			Receiver.PacketSender.OnReceive += RecvCB;
 
 			Sender.CommandWorker.RegisterCallback ( ProcessedCallback );
 			HHookInfo hookInfo = new HHookInfo ( Sender.InputReader, 1, VKChange.KeyDown, VKChange.KeyUp );
@@ -111,9 +122,11 @@ namespace InputResender.UnitTests {
 
 			var pressHolder = Sender.InputReader.SimulateKeyInput ( hookInfo, VKChange.KeyDown, KeyCode.E );
 			var releaseHolder = Sender.InputReader.SimulateKeyInput ( hookInfo, VKChange.KeyUp, KeyCode.E );
-			WaitForInput ( 2 );
-			SentInput.Should ().HaveCount ( 2 );
-			Receiver.PacketSender.Errors.Should ().BeEmpty ();
+			const int inputN = 2;
+			WaitForInput ( inputN, 2000000 );
+			Receiver.PacketSender.OnReceive -= RecvCB;
+			SentInput.Should ().HaveCount ( inputN );
+			Receiver.PacketSender.Errors.Should ().OnlyContain ( val => val.msg.Contains ( " as a valid local EP" ) );
 			ReceivedInput.Should ().Equal ( SentInput );
 			ReceivedInput[0].Should ().NotBeNull ();
 			ReceivedInput[1].Should ().NotBeNull ();

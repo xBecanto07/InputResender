@@ -81,9 +81,9 @@ public class Program {
 		}
 	}
 
-	static CallbackResult LocalReceiver ( HMessageHolder data, bool sentStatus ) {
-		string msgText = System.Text.Encoding.UTF8.GetString ( data.InnerMsg );
-		Console.WriteLine ( $"Received {data.Length} bytes ({msgText})" );
+	static CallbackResult LocalReceiver ( NetMessagePacket data, bool sentStatus ) {
+		string msgText = System.Text.Encoding.UTF8.GetString ( data.Data.InnerMsg );
+		Console.WriteLine ( $"Received {data.Data.Length} bytes ({msgText})" );
 		return CallbackResult.None;
 	}
 

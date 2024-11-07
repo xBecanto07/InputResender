@@ -3,6 +3,7 @@ using System.Net;
 using InputResender.Services.NetClientService;
 using Components.Library;
 using static Components.Interfaces.DPacketSender;
+using InputResender.Services;
 
 namespace Components.Interfaces {
 	public abstract class DMainAppControls : ComponentBase<DMainAppCore> {
@@ -70,9 +71,9 @@ namespace Components.Interfaces {
 				}
 			}
 		}
-		private CallbackResult PrivRecvCallback ( HMessageHolder data, bool processed ) {
+		private CallbackResult PrivRecvCallback ( NetMessagePacket data, bool processed ) {
 			if ( !receiving ) return CallbackResult.Stop;
-			var packet = Owner.DataSigner.Encrypt ( data );
+			var packet = Owner.DataSigner.Encrypt ( data.Data );
 			if ( lastInputData == null ) lastInputData = new InputData ( this ); // Prepare the 'deserializer' (cannot be static couse it inherits)
 			lastInputData = (InputData)lastInputData.Deserialize ( packet.InnerMsg );
 			recvCallback?.Invoke ( lastInputData );
@@ -84,7 +85,11 @@ namespace Components.Interfaces {
 		public override Action<InputData> ReceiveCallback { set { recvCallback = value ?? Owner.CommandWorker.Push; } }
 		[Obsolete]
 		public override void ChangeHookStatus ( HHookInfo hookInfo, bool active ) {
-			throw new NotImplementedException ();
+			if (active) {
+				// Activate hooks
+				var hookIDs = Owner.InputReader.SetupHook ( hookInfo, HookFastCallback, HookCallback );
+				foreach ( var id in hookIDs ) hookInfo.AddHookID ( id.Value, id.Key );
+			} else throw new NotImplementedException ();
 				/*if ( active ) {
 					var hookIDs = Owner.InputReader.SetupHook ( hookInfo, HookFastCallback, HookCallback );
 					foreach ( var id in hookIDs ) hookInfo.AddHookID ( id );

@@ -9,9 +9,8 @@ using Xunit.Abstractions;
 
 namespace Components.ImplementationTests; 
 public class VPacketSenderTest : DPacketSenderTest<VPacketSender> {
-	static int Port = VPacketSender.DefPort;
 	public VPacketSenderTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
-	public override VPacketSender GenerateTestObject () => new VPacketSender ( OwnerCore, Port++ );
+	public override VPacketSender GenerateTestObject () => new VPacketSender ( OwnerCore );
 
 	protected override bool IsErrorCritical ( string msg, Exception e, VPacketSender Aobj, object AEP, VPacketSender Bobj, object BEP ) {
 		if ( msg.StartsWith ( "Failed to add " )
@@ -33,10 +32,12 @@ public class VPacketSenderTest : DPacketSenderTest<VPacketSender> {
 		IMEP.Should ().NotBeNull ();
 		yield return IMEP;
 
+		Output?.WriteLine ( $"All loopback devices: {string.Join ( ", ", allEPs.OfType<IPNetPoint> ().Where ( ep => ep.LowLevelEP ().Address.Equals ( IPAddress.Loopback ) ) )}" );
 		IPNetPoint localhostEP = allEPs.OfType<IPNetPoint> ().FirstOrDefault ( ep => ep.LowLevelEP ().Address.Equals ( IPAddress.Loopback ), null );
 		localhostEP.Should ().NotBeNull ();
 		yield return localhostEP;
 
+		Output?.WriteLine ( $"All local devices: {string.Join ( ", ", allEPs.OfType<IPNetPoint> ().Where ( ep => IsLocal ( ep.LowLevelEP () ) ) )}" );
 		IPNetPoint privateNetEP = allEPs.OfType<IPNetPoint> ().FirstOrDefault ( ep => IsLocal ( ep.LowLevelEP () ), null );
 		privateNetEP.Should ().NotBeNull ();
 		yield return privateNetEP;

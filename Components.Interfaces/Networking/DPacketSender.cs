@@ -6,7 +6,7 @@ namespace Components.Interfaces {
 	public abstract class DPacketSender : ComponentBase<CoreBase> {
 		public DPacketSender ( CoreBase owner ) : base ( owner ) { }
 
-		public delegate CallbackResult OnReceiveHandler ( HMessageHolder data, bool wasProcessed );
+		public delegate CallbackResult OnReceiveHandler ( NetMessagePacket data, bool wasProcessed );
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(Connect), typeof(void)),
@@ -15,10 +15,10 @@ namespace Components.Interfaces {
 				(nameof(Recv), typeof(void)),
 				("add_"+nameof(OnReceive), typeof(void)),
 				("remove_"+nameof(OnReceive), typeof(void)),
-				("get_"+nameof(EPList), typeof(IReadOnlyList<IReadOnlyList<object>>)),
+				("get_"+nameof(EPList), typeof(IReadOnlyList<IReadOnlyList<INetPoint>>)),
 				("get_"+nameof(Connections), typeof(int)),
 				("get_"+nameof(Errors), typeof(IReadOnlyCollection<(string msg, Exception e)>)),
-				(nameof(OwnEP), typeof(object)),
+				(nameof(OwnEP), typeof(INetPoint)),
 				(nameof(Destroy), typeof(void)),
 				(nameof(IsEPConnected), typeof(bool)),
 				(nameof(IsPacketSenderConnected), typeof(bool)),
@@ -39,7 +39,7 @@ namespace Components.Interfaces {
 		public abstract void Disconnect ( INetPoint ep );
 		public abstract void Send ( HMessageHolder data );
 		/// <summary>Direct receive</summary>
-		public abstract void Recv ( byte[] data );
+		public abstract void Recv ( NetMessagePacket data );
 		/// <summary>List of all recv handlers. Will be iterated from newest to oldest. (NetPacket data, was procesed)=>CallbackResult</summary>
 		public abstract event OnReceiveHandler OnReceive;
 		public abstract event Action<NetworkConnection> OnNewConn;
