@@ -19,7 +19,7 @@ public class FactoryCommandsLoader : ACommandLoader {
 	protected override IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => new List<(string, Func<ACommand, ACommand>)> {
 		( "core", ( ACommand parent ) => {
 			if ( parent is CoreManagerCommand cmdCore )
-				RegisterSubCommand ( cmdCore, new CoreCreatorCommand () );
+				RegisterSubCommand ( cmdCore, new CoreCreatorCommand ( parent.CallName ) );
 			return null;
 		})
 	};

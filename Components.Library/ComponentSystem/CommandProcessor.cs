@@ -179,6 +179,6 @@ public class CommandProcessor : ComponentBase, IDisposable {
 			Console = console;
 			Args = args ?? new ( line, console.WriteLine );
 		}
-		public CmdContext Sub () => new ( CmdProc, Line, ArgID + 1, Console, Args );
+		public readonly CmdContext Sub (int offset = 1) => new ( CmdProc, Line, ArgID + offset, Console, Args );
 	}
 }

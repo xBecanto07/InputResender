@@ -25,5 +25,6 @@
     <ProjectReference Include="..\Components.LibraryTests\Components.LibraryTests.csproj" />
     <ProjectReference Include="..\InputResender.CLI\InputResender.CLI.csproj" />
     <ProjectReference Include="..\InputResender.Services\InputResender.Services.csproj" />
+    <ProjectReference Include="..\InputResender.WindowsGUI\InputResender.WindowsGUI.csproj" />
   </ItemGroup>
 </Project>

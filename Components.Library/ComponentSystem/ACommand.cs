@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Components.Library;
 public abstract class ACommand {
-	public static readonly IReadOnlyCollection<string> HelpSwitches = ["-h", "?", "help"];
+	public static readonly IReadOnlyCollection<string> HelpSwitches = ["-h", "?", "-?", "help", "--help"];
 	protected virtual int RequiredUnnamedArgs => 0;
 	public int RequiredArgC => RequiredUnnamedArgs + requiredSwitches.Count + requiredPositionals.Count;
 
@@ -15,22 +15,34 @@ public abstract class ACommand {
 	protected readonly Dictionary<int, bool> requiredPositionals = new ();
 	protected readonly Dictionary<string, ACommand> subCommands = new ();
 	protected readonly HashSet<string> interCommands = new ();
+	// InterCommand is only registered string switch that 'should' change behaviour inside the command. But SubCommand will switch to another command (i.e. different Object
 	public abstract string Description { get; }
 	public virtual string CallName { get => BasicCallName (); }
 	public virtual string Help { get => BasicHelp (); }
+	protected virtual int ArgsOffset => 0;
 
 	protected string BasicCallName () =>
-		(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First ();
+		(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First () + (commandNames.Count > 1 ? $"[.|{string.Join ( "|", commandNames.Skip ( 1 ) )}]" : string.Empty);
 	protected string BasicHelp () {
-		System.Text.StringBuilder SB = new ();
+		System.Text.StringBuilder SB = new ( "Usage: " );
 		SB.Append ( CallName );
+
 		if ( requiredPositionals.Count > 0 ) SB.Append ( " " + string.Join ( " ", requiredPositionals.Keys.Select ( i => requiredPositionals[i] ? $"[{i}]" : i.ToString () ) ) );
 		if ( requiredSwitches.Count > 0 ) SB.Append ( " [-" + string.Join ( "][-", requiredSwitches ) + "]" );
 		if ( interCommands.Any () ) SB.Append ( " (" + string.Join ( "|", interCommands ) + ")" );
-		SB.AppendLine ();
-		SB.AppendLine ( Description.PrefixAllLines ( " - " ) );
-		foreach ( ACommand cmd in subCommands.Values ) {
-			SB.AppendLine ( cmd.Help.PrefixAllLines ( " > " ) );
+		if ( Description.Contains ( '\n' ) || SB.Length + Description.Length > 90 ) {
+			SB.AppendLine ();
+			SB.AppendLine ( Description.PrefixAllLines ( " - " ) );
+		} else {
+			SB.Append ( ": " );
+			SB.AppendLine ( Description );
+		}
+
+		var subCmds = subCommands.FlipAndUnion ();
+		foreach ( var cmd in subCmds ) {
+			string cmdHelp = cmd.Key.Help.PrefixAllLines ( " > " );
+			SB.Append ( " + " );
+			SB.AppendLine ( cmdHelp[3..] );
 		}
 		return SB.ToString ().Trim ();
 	}
@@ -38,7 +50,12 @@ public abstract class ACommand {
 	/// <summary>Used to access help of parent command. If null, it's considered the root command. When not command 'history' is not known, it is recommended to provide constructor to your command accepting string parameter and passing it to base constructor.</summary>
 	public ACommand ( string parentHelp ) => parentCommandHelp = parentHelp ?? string.Empty;
 
-	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd, string name = null ) {
+	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd ) {
+		if ( owner == null ) throw new ArgumentNullException ( nameof ( owner ) );
+		foreach ( string name in nwCmd.commandNames )
+			RegisterSubCommand ( owner, nwCmd, name );
+	}
+	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd, string name ) {
 		if ( owner == null ) throw new ArgumentNullException ( nameof ( owner ) );
 		if ( string.IsNullOrEmpty ( name ) ) name = nwCmd.commandNames.First ();
 		if ( owner.subCommands.ContainsKey ( name ) ) owner.subCommands[name] = nwCmd;
@@ -49,28 +66,29 @@ public abstract class ACommand {
 	}
 
 	public virtual CommandResult Execute ( CommandProcessor.CmdContext context ) {
+		var localContext = context.Sub ( ArgsOffset );
 		// empty string should never reach this point, but better to catch any wrongly defined commands
-		if ( context.Args.ArgC < context.ArgID ) return new CommandResult ( new Exception ( "Not enough arguments provided." ) );
-		if ( HelpSwitches.Contains ( context[0] ) )
-			return new CommandResult ( Help + Environment.NewLine + " - " + Description );
+		if ( localContext.Args.ArgC < localContext.ArgID ) return new CommandResult ( new Exception ( "Not enough arguments provided." ) );
+		if ( HelpSwitches.Contains ( localContext.SubAction ) )
+			return new CommandResult ( Help );
 		//if ( context[0] == "clear" ) return ExecCleanup ( context );
 
 		// Note that erorr result needs to have exception specified, otherwise it will be treated as a successful result.
-		if ( context.Args.ArgC < RequiredArgC ) return new CommandResult ( new Exception ( $"Invalid argument count. Required: {RequiredArgC}, provided: {context.Args.ArgC}" ) );
+		if ( localContext.Args.ArgC < RequiredArgC ) return new CommandResult ( new Exception ( $"Invalid argument count. Required: {RequiredArgC}, provided: {localContext.Args.ArgC}" ) );
 
 		foreach ( string sw in requiredSwitches ) {
-			if ( !context.Args.Present ( sw ) ) return new CommandResult ( new Exception ( $"Switch '{sw}' is required but is not provided." ) );
+			if ( !localContext.Args.Present ( sw ) ) return new CommandResult ( new Exception ( $"Switch '{sw}' is required but is not provided." ) );
 		}
 
 		if ( requiredPositionals.Count > 0 ) {
 			int maxArg = requiredPositionals.Keys.Max ();
 			for ( int i = 0; i <= maxArg; i++ ) {
 				if ( !requiredPositionals.TryGetValue ( i, out bool rquiresValues ) ) return new CommandResult ( new ArgumentException ( $"Argument #{i} is either considered optional while requesting arguments at higher index or request of value was not defined for it." ) );
-				if ( !context.Args.Present ( i ) ) return new CommandResult ( new Exception ( $"Argument #{i} is required but is not provided." ) );
-				if ( rquiresValues && !context.Args.HasValue ( i, true ) ) return new CommandResult ( new Exception ( $"Argument #{i} requires a value but is not provided." ) );
+				if ( !localContext.Args.Present ( i ) ) return new CommandResult ( new Exception ( $"Argument #{i} is required but is not provided." ) );
+				if ( rquiresValues && !localContext.Args.HasValue ( i, true ) ) return new CommandResult ( new Exception ( $"Argument #{i} requires a value but is not provided." ) );
 			}
 		}
-		return ExecIner ( context );
+		return ExecIner ( localContext );
 	}
 
 	public virtual bool SubCommand ( ArgParser args, out ACommand cmd, ref int argID ) {
@@ -104,7 +122,9 @@ public abstract class ACommand {
 		helpRes = null;
 		string arg = args.String ( argID, null );
 		if ( !HelpSwitches.Contains ( arg ) ) return false;
-		helpRes = new CommandResult ( "Usage: " + helpFcn () );
+		string msg = helpFcn ();
+		if ( string.IsNullOrWhiteSpace ( msg ) ) return false;
+		helpRes = new CommandResult ( "Usage: " + msg );
 		return true;
 	}
 }

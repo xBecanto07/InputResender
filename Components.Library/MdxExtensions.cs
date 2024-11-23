@@ -200,4 +200,18 @@ public static class MdxExtensions {
 		if ( types.Any ( t => t.FullName == name ) ) return types.First ( t => t.FullName == name );
 		return null;
 	}
+
+	public static Dictionary<T, List<U>> FlipAndUnion<T, U> ( this Dictionary<U, T> dict ) {
+		if ( dict == null ) return null;
+		Dictionary<T, List<U>> ret = [];
+		foreach ( var item in dict ) {
+			if ( ret.TryGetValue ( item.Value, out List<U> lst ) ) {
+				lst.Add ( item.Key );
+			} else {
+				lst = [item.Key];
+				ret.Add ( item.Value, lst );
+			}
+		}
+		return ret;
+	}
 }

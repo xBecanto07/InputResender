@@ -3,6 +3,7 @@
 namespace Components.Library; 
 public class BasicCommands : ACommand {
 	override public string Description => "Basic commands.";
+	protected override int ArgsOffset => -1;
 	override public string Help => "help - Show this help." + Environment.NewLine +
 		"info - Show info." + Environment.NewLine +
 		"print <Text> - Print text." + Environment.NewLine +
@@ -34,28 +35,35 @@ public class BasicCommands : ACommand {
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		// Remember that these are individual commands, so ArgID will be -1 compared to 'norma' subcommand.
-		switch ( context.ParentAction ) {
+		switch ( context.SubAction ) {
 		case "help": return new CommandResult ( context.CmdProc.Help () );
-		case "print": Print ( context[0, "Text"] ); return new CommandResult ( context[0] );
+		case "print": Print ( context[1, "Text"] ); return new CommandResult ( context[1] );
 		case "info": return new CommandResult ( "InputResender v0.1" );
 		case "clear": Clear (); return new CommandResult ( "clear" );
 		case "exit": Exit (); return new CommandResult ( "exit" );
 		case "safemode": {
-			string val = context[0, "Value"];
+			if (TryPrintHelp ( context.Args, context.ArgID + 1, () => "safemode <(on|t|1)|(off|f|0)>\n - Enable or disable safe mode.", out var helpRes ) ) return helpRes;
+			string val = context[1, "Value"];
 			switch ( val.ToLower () ) {
 			case "on": case "t": case "1": context.CmdProc.SafeMode = true; return new CommandResult ( "Safe mode on." );
 			case "off": case "f": case "0": context.CmdProc.SafeMode = false; return new CommandResult ( "Safe mode off." );
 			default: return new CommandResult ( $"Unknown value '{val}'." );
 			}
 		}
-		case "loadall": return context.CmdProc.LoadAllCommands ();
-		case "argParse": return new CommandResult ( $"Entered {context.Args.ArgC} arguments:{Environment.NewLine}{context.Args.Log ()}" );
+		case "loadall":
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "loadall\n - Load all commands.", out var helpRes4 ) ) return helpRes4;
+			return context.CmdProc.LoadAllCommands ();
+		case "argParse":
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "argParse <line>\n - Print how given line was parsed into separate arguments", out var helpRes1 ) ) return helpRes1;
+			return new CommandResult ( $"Entered {context.Args.ArgC} arguments:{Environment.NewLine}{context.Args.Log ()}" );
 		case "argerrorlvl": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"argerrorlvl <level>\n - Set error reporting level\n level: Any of [{string.Join ( ", ", Enum.GetNames<ArgParser.ErrLvl> () )}]", out var helpRes2 ) ) return helpRes2;
 			var lvl = context.Args.EnumC<ArgParser.ErrLvl> ( 1, "Level" );
 			context.CmdProc.ArgErrorLevel = lvl;
 			return new CommandResult ( $"ArgParser error log level set to {lvl}." );
 		}
 		case "loglevel": {
+			if (TryPrintHelp (context.Args, context.ArgID + 1, () => $"loglevel <level>\n - Set log level\n level: Any of [{string.Join ( ", ", Enum.GetNames<CoreBase.LogLevel> () )}]", out var helpRes3 ) ) return helpRes3;
 			if ( context.CmdProc.Owner == null ) throw new InvalidOperationException ( "Owner core is not set." );
 			CoreBase.LogLevel level = context.Args.EnumC<CoreBase.LogLevel> ( 1, "Level" );
 			switch ( level ) {

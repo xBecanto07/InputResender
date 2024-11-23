@@ -3,6 +3,7 @@ using Components.Library;
 using InputResender.Commands;
 
 namespace Components.Implementations;
+// Better question than is: Does the 'newer' version needs to be under Implementations? On what variant and how it depends?
 public class HookManagerCommand : ACommand {
     HCallbackHolder<DHookManager.HookCallback> hookCallback;
     public enum CallbackFcn { None, Print, Aggregate }
@@ -27,7 +28,14 @@ public class HookManagerCommand : ACommand {
 		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		switch ( context.SubAction ) {
         case "manager": {
-            var manager = core.Fetch<DHookManager> ();
+            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook manager <Sub-action>\n\tSub-action: {{{string.Join ( "|", ["start", "status"] )}}}", out var helpRes1 ) ) return helpRes1;
+
+			if ( TryPrintHelp ( context.Args, context.ArgID + 2, () => context[1, "Sub-action"] switch {
+                "start" => "hook manager start: Start hook manager",
+				"status" => "hook manager status: Check if hook manager is running",
+                _ => null
+			}, out var helpRes2 ) ) return helpRes2;
+			var manager = core.Fetch<DHookManager> ();
             switch ( context[1, "Sub-action"] ) {
             case "start":
                 if ( manager != null ) return new CommandResult ( "Hook manager already started." );
@@ -82,8 +90,14 @@ public class HookManagerCommand : ACommand {
 
             return new CommandResult ( $"Hook added ({string.Join ( ", ", hookInfo )})." );
         }
-        case "remove": return new CommandResult ( "Removing hooks is not implemented." );
-        case "list": return new CommandResult ( "Listing hooks is not implemented." );
+        case "remove": {
+            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "hook remove <VKChange1> [<VKChange2> ...]: Not currently implemented.", out var helpRes ) ) return helpRes;
+			return new CommandResult ( "Removing hooks is not implemented." );
+        }
+        case "list": {
+            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "hook list: Not currently implemented.", out var helpRes ) ) return helpRes;
+			return new CommandResult ( "Listing hooks is not implemented." );
+        }
         default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
         }
     }

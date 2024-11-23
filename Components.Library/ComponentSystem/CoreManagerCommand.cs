@@ -18,6 +18,12 @@ public class CoreManagerCommand : ACommand {
 	}
 
 	protected override RetT ExecIner ( CommandProcessor.CmdContext context ) {
+		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+			"act" => "core act: Prints the name of the active core.",
+			"typeof" => "core typeof <Type>\n\tType: Subtype of ComponentBase to find what specific variant of the component is registered in active core.",
+			_ => null
+		}, out var helpRes ) ) return new ( null, helpRes.Message );
+
 		var core = context.CmdProc.GetVar<CoreBase> ( ActiveCoreVarName );
 		if ( core == null ) return new RetT ( null, "No active core." );
 
@@ -30,7 +36,7 @@ public class CoreManagerCommand : ACommand {
 			var reqComp = core.Fetch ( reqType );
 			if ( reqComp == null ) return new RetT ( core, $"Component of type {reqType.Name} not found." );
 			return new RetT ( core, $"For definition '{reqType.Name}' was found variant '{reqComp.GetType ().Name}'." );
-		default: return new RetT ( core, "Invalid action." );
+		default: return new RetT ( core, $"Invalid action '{context.SubAction}' for '{context.ParentAction}'." );
 		}
 	}
 }

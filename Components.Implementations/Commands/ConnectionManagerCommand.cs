@@ -22,6 +22,13 @@ public class ConnectionManagerCommand : ACommand {
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+			"list" => $"{context.ParentAction} list: List active connections",
+			"send" => $"{context.ParentAction} send <Target> <Data>: Send data to target\n\tTarget: Remote EP of any existing connection\n\tData: Data to send",
+			"close" => $"{context.ParentAction} close <Target>: Close connection\n\tTarget: Remote EP of any existing connection",
+			"callback" => $"{context.ParentAction} callback <Action>: Set callback for connection\n\tAction: {string.Join ( "|", Enum.GetNames<CBSel> () )}",
+			_ => $"Unknown action '{context.SubAction}'."
+		}, out var helpRes ) ) return helpRes;
 		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		if ( core.Fetch<DPacketSender> () is not VPacketSender sender )
 			return new CommandResult ( "No packet sender available." );

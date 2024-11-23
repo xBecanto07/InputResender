@@ -18,6 +18,7 @@ public class ContextVarCommands : ACommand {
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		switch ( context.SubAction ) {
 		case "set": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "context set <Variable type> <Variable name> <Variable value>\n\tVariable type: Type of variable: <string>\n\tVariable name: Name of the variable\n\tVariable value: Value to be assigned", out var helpRes ) ) return helpRes;
 			string varType = context[1, "Variable type"];
 			string varName = context[2, "Variable name"];
 			try {
@@ -32,6 +33,7 @@ public class ContextVarCommands : ACommand {
 			}
 		}
 		case "get": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "context get <Variable type> <Variable name> [<Array separator>]\n\tVariable type: Type of variable: <string|array.string>\n\tVariable name: Name of the variable\n\tArray separator: Separator for array values", out var helpRes ) ) return helpRes;
 			string varType = context[1, "Variable type"];
 			string varName = context[2, "Variable name"];
 			try {
@@ -50,6 +52,7 @@ public class ContextVarCommands : ACommand {
 			}
 		}
 		case "add": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "context add <Variable type> <Variable name> <Variable value>\n\tVariable type: Type of variable: <string|array.string>\n\tVariable name: Name of the variable\n\tVariable value: Value to be added", out var helpRes ) ) return helpRes;
 			string varType = context[1, "Variable type"];
 			string varName = context[2, "Variable name"];
 			try {
@@ -68,6 +71,7 @@ public class ContextVarCommands : ACommand {
 			}
 		}
 		case "reset": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "context reset <Variable type> <Variable name>\n\tVariable type: Type of variable: <string|array.string>\n\tVariable name: Name of the variable", out var helpRes ) ) return helpRes;
 			string varType = context[1, "Variable type"];
 			string varName = context[2, "Variable name"];
 			try {

@@ -32,6 +32,15 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 }*/
 
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		//if (TryPrintHelp(context.Args, context.ArgID + 1, () => "sim <Action> [Options]\n\tAction: {mousemove|keydown|keyup|keypress}\n\tOptions: Action specific options", out var helpRes ) ) return helpRes;
+		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+			"mousemove" => $"sim mousemove [-x <Xaxis>] [-y <Yaxis>]: Simulate mouse move event\n\t-x <Xaxis> = 0: X axis movement\n\t-y <Yaxis> = 0: Y axis movement",
+			"keydown" => "sim keydown <Key>: Simulate key down event (not yet implemented)\n\tKey: {{Windows-style keycode}}",
+			"keyup" => "sim keyup <Key>: Simulate key up event (not yet implemented)\n\tKey: {{Windows-style keycode}}",
+			"keypress" => $"sim keypress <Key>: Simulate key press event (keydown, keyup)\n\tKey: {{{string.Join ( "|", Enum.GetNames<KeyCode> () )}}}",
+			_ => null
+		}, out var helpRes ) ) return helpRes;
+
 		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		DInputSimulator sim = core.Fetch<DInputSimulator> ();
 		if ( sim == null ) throw new Exception ( "No InputSimulater registered in core" );
@@ -43,7 +52,6 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		case "keyup":
 			throw new NotImplementedException ();
 		case "keypress": {
-			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"sim keypress <Key>: Simulate key press event (keydown, keyup)\n\tKey: {{{string.Join ( "|", Enum.GetNames<KeyCode> () )}}}", out var helpRes ) ) return helpRes;
 			return new CommandResult ( "Under construction" );
 
 			//3hookManager.
@@ -55,7 +63,6 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 			return new CommandResult ( $"Sent {sent} key press events." );*/
 		}
 		case "mousemove": {
-			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"sim mousemove [-x <Xaxis>] [-y <Yaxis>]: Simulate mouse move event\n\t-x <Xaxis> = 0: X axis movement\n\t-y <Yaxis> = 0: Y axis movement", out var helpRes ) ) return helpRes;
 			return new CommandResult ( "Under construction" );
 			/*
 			context.Args.RegisterSwitch ( 'x', "Xaxis", "0" );

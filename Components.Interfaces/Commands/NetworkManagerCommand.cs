@@ -29,6 +29,8 @@ public class ListHostsNetworkCommand : ACommand {
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "network hostlist: Lists available local hosts", out var helpRes ) ) return helpRes;
+
 		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		var sender = core.Fetch<DPacketSender> ();
 		if ( sender == null ) return new CommandResult ( "No packet sender available." );
@@ -58,6 +60,12 @@ public class NetworkConnsManagerCommand : ACommand {
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+			"list" => "network conn list: Lists all connections",
+			"send" => "network conn send <Message>: Sends message to all connections\n\t<Message>: Message to send",
+			_ => null
+		}, out var helpRes ) ) return helpRes;
+
 		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		var sender = core.Fetch<DPacketSender> ();
 		if ( sender == null ) return new CommandResult ( "No packet sender available." );
@@ -95,6 +103,12 @@ public class NetworkCallbacks : ACommand {
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		if (TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+			"list" => "network callback list: Lists current callbacks",
+			"recv" => $"network callback recv <Callback>: Sets receive callback\n\t<Callback>: {{{string.Join ( ", ", Enum.GetNames ( typeof ( CallbackType ) ) )}}}",
+			"newconn" => $"network callback newconn <Callback>: Sets new connection callback\n\t<Callback>: {{{string.Join ( ", ", Enum.GetNames ( typeof ( CallbackType ) ) )}}}",
+		}, out var helpRes ) ) return helpRes;
+
 		lastContext = context;
 		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		var sender = core.Fetch<DPacketSender> ();
@@ -177,6 +191,11 @@ public class EndPointInfoCommand : ACommand {
 	}
 
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+			"info" => "network info <EndPoint>: Gets information about a specific endpoint\n\t<EndPoint>: IP end point or InMemNet point",
+			_ => null
+		}, out var helpRes ) ) return helpRes;
+
 		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		var sender = core.Fetch<DPacketSender> ();
 		if ( sender == null ) return new CommandResult ( "No packet sender available." );
