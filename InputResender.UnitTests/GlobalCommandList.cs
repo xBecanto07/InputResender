@@ -8,6 +8,9 @@ using InputResender.Commands;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using InputResender.WindowsGUI.Commands;
+using InputResender.WindowsGUI;
+using InputResender.OSDependent.Windows;
 
 namespace InputResender.UnitTests; 
 internal class GlobalCommandList {
@@ -31,9 +34,14 @@ internal class GlobalCommandList {
 		{ typeof ( CoreManagerCommand ), ["core", "core act", "core typeof"] },
 
 		{ typeof (DebugCommand), ["debug"] },
+		{ typeof (GUICommands), ["gui", "gui start", "gui stop"] },
+		{ typeof (ComponentVisualizer.ComponentVisualizerCommands), ["visualizer", "visualizer start", "visualizer stop", "visualizer update", "visualizer status"] },
+		{ typeof (WindowsCommands), ["windows", "windows load"] },
+		{ typeof (LowLevelInputCommand), ["hook inpll", "hook inpll list"] }
 	};
 
 	public readonly Dictionary<Type, List<Type>> Loaders = new () {
+		{typeof(TopLevelLoader), [typeof(GUICommands), typeof(ComponentVisualizer.ComponentVisualizerCommands), typeof(WindowsCommands), typeof (LowLevelInputCommand)] },
 		{typeof(FactoryCommandsLoader), [typeof(CoreManagerCommand), typeof(ConnectionManagerCommand), typeof(ComponentCommandLoader), typeof(ContextVarCommands), typeof(DebugCommand), typeof(CoreCreatorCommand)] },
 		{typeof(ComponentCommandLoader), [typeof(NetworkManagerCommand), typeof(PasswordManagerCommand), typeof(TargetManagerCommand), typeof(HookCallbackManagerCommand)] },
 		{typeof(InputCommandsLoader), [typeof(InputSimulatorCommand), typeof(HookManagerCommand)] },

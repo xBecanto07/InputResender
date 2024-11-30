@@ -13,7 +13,6 @@ public class GUICommands : ACommand {
     private MainScreen mainScreen;
 
     override public string Description => "Manages the GUI.";
-    override public string Help => $"{parentCommandHelp} {commandNames.First ()} (start|stop)";
 
     public GUICommands ( string parentHelp = null ) : base ( parentHelp ) {
         commandNames.Add ( "gui" );
@@ -25,7 +24,13 @@ public class GUICommands : ACommand {
     }
 
     override protected RetT ExecIner ( CommandProcessor.CmdContext context ) {
-        string act = context[0, "Action"];
+        if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+            "start" => $"{context.ParentAction} gui start: Starts the GUI",
+            "stop" => $"{context.ParentAction} gui stop: Stops the GUI",
+            _ => $"Unknown action '{context.SubAction}'",
+        }, out var helpRes ) ) return new ( null, helpRes.Message );
+
+		string act = context[0, "Action"];
         return act switch {
 			"start" => StartGUI ( context.CmdProc ),
 			"stop" => StopGUI ( context.CmdProc ),

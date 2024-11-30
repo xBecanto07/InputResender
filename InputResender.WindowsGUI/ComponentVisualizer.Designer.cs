@@ -23,6 +23,7 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent () {
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager ( typeof ( ComponentVisualizer ) );
 			MainAppControlsLabel = new System.Windows.Forms.Label ();
 			InputSimulatorLabel = new System.Windows.Forms.Label ();
 			CommandWorkerLabel = new System.Windows.Forms.Label ();
@@ -64,7 +65,7 @@
 			InputSimulatorLabel.AutoSize = true;
 			InputSimulatorLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			InputSimulatorLabel.ForeColor = System.Drawing.Color.Silver;
-			InputSimulatorLabel.Location = new System.Drawing.Point ( 12, 725 );
+			InputSimulatorLabel.Location = new System.Drawing.Point ( 400, 725 );
 			InputSimulatorLabel.Name = "InputSimulatorLabel";
 			InputSimulatorLabel.Size = new System.Drawing.Size ( 115, 20 );
 			InputSimulatorLabel.TabIndex = 30;
@@ -130,7 +131,7 @@
 			InputParserLabel.AutoSize = true;
 			InputParserLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			InputParserLabel.ForeColor = System.Drawing.Color.Silver;
-			InputParserLabel.Location = new System.Drawing.Point ( 12, 500 );
+			InputParserLabel.Location = new System.Drawing.Point ( 12, 725 );
 			InputParserLabel.Name = "InputParserLabel";
 			InputParserLabel.Size = new System.Drawing.Size ( 91, 20 );
 			InputParserLabel.TabIndex = 26;
@@ -163,7 +164,7 @@
 			EventVectorLabel.AutoSize = true;
 			EventVectorLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
 			EventVectorLabel.ForeColor = System.Drawing.Color.Silver;
-			EventVectorLabel.Location = new System.Drawing.Point ( 400, 725 );
+			EventVectorLabel.Location = new System.Drawing.Point ( 1200, 500 );
 			EventVectorLabel.Name = "EventVectorLabel";
 			EventVectorLabel.Size = new System.Drawing.Size ( 93, 20 );
 			EventVectorLabel.TabIndex = 24;
@@ -174,7 +175,8 @@
 			MainAppControlsGenericInfo.AutoSize = true;
 			MainAppControlsGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			MainAppControlsGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			MainAppControlsGenericInfo.Location = new System.Drawing.Point ( 12, 750 );
+			MainAppControlsGenericInfo.Location = new System.Drawing.Point ( 400, 750 );
+			MainAppControlsGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			MainAppControlsGenericInfo.Name = "MainAppControlsGenericInfo";
 			MainAppControlsGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			MainAppControlsGenericInfo.TabIndex = 32;
@@ -186,6 +188,7 @@
 			InputSimulatorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			InputSimulatorGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			InputSimulatorGenericInfo.Location = new System.Drawing.Point ( 1200, 300 );
+			InputSimulatorGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			InputSimulatorGenericInfo.Name = "InputSimulatorGenericInfo";
 			InputSimulatorGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			InputSimulatorGenericInfo.TabIndex = 32;
@@ -196,7 +199,8 @@
 			InputParserGenericInfo.AutoSize = true;
 			InputParserGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			InputParserGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			InputParserGenericInfo.Location = new System.Drawing.Point ( 12, 525 );
+			InputParserGenericInfo.Location = new System.Drawing.Point ( 12, 750 );
+			InputParserGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			InputParserGenericInfo.Name = "InputParserGenericInfo";
 			InputParserGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			InputParserGenericInfo.TabIndex = 32;
@@ -208,6 +212,7 @@
 			InputProcessorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			InputProcessorGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			InputProcessorGenericInfo.Location = new System.Drawing.Point ( 800, 75 );
+			InputProcessorGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			InputProcessorGenericInfo.Name = "InputProcessorGenericInfo";
 			InputProcessorGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			InputProcessorGenericInfo.TabIndex = 32;
@@ -219,6 +224,7 @@
 			DataSignerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			DataSignerGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			DataSignerGenericInfo.Location = new System.Drawing.Point ( 1200, 75 );
+			DataSignerGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			DataSignerGenericInfo.Name = "DataSignerGenericInfo";
 			DataSignerGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			DataSignerGenericInfo.TabIndex = 32;
@@ -230,6 +236,7 @@
 			PacketSenderGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			PacketSenderGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			PacketSenderGenericInfo.Location = new System.Drawing.Point ( 400, 75 );
+			PacketSenderGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			PacketSenderGenericInfo.Name = "PacketSenderGenericInfo";
 			PacketSenderGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			PacketSenderGenericInfo.TabIndex = 32;
@@ -241,6 +248,7 @@
 			ShortcutWorkerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			ShortcutWorkerGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			ShortcutWorkerGenericInfo.Location = new System.Drawing.Point ( 1200, 750 );
+			ShortcutWorkerGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			ShortcutWorkerGenericInfo.Name = "ShortcutWorkerGenericInfo";
 			ShortcutWorkerGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			ShortcutWorkerGenericInfo.TabIndex = 32;
@@ -252,6 +260,7 @@
 			CommandWorkerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			CommandWorkerGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			CommandWorkerGenericInfo.Location = new System.Drawing.Point ( 800, 750 );
+			CommandWorkerGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			CommandWorkerGenericInfo.Name = "CommandWorkerGenericInfo";
 			CommandWorkerGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			CommandWorkerGenericInfo.TabIndex = 32;
@@ -263,10 +272,11 @@
 			InputReaderGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			InputReaderGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			InputReaderGenericInfo.Location = new System.Drawing.Point ( 12, 300 );
+			InputReaderGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			InputReaderGenericInfo.Name = "InputReaderGenericInfo";
-			InputReaderGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
+			InputReaderGenericInfo.Size = new System.Drawing.Size ( 378, 150 );
 			InputReaderGenericInfo.TabIndex = 32;
-			InputReaderGenericInfo.Text = "Version: 0\r\nCreation time: 0-00-00\r\nName: #asdf\r\nVariant: VComponentMock";
+			InputReaderGenericInfo.Text = resources.GetString ( "InputReaderGenericInfo.Text" );
 			// 
 			// LowLevelInputGenericInfo
 			// 
@@ -274,6 +284,7 @@
 			LowLevelInputGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			LowLevelInputGenericInfo.ForeColor = System.Drawing.Color.Silver;
 			LowLevelInputGenericInfo.Location = new System.Drawing.Point ( 12, 75 );
+			LowLevelInputGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			LowLevelInputGenericInfo.Name = "LowLevelInputGenericInfo";
 			LowLevelInputGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			LowLevelInputGenericInfo.TabIndex = 32;
@@ -284,7 +295,8 @@
 			EventVectorGenericInfo.AutoSize = true;
 			EventVectorGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
 			EventVectorGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			EventVectorGenericInfo.Location = new System.Drawing.Point ( 400, 750 );
+			EventVectorGenericInfo.Location = new System.Drawing.Point ( 1200, 525 );
+			EventVectorGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
 			EventVectorGenericInfo.Name = "EventVectorGenericInfo";
 			EventVectorGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
 			EventVectorGenericInfo.TabIndex = 32;

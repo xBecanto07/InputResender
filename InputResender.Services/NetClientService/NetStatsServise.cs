@@ -56,5 +56,23 @@ namespace InputResender.Services {
 			}
 			return -1;
 		}
+
+
+
+		private static Object netIntObj = new Object ();
+		private static NetworkInterface[] netInterfaces = [];
+		private static DateTime lastNetInterfacesUpdate = DateTime.MinValue;
+		private static TimeSpan UpdateFreq = TimeSpan.FromSeconds ( 30 );
+
+		public static NetworkInterface[] GetAllNetworkInterfaces () {
+			lock ( netIntObj ) {
+				DateTime nextUpdate = lastNetInterfacesUpdate + UpdateFreq;
+				if ( DateTime.Now > nextUpdate ) {
+					lastNetInterfacesUpdate = DateTime.Now;
+					netInterfaces = NetworkInterface.GetAllNetworkInterfaces ();
+				}
+				return netInterfaces.Clone () as NetworkInterface[];
+			}
+		}
 	}
 }

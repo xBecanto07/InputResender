@@ -65,6 +65,16 @@ public partial class ComponentVisualizer : Form {
 		}
 
 		protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+			//if (TryPrintHelp (context.Args, context.ArgID + 1, () => $"{context.ParentAction} visualizer (start|stop|update|status): Manage visualizer of active core", out var helpRes1 ) ) return helpRes1;
+
+			if (TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+				"start" => $"{context.ParentAction} start: Starts the visualizer",
+				"stop" => $"{context.ParentAction} stop: Stops the visualizer",
+				"update" => $"{context.ParentAction} update: Updates the visualizer",
+				"status" => $"{context.ParentAction} status: Checks if the visualizer is running",
+				_ => $"Unknown action '{context.SubAction}'",
+			}, out var helpRes2 ) ) return helpRes2;
+
 			switch ( context.SubAction ) {
 			case "start":
 				if ( visualizer != null ) return new CommandResult ( "Visualizer is already running." );

@@ -6,10 +6,8 @@ using InputResender.Services;
 
 namespace InputResender.CLI;
 public static class Program {
-	private static CliWrapper cliWrapper;
-
-	public static void Main ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
-		cliWrapper = new ( console );
+	public static CliWrapper StartMain ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
+		CliWrapper cliWrapper = new ( console );
 		ArgParser parser = new ( string.Join ( " ", args ), console.WriteLine );
 		Config.Load ( parser.String ( "cfg", null ) );
 
@@ -26,6 +24,12 @@ public static class Program {
 		}
 
 		console.WriteLine ( "Program started. Type 'help' for a list of commands. Type 'exit' to close the program." );
+		return cliWrapper;
+	}
+
+	public static void Main ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
+		CliWrapper cliWrapper = StartMain ( args, TLLoader, console );
+
 		while ( true ) {
 			var res = cliWrapper.ProcessLineBlocking ();
 			if ( res == null ) break;

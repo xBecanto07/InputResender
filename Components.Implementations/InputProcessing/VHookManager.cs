@@ -38,14 +38,15 @@ public class VHookManager : DHookManager {
 		if ( !WinLLHook.Any () ) return ret;
 
 		var inputReader = Owner.Fetch<VInputReader_KeyboardHook> ();
+		if ( inputReader == null ) throw new InvalidOperationException ( "VInputReader_KeyboardHook not found!" );
 		if ( !ActiveHooks.ContainsKey ( device ) ) ActiveHooks.Add ( device, new HookGroup () );
 
-		while ( WinLLHook.Count > 0 ) {
-			var first = WinLLHook[0];
-			WinLLHook.RemoveAt ( 0 );
-			HHookInfo keyHookInfo = new ( this, device, first, WinLLHook.ToArray () );
-			var hooks = inputReader.SetupHook ( keyHookInfo, FastCB, DelayedCB );
-		}
+		var first = WinLLHook[0];
+		WinLLHook.RemoveAt ( 0 );
+		HHookInfo keyHookInfo = new ( this, device, first, WinLLHook.ToArray () );
+		var setup = inputReader.SetupHook ( keyHookInfo, FastCB, DelayedCB );
+		foreach ( var newHook in ActiveHooks[device].Add ( setup ) )
+			ret.Add ( newHook );
 
 		/*if ( WinLLHook.Any () ) {
 			var first = WinLLHook[0];
@@ -79,7 +80,10 @@ public class VHookManager : DHookManager {
 
 	public override Dictionary<DeviceID, DictionaryKey> ListHooks () {
 		Dictionary<DeviceID, DictionaryKey> ret = new ();
-		foreach ( var hook in ActiveHooks ) foreach ( var key in hook.Value.HookList ) ret.Add ( hook.Key, key );
+		foreach ( var deviceHooks in ActiveHooks )
+			foreach ( var hook in deviceHooks.Value.AllUniqueHooks )
+				ret.Add ( deviceHooks.Key, hook );
+		// Shouldn't this maybe return Tuple<VKChange, hookID>?
 		return ret;
 	}
 
@@ -95,19 +99,27 @@ public class VHookManager : DHookManager {
 		foreach ( var cb in cbs ) if ( !cb.callback ( e ) ) return;
 	}
 
-	/// <summary>Since hooks don't map 1:1 to 'hook actions' (e.g. keydown), this class serves as abstraction of such mapping, i.e. presents as Dictionary&lt;VKChange, DictionaryKey&gt;</summary>
+	/// <summary>Since hooks don't map 1:1 to 'hook actions' (e.g. keydown), this class serves as abstraction of such mapping, i.e. presents as Dictionary&lt;VKChange, DictionaryKey&gt; ??Is this still valid after '2 HHookInfo should hold VKChange=>HookD mapping'??</summary>
 	protected class HookGroup {
-		readonly HashSet<DictionaryKey> HookIDs = new ();
-		readonly HashSet<VKChange> Changes = new ();
+		// This might better be both-way dictionary, but atm the mapping DictKey->VKChange seems to not be needed.
+		private readonly Dictionary<VKChange, DictionaryKey> hookDict = new ();
+		private readonly HashSet<DictionaryKey> allHooks = new ();
 
-		public void Add ( ICollection<VKChange> changes, ICollection<DictionaryKey> hookIDs ) {
-			Changes.UnionWith ( changes );
-			HookIDs.UnionWith ( hookIDs );
+		public HashSet<DictionaryKey> Add ( IDictionary<VKChange, DictionaryKey> setup ) {
+			HashSet<DictionaryKey> newHooks = new ();
+			foreach ( var (key, value) in setup )
+				if ( !hookDict.TryAdd ( key, value ) )
+					throw new InvalidOperationException ( $"Hook for {key} already exists" );
+				else if ( allHooks.Add ( value ) ) newHooks.Add ( value );
+			return newHooks;
 		}
-		public HashSet<DictionaryKey> HookList => new ( HookIDs );
+
+		public HashSet<DictionaryKey> this[VKChange vkChange] => throw new NotImplementedException ();
+
+		public IReadOnlyCollection<DictionaryKey> AllUniqueHooks => allHooks.ToList ().AsReadOnly ();
+
 		public void Clear () {
-			Changes.Clear ();
-			HookIDs.Clear ();
+			hookDict.Clear ();
 		}
 	}
 }

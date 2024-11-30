@@ -21,6 +21,8 @@ public class ConsoleManager {
 	private readonly AutoResetEvent readerWaiter;
 	private bool EndsWithEOL = true;
 
+	public event Action OnIdle;
+
 	public int MaxLineLength { get; set; } = 120;
 
 	public ConsoleManager ( Action<string> realWriteLine, Func<string> realReadLine, Action<string> realWrite, Action realClear = null, Func<char> realReadChar = null, Action<string> realOverwriteLastLine = null ) {
@@ -144,6 +146,7 @@ public class ConsoleManager {
 		while ( true ) {
 			string line = ReadLine ();
 			if ( line != null ) return line;
+			OnIdle?.Invoke ();
 			Thread.Sleep ( 1 );
 		}
 	}

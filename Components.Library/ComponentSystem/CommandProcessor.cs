@@ -44,9 +44,9 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		GC.SuppressFinalize ( this );
 	}
 
-	public void AddCommand ( ACommand cmd ) {
-		if ( registeredCmds.Contains ( cmd ) ) return;
-		registeredCmds.Add ( cmd );
+	public bool AddCommand ( ACommand cmd ) {
+		if ( registeredCmds.Contains ( cmd ) ) return false;
+		return registeredCmds.Add ( cmd );
 	}
 
 	/// <summary>Find a command based on a callname. This command is passed to callback function. If this function returns null, no more processing is done. If some reference is returned, it will be either added or replaced in 1st level command list. Removing command is not supported since no use-case has been provided.</summary>
@@ -64,7 +64,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 	public string Help () {
 		string res = $"Supported commands:{Environment.NewLine}";
 		foreach ( var cmd in registeredCmds )
-			res += $"{cmd.Help}{Environment.NewLine}";
+			res += $"{cmd.Help.Replace ( "Usage: ", string.Empty )}{Environment.NewLine}";
 		return res;
 	}
 

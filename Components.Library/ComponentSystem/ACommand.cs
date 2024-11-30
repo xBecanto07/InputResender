@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Components.Library;
 public abstract class ACommand {
-	public static readonly IReadOnlyCollection<string> HelpSwitches = ["-h", "?", "-?", "help", "--help"];
+	public static readonly IReadOnlyCollection<string> HelpSwitches = ["-h", "?", "-?", "--help"];
 	protected virtual int RequiredUnnamedArgs => 0;
 	public int RequiredArgC => RequiredUnnamedArgs + requiredSwitches.Count + requiredPositionals.Count;
 
@@ -17,15 +17,16 @@ public abstract class ACommand {
 	protected readonly HashSet<string> interCommands = new ();
 	// InterCommand is only registered string switch that 'should' change behaviour inside the command. But SubCommand will switch to another command (i.e. different Object
 	public abstract string Description { get; }
-	public virtual string CallName { get => BasicCallName (); }
+	public virtual string CallName { get => BasicCallName ( false ); }
 	public virtual string Help { get => BasicHelp (); }
+	protected virtual bool PrintHelpOnEmpty { get; } = false;
 	protected virtual int ArgsOffset => 0;
 
-	protected string BasicCallName () =>
-		(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First () + (commandNames.Count > 1 ? $"[.|{string.Join ( "|", commandNames.Skip ( 1 ) )}]" : string.Empty);
+	protected string BasicCallName ( bool includeAlts ) =>
+		(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First () + (includeAlts && commandNames.Count > 1 ? $"[.|{string.Join ( "|", commandNames.Skip ( 1 ) )}]" : string.Empty);
 	protected string BasicHelp () {
 		System.Text.StringBuilder SB = new ( "Usage: " );
-		SB.Append ( CallName );
+		SB.Append ( BasicCallName ( true ) );
 
 		if ( requiredPositionals.Count > 0 ) SB.Append ( " " + string.Join ( " ", requiredPositionals.Keys.Select ( i => requiredPositionals[i] ? $"[{i}]" : i.ToString () ) ) );
 		if ( requiredSwitches.Count > 0 ) SB.Append ( " [-" + string.Join ( "][-", requiredSwitches ) + "]" );
@@ -69,7 +70,7 @@ public abstract class ACommand {
 		var localContext = context.Sub ( ArgsOffset );
 		// empty string should never reach this point, but better to catch any wrongly defined commands
 		if ( localContext.Args.ArgC < localContext.ArgID ) return new CommandResult ( new Exception ( "Not enough arguments provided." ) );
-		if ( HelpSwitches.Contains ( localContext.SubAction ) )
+		if ( HelpSwitches.Contains ( localContext[0] ) )
 			return new CommandResult ( Help );
 		//if ( context[0] == "clear" ) return ExecCleanup ( context );
 
@@ -118,10 +119,14 @@ public abstract class ACommand {
 	}
 
 	override public string ToString () => CallName;
-	protected bool TryPrintHelp ( ArgParser args, int argID, Func<string> helpFcn, out CommandResult helpRes ) {
+	protected bool TryPrintHelp ( ArgParser args, int argID, Func<string> helpFcn, out CommandResult helpRes, bool printOnEmpty = false ) {
+		// Should be converted to TryPrintHelp (Args, int offset..)
 		helpRes = null;
 		string arg = args.String ( argID, null );
-		if ( !HelpSwitches.Contains ( arg ) ) return false;
+		bool isEmpty = string.IsNullOrWhiteSpace ( arg );
+		bool isHelp = HelpSwitches.Contains ( arg );
+		isEmpty &= printOnEmpty;
+		if (!(isEmpty | isHelp) ) return false;
 		string msg = helpFcn ();
 		if ( string.IsNullOrWhiteSpace ( msg ) ) return false;
 		helpRes = new CommandResult ( "Usage: " + msg );
@@ -142,11 +147,14 @@ public class CommandResult {
 	}
 
 	public CommandResult ( Exception ex ) : this ( ex == null ? "Null exception provided" : ex.Message, false, ex ?? new ArgumentNullException ( nameof ( ex ) ) ) { }
+
+	public override string ToString () => $"{(IsExit ? "Exit: " : string.Empty)}{(Expection == null ? string.Empty : "Error: ")}{Message}";
 }
 
 public class ErrorCommandResult : CommandResult {
 	public readonly CommandResult OrigResult;
 	public ErrorCommandResult ( CommandResult origResult, Exception ex ) : base ( ex ) => OrigResult = origResult;
+	public override string ToString () => $"Error result: {Expection} | {OrigResult}";
 }
 
 public class StructCommandResult<T> : CommandResult where T : struct {

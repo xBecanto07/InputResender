@@ -33,6 +33,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.WindowsGUI.Te
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.WindowsGUI", "InputResender.WindowsGUI\InputResender.WindowsGUI.csproj", "{ED0E70EB-E0DE-4767-A5F8-EE935DE8E9A9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InputResender.PerformanceTest", "InputResender.PerformanceTest\InputResender.PerformanceTest.csproj", "{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -259,6 +261,18 @@ Global
 		{ED0E70EB-E0DE-4767-A5F8-EE935DE8E9A9}.Release|x64.ActiveCfg = Release|Any CPU
 		{ED0E70EB-E0DE-4767-A5F8-EE935DE8E9A9}.Release|x64.Build.0 = Release|Any CPU
 		{ED0E70EB-E0DE-4767-A5F8-EE935DE8E9A9}.Release|x64.Deploy.0 = Release|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Debug|x64.Build.0 = Debug|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Release|ARM64.Build.0 = Release|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Release|x64.ActiveCfg = Release|Any CPU
+		{FD91F532-E268-4DCD-8B78-14B2A61F0CBB}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

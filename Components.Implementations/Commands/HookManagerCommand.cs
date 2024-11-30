@@ -17,12 +17,17 @@ public class HookManagerCommand : ACommand {
         commandNames.Add ( "hook" );
         interCommands.Add ( "manager" );
         interCommands.Add ( "add" );
+        interCommands.Add ( "remove" );
+        interCommands.Add ( "list" );
+        interCommands.Add ( "debug" );
     }
 
     protected override CommandResult ExecCleanup ( CommandProcessor.CmdContext context ) {
         hookCallback?.Unregister ();
         return new CommandResult ( "Hook callback unregistered." );
     }
+
+    bool debugMode = false;
 
     override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
@@ -98,8 +103,29 @@ public class HookManagerCommand : ACommand {
             if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "hook list: Not currently implemented.", out var helpRes ) ) return helpRes;
 			return new CommandResult ( "Listing hooks is not implemented." );
         }
+        case "debug": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "hook debug (start|stop): Starts or stops debugging mode for hooks.", out var helpRes ) ) return helpRes;
+            switch ( context[1, "sub-action"] ) {
+            case "start":
+                if ( debugMode ) return new ( "Debug mode for hooks is already on" );
+                lastContext = context;
+                core.LowLevelInput.OnEvent += OnLLEvent;
+                debugMode = true;
+                return new ( "Debugging mode for hooks now active" );
+			case "stop":
+				if ( debugMode ) return new ( "Debug mode for hooks is already off" );
+				core.LowLevelInput.OnEvent -= OnLLEvent;
+				debugMode = false;
+				return new ( "Debugging mode for hooks now disabled" );
+			default: return new ( $"Invalid sub-action '{context[1]}'" );
+            }
+		}
         default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
         }
+    }
+
+    private void OnLLEvent (string info) {
+        lastContext.CmdProc.ProcessLine ( $"print \"{info}\"" );
     }
 
     private bool HookCallback ( HInputEventDataHolder e ) {

@@ -156,7 +156,10 @@ namespace InputResender.WindowsGUI {
 
 				// No hook for given type exists, create new
 				var hookKey = HookKeyFactory.NewKey ();
-				var hook = new Hook ( this, hookInfo, hookKey, callback, Log );
+				var hook = new Hook ( this, hookInfo, hookKey, callback, (a, b, c) => {
+					Log ( a, b, c );
+					PushMsgEvent ( $"nCode: {a} | vkChange: {b} | vk: {c}" );
+				} );
 				if (hook == null) {
 					ErrorList.Add ( (nameof ( SetHookEx ), new Exception ( $"Failed to create hook for {hookInfo}!" )) );
 					continue;

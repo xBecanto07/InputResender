@@ -31,6 +31,9 @@ namespace Components.Interfaces {
 		protected static Dictionary<DictionaryKey, Hook> HookIDDict = new ();
 		protected static DictionaryKeyFactory HookKeyFactory = new DictionaryKeyFactory ();
 
+		public event Action<string> OnEvent;
+		protected void PushMsgEvent ( string info ) => OnEvent?.Invoke ( info );
+
 		/// <summary></summary>
 		/// <param name="idHook">Hook type code, see: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexa</param>
 		/// <param name="lpfn">Pointer to callback method. Recommended to use a DLL method (public static)</param>
@@ -118,10 +121,14 @@ namespace Components.Interfaces {
 				;
 			}
 			bool resend = false;
-			if ( (nCode >= 0) | (EnforcePassthrough) ) {
-				var res = LLInput.ParseHookData ( Key, wParam, lParam );
-				resend = HLCallback == null ? true : HLCallback ( Key, res );
-			}
+			try {
+				if ( (nCode >= 0) | (EnforcePassthrough) ) {
+					var res = LLInput.ParseHookData ( Key, wParam, lParam );
+					if ( res != null ) {
+						resend = HLCallback == null ? true : HLCallback ( Key, res );
+					}
+				}
+			} catch (Exception e) { }
 			return resend ? LLInput.CallNextHook ( HookID, nCode, wParam, lParam ) : 1;
 		}
 

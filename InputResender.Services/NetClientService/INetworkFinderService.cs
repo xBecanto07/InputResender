@@ -67,7 +67,7 @@ namespace InputResender.Services {
 		/// <summary>WARNING! Only very basic implementation!</summary>
 		public void RefreshBuffer () {
 			List<Network> ret = new ();
-			var interfaces = NetworkInterface.GetAllNetworkInterfaces ();
+			var interfaces = NetStatsServise.GetAllNetworkInterfaces ();
 			foreach ( var inf in interfaces ) {
 				var info = inf.GetIPProperties ();
 				var unicasts = info.UnicastAddresses;

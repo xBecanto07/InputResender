@@ -109,7 +109,7 @@ public class HookCallbackManagerCommand : ACommand {
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		if (TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"list" => $"{context.ParentAction} list: List available callbacks",
-			"set" => $"{context.ParentAction} set <Callback_name>: Set active callback\n\t<Callback_name>: Name of the callback to set",
+			"set" => $"{context.ParentAction} set <Callback_name>: Set active callback\n\t<Callback_name>: Name or ID of the callback to set",
 			"active" => $"{context.ParentAction} active: Print active callback",
 			_ => null
 		}, out var helpRes ) ) return helpRes;

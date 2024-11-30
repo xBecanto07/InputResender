@@ -196,8 +196,10 @@ public class VInputReader_KeyboardHook : DInputReader {
 		protected override string[] GetHookList () {
 			string[] ret = new string[Owner.HookSet.Count];
 			int ID = 0;
-			foreach ( var hook in Owner.HookSet )
-				ret[ID++] = $"{hook.Key} => {hook.Value.Item2.hook}>>({hook.Value.Item2.MainCallback.Method.AsString ()}|{hook.Value.Item2.DelayedCB.Method.AsString ()})[{hook.Value.Item2.MessageQueue.Count}]";
+			foreach ( var hook in Owner.HookSet ) {
+				var HLInfo = hook.Value.Item2;
+				ret[ID++] = $"{hook.Key} => {HLInfo.hook}>>({HLInfo.MainCallback.Method.DeclaringType?.Name}.{HLInfo.MainCallback.Method.Name}|{HLInfo.DelayedCB.Method.DeclaringType?.Name}.{HLInfo.DelayedCB.Method.Name})[{HLInfo.MessageQueue.Count}]";
+			}
 			return ret;
 		}
 		public override string AllInfo () => $"{base.AllInfo ()}{BR}Task state: {TaskState}";

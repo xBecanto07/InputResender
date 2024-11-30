@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using Xunit;
 using SBld = System.Text.StringBuilder;
 using Outputter = Xunit.Abstractions.ITestOutputHelper;
+using InputResender.WindowsGUI.Commands;
 
 [assembly: TestFramework ( "InputResender.UnitTests.ParallelXunitRunner", "InputResender.UnitTests" )]
 namespace InputResender.UnitTests;
@@ -79,7 +80,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 
 	[Fact]
 	public void AllCommandsCanBeLoaded () {
-		List<Type> loaded = [typeof ( FactoryCommandsLoader ), typeof ( InputCommandsLoader ), typeof ( BasicCommands )];
+		List<Type> loaded = [typeof ( FactoryCommandsLoader ), typeof ( InputCommandsLoader ), typeof ( BasicCommands ), typeof(TopLevelLoader)];
 		List<Type> waiting = CommandList.AllCommandTypes.Select ( t => t ).ToList ();
 		waiting.AddRange ( CommandList.AllLoaders );
 		foreach ( var T in loaded ) waiting.Remove ( T );
@@ -99,6 +100,37 @@ public class GlobalCommandTest : BaseIntegrationTest {
 			}
 			if ( !changed ) Assert.Fail ( "Following commands can never be loaded:" + string.Join ( '\n', waiting.Select ( T => $" - {T}" ) ) );
 		}
+	}
+
+	/*[Fact]
+	public void AllCommandsInHelp () {
+		var res = cliWrapper.ProcessLine ( "help" );
+		res.Should ().NotBeNull ().And.NotBeOfType<ErrorCommandResult> ();
+		string h = res.Message;
+		Regex re = new ( $"^ \\. {ascii} - .*$", RegexOptions.Multiline );
+		h.Should ().MatchRegex ( re );
+		GlobalCommandList CmdList = new ();
+		foreach ( var cmdAr in CmdList.CommandList.Values ) {
+			foreach ( string cmd in cmdAr ) {
+				string callname = cmd.Split ( ' ', StringSplitOptions.RemoveEmptyEntries )[0];
+				h.Should ().Contain ( $". {callname} - " );
+			}
+		}
+	}*/
+
+	Regex HelpListRegex = new ( $"^{ascii} - .*$", RegexOptions.Multiline );
+
+	[Theory]
+	[MemberData ( nameof ( CommandIterator ) )]
+	public void AllCommandsInHelp_P (string command) {
+		var res = cliWrapper.ProcessLine ( "help" );
+		res.Should ().NotBeNull ().And.NotBeOfType<ErrorCommandResult> ();
+		string h = res.Message;
+		h.Should ().MatchRegex ( HelpListRegex );
+		string callname = command.Split ( ' ', StringSplitOptions.RemoveEmptyEntries )[0];
+		callname.Should ().NotBeNullOrWhiteSpace ().And
+			.Subject.Length.Should ().BeGreaterThan ( 1 );
+		h.Should ().ContainAny ( $"{callname} ", $"{callname}[.|", $"|{callname}|", $"|{callname}]", $"{callname}: " );
 	}
 
 	static void AssertSubcommandHelp (string helpMsg) {

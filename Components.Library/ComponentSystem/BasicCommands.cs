@@ -5,12 +5,15 @@ public class BasicCommands : ACommand {
 	override public string Description => "Basic commands.";
 	protected override int ArgsOffset => -1;
 	override public string Help => "help - Show this help." + Environment.NewLine +
-		"info - Show info." + Environment.NewLine +
-		"print <Text> - Print text." + Environment.NewLine +
-		"clear - Clear screen." + Environment.NewLine +
-		"exit - Exit program." + Environment.NewLine +
-		"safemode <on|off> - Enable or disable safe mode." + Environment.NewLine +
-		"loadall - Load all commands." + Environment.NewLine;
+		"info: Show info." + Environment.NewLine +
+		"print <Text>: Print text." + Environment.NewLine +
+		"clear: Clear screen." + Environment.NewLine +
+		"exit: Exit program." + Environment.NewLine +
+		"safemode <on|off>: Enable or disable safe mode." + Environment.NewLine +
+		"loadall: Load all commands." + Environment.NewLine +
+		"argParse <line>: Print how line was parsed." + Environment.NewLine +
+		"loglevel <level>: Set log level." + Environment.NewLine +
+		"argerrorlvl <level>: Set error reporting level.";
 
 	private readonly Action<string> Print;
 	private readonly Action Clear;
