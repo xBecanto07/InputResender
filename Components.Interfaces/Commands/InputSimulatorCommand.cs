@@ -48,19 +48,27 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		if ( hookManager == null ) throw new Exception ( "No HookManager registered in core" );
 
 		switch (context.SubAction) {
-		case "keydown":
-		case "keyup":
-			throw new NotImplementedException ();
+		case "keydown": {
+			var key = context.Args.EnumC<KeyCode> ( context.ArgID + 1, "Key", true );
+			var keydown = HInputEventDataHolder.KeyDown ( sim, null, key );
+			sim.AllowRecapture = true; // This needs to be true, so that hook is fired after simulating
+			int sent = sim.Simulate ( keydown );
+			return new CommandResult ( $"Sent {sent} key down events." );
+		}
+		case "keyup": {
+			var key = context.Args.EnumC<KeyCode> ( context.ArgID + 1, "Key", true );
+			var keyup = HInputEventDataHolder.KeyUp ( sim, null, key );
+			sim.AllowRecapture = true;
+			int sent = sim.Simulate ( keyup );
+			return new CommandResult ( $"Sent {sent} key up events." );
+		}
 		case "keypress": {
-			return new CommandResult ( "Under construction" );
-
-			//3hookManager.
-
-/*			var key = context.Args.EnumC<KeyCode> ( context.ArgID + 1, "Key", true );
-			var keydown = HInputEventDataHolder.KeyPress ( sim, key, VKChange.KeyDown );
-			var keyup = HInputEventDataHolder.KeyPress ( sim, key, VKChange.KeyUp );
+			var key = context.Args.EnumC<KeyCode> ( context.ArgID + 1, "Key", true );
+			var keydown = HInputEventDataHolder.KeyDown ( sim, null, key );
+			var keyup = HInputEventDataHolder.KeyUp ( sim, null, key );
+			sim.AllowRecapture = true;
 			int sent = sim.Simulate ( keydown, keyup );
-			return new CommandResult ( $"Sent {sent} key press events." );*/
+			return new CommandResult ( $"Sent {sent} keyboard input (keypress) events." );
 		}
 		case "mousemove": {
 			return new CommandResult ( "Under construction" );

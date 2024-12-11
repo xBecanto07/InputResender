@@ -89,6 +89,7 @@ namespace Components.Interfaces {
 	public class Hook : DataHolderBase<DLowLevelInput> {
 		public readonly DictionaryKey Key;
 		public nint HookID { get; private set; }
+		// If this callback returns true, next callback in queue will be called. If returns false, processing is terminated.
 		public Func<DictionaryKey, HInputData, bool> HLCallback;
 		public bool EnforcePassthrough = false;
 		public Action<int, IntPtr, IntPtr> Log;

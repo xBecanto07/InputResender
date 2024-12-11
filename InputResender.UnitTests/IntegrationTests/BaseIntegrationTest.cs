@@ -5,12 +5,33 @@ using System.Collections.Concurrent;
 using InputResender.CLI;
 using System.Collections.Generic;
 using InputResender.WindowsGUI.Commands;
+using System.Windows.Forms;
+using System;
+using System.Threading.Tasks;
 
 namespace InputResender.UnitTests.IntegrationTests;
 public class BaseIntegrationTest {
 	public static readonly string[] GeneralInitCmds = {
 		"loadall", "safemode on", "core new", "core own", "hook manager start"
 	};
+
+	public static void ConsumeMessages () => Application.DoEvents ();
+	public static bool ActiveWait ( int msTime, Func<bool> waiter ) {
+		DateTime end = DateTime.Now + TimeSpan.FromMilliseconds ( msTime );
+		bool ret = waiter == null;
+		while ( DateTime.Now < end ) {
+			if (waiter != null ) {
+				if ( waiter () ) {
+					ret = true;
+					break;
+				}
+			}
+			ConsumeMessages ();
+			Task.Delay ( 1 ).Wait ();
+		}
+		ConsumeMessages ();
+		return ret;
+	}
 
 	private readonly BlockingCollection<string> StdIn, StdOut;
 	public ConsoleManager console;
@@ -43,8 +64,15 @@ public class BaseIntegrationTest {
 
 	public CommandResult AssertExec (string cmd, string expRes) {
 		var res = cliWrapper.ProcessLine ( cmd );
-		res.Should ().NotBeNull ();
+		res.Should ().NotBeNull ().And.BeOfType<CommandResult> ();
 		res.Message.Should ().Be ( expRes );
+		return res;
+	}
+
+	public CommandResult AssertExecByRegex ( string cmd, string regex ) {
+		var res = cliWrapper.ProcessLine ( cmd );
+		res.Should ().NotBeNull ().And.BeOfType<CommandResult> ();
+		res.Message.Should ().MatchRegex ( regex );
 		return res;
 	}
 }

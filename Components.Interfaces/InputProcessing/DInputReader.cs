@@ -103,9 +103,9 @@ namespace Components.Interfaces {
 
 
 	public class HKeyboardEventDataHolder : HInputEventDataHolder {
-		public HKeyboardEventDataHolder ( DInputReader owner, HHookInfo hookInfo, int keycode, VKChange change ) : this ( owner, hookInfo, keycode, change == VKChange.KeyDown ? 1 : 0, change == VKChange.KeyDown ? 1 : -1 ) { }
+		public HKeyboardEventDataHolder ( ComponentBase owner, HHookInfo hookInfo, int keycode, VKChange change ) : this ( owner, hookInfo, keycode, change == VKChange.KeyDown ? 1 : 0, change == VKChange.KeyDown ? 1 : -1 ) { }
 
-		public HKeyboardEventDataHolder ( DInputReader owner, int deviceID, int keycode, float pressValue, float delta ) : this ( owner, new HHookInfo ( owner, deviceID, pressValue > 1 ? VKChange.KeyDown : VKChange.KeyUp ), keycode, pressValue, delta ) { }
+		public HKeyboardEventDataHolder ( ComponentBase owner, int deviceID, int keycode, float pressValue, float delta ) : this ( owner, new HHookInfo ( owner, deviceID, pressValue > 1 ? VKChange.KeyDown : VKChange.KeyUp ), keycode, pressValue, delta ) { }
 
 		public HKeyboardEventDataHolder ( ComponentBase owner, HHookInfo hookInfo, int keycode, float pressValue, float delta ) : base ( owner, hookInfo ) {
 			InputCode = keycode;

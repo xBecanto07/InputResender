@@ -71,6 +71,6 @@ namespace Components.Interfaces {
 		}
 
 		public override int GetHashCode () => DeviceID.GetHashCode () ^ ChangeMask.CalcSetHash ();
-		public override string ToString () => $"{DeviceID}:[{ChangeMask.AsString ()}]";
+		public override string ToString () => $"{DeviceID}:[{string.Join(", ", ChangeMask)}]";
 	}
 }

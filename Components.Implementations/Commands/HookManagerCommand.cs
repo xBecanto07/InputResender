@@ -6,12 +6,13 @@ namespace Components.Implementations;
 // Better question than is: Does the 'newer' version needs to be under Implementations? On what variant and how it depends?
 public class HookManagerCommand : ACommand {
     HCallbackHolder<DHookManager.HookCallback> hookCallback;
-    public enum CallbackFcn { None, Print, Aggregate }
+    public enum CallbackFcn { None, Print, Aggregate, Fcn }
     CallbackFcn CbFcn = CallbackFcn.None;
     CommandProcessor.CmdContext lastContext;
     List<string> aggregatedEvetns = new ();
+	public const string INPHOOKCBVarName = "InpHookCB";
 
-    override public string Description => "Input hook manager.";
+	override public string Description => "Input hook manager.";
     // Cmd example: "hook add print keydown mousemove"
     public HookManagerCommand ( string parentDsc = null ) : base ( parentDsc ) {
         commandNames.Add ( "hook" );
@@ -134,6 +135,14 @@ public class HookManagerCommand : ACommand {
         case CallbackFcn.Print:
             lastContext.CmdProc.ProcessLine ( $"print \"{EventToStr ( e )}\"" );
             return true;
+        case CallbackFcn.Fcn:
+            try {
+                var CB = lastContext.CmdProc.GetVar<Func<HInputEventDataHolder, bool>> ( INPHOOKCBVarName );
+                return CB ( e );
+            } catch (Exception ex) {
+                lastContext.CmdProc.Owner.PushDelayedError ( "Issue with InputHook callback function.", ex );
+                return false;
+            }
         case CallbackFcn.Aggregate:
             var list = lastContext.CmdProc.GetVar<List<string>> ( "hookEvents" );
             if ( !list.Any () || list[^1].Length > 90 ) list.Add ( EventToShort ( e ) );

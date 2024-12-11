@@ -24,6 +24,10 @@ namespace Components.Interfaces {
 
 		public HInputEventDataHolder ( ComponentBase owner, HHookInfo hookInfo ) : base ( owner ) { HookInfo = hookInfo; }
 
+		public static HInputEventDataHolder KeyDown ( ComponentBase owner, HHookInfo hookInfo, KeyCode key ) => new HKeyboardEventDataHolder ( owner, hookInfo, (int)key, VKChange.KeyDown );
+
+		public static HInputEventDataHolder KeyUp ( ComponentBase owner, HHookInfo hookInfo, KeyCode key ) => new HKeyboardEventDataHolder ( owner, hookInfo, (int)key, VKChange.KeyUp );
+
 		public void AddHookIDs (IDictionary<VKChange, DictionaryKey> hooks) {
 			foreach ( var hook in hooks ) HookInfo.AddHookID ( hook.Value, hook.Key );
 		}
