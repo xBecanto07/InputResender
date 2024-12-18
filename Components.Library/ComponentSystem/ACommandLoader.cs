@@ -31,7 +31,7 @@ public abstract class ACommandLoader : ACommand {
 		foreach ( var cmd in commands ) {
 			context.CmdProc.AddCommand ( cmd.Value );
 			if ( !string.IsNullOrEmpty ( ret ) ) ret += Environment.NewLine;
-			ret += cmd.Value.Help;
+			ret += cmd.Value.CallName;
 		}
 
 		foreach ( var subCmd in subCommands ) {
@@ -45,10 +45,10 @@ public abstract class ACommandLoader : ACommand {
 				foreach ( var cmdAdder in loader.NewCommands ) {
 					ACommand cmd = cmdAdder ();
 					if ( cmd == null ) continue;
-					if ( commands.ContainsKey ( cmd.Help ) ) continue;
+					if ( commands.ContainsKey ( cmd.CallName ) ) continue;
 
 					if ( cmd is ACommandLoader loaderCmd ) newLoaders.Enqueue ( loaderCmd );
-					else commands.Add ( cmd.Help, cmd );
+					else commands.Add ( cmd.CallName, cmd );
 				}
 			}
 			if ( loader.NewSubCommands != null ) {

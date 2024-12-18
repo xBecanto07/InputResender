@@ -15,17 +15,19 @@ namespace Components.Interfaces {
 		public DLowLevelInput ( CoreBase owner ) : base ( owner ) { }
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
-				(nameof(SetHookEx), typeof(Hook[])),
+				(nameof(SetHookEx), typeof(IDictionary<VKChange, Hook>)),
 				(nameof(UnhookHookEx), typeof(bool)),
 				(nameof(CallNextHook), typeof(IntPtr)),
-				(nameof(ParseHookData), typeof(HInputEventDataHolder)),
+				(nameof(ParseHookData), typeof(HInputData)),
 				(nameof(SimulateInput), typeof(uint)),
 				(nameof(GetLowLevelData), typeof(HInputData)),
 				(nameof(GetHighLevelData), typeof(HInputEventDataHolder)),
-				(nameof(ErrorList), typeof(Win32Exception)),
+				(nameof(ErrorList), typeof(List<(string, Exception)>)),
 				(nameof(PrintErrors), typeof(void)),
 				(nameof(GetMessageExtraInfoPtr), typeof(nint)),
 				(nameof(PrintHookInfo), typeof(string)),
+				("add_" + nameof(OnEvent), typeof(void)),
+				("remove_" + nameof(OnEvent), typeof(void)),
 			};
 
 		protected static Dictionary<DictionaryKey, Hook> HookIDDict = new ();

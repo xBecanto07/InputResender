@@ -25,7 +25,7 @@ public class NetworkConnectionTest {
 		receiver = initObj ( "receiver" );
 
 		BaseIntegrationTest initObj ( string objName ) {
-			BaseIntegrationTest ret = new ( BaseIntegrationTest.GeneralInitCmds );
+			BaseIntegrationTest ret = new ( BaseIntegrationTest.InitCmdsList ( "core new comp packetSender" ) );
 			var core = ret.cliWrapper.CmdProc.Owner;
 			core.Name = $"{objName} ({core.Name})";
 			core.OnError += msg => Errors.Add ( $"{objName}:: {msg}" );
@@ -37,7 +37,7 @@ public class NetworkConnectionTest {
 	private InMemNetPoint GetEP (BaseIntegrationTest obj) {
 		var res = obj.cliWrapper.ProcessLine ( "network hostlist" );
 		res.Should ().NotBeNull ();
-		res.Message.Should ().NotBeNullOrWhiteSpace ();
+		res.Message.Should ().NotBeNullOrWhiteSpace ().And.MatchRegex ( InMemNetReg );
 		var regexMatch = InMemNetReg.Match ( res.Message );
 		regexMatch.Success.Should ().BeTrue ();
 		InMemNetPoint.TryParse ( regexMatch.Value, out var ret ).Should ().BeTrue ();

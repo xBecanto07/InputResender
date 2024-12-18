@@ -186,7 +186,10 @@ public static class MdxExtensions {
 	public static string PrefixAllLines ( this string text, string prefix, string lineSep = null ) {
 		if ( string.IsNullOrEmpty ( text ) ) return text;
 		if ( string.IsNullOrEmpty ( prefix ) ) return text;
-		lineSep ??= Environment.NewLine;
+		if (lineSep == null) {
+			lineSep = Environment.NewLine;
+			text = text.ReplaceLineEndings ();
+		}
 		var ret = prefix + text.Replace ( lineSep, lineSep + prefix );
 		// This should deal with situations like N*(text \n) so that last line is just empty
 		// It will keep the last separator since it might be wanted, but the extra prefix would need to be added manually

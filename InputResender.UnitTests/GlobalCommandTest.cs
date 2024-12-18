@@ -150,13 +150,15 @@ public class GlobalCommandTest : BaseIntegrationTest {
 			if ( SB == null ) {
 				if ( !lines[i].StartsWith ( " +" ) ) continue;
 				lines[i].Should ().StartWith ( " + Usage: ", "no line other than start of sub-command should start with '+' sign" );
-				SB = new ( lines[i][3..] );
+				SB = new ();
+				SB.AppendLine ( lines[i][3..] );
 			}
 		}
 		if ( SB != null ) AssertHelpMsg ( null, SB.ToString () );
 	}
 
 	static void AssertHelpMsg ( string command, string helpMsg ) {
+		helpMsg = helpMsg.TrimEnd ();
 		helpMsg.Should ().NotBeNullOrWhiteSpace ().And
 			.MatchAnyRegex ( [helpRegex] );
 		if ( !string.IsNullOrWhiteSpace ( command ) )
@@ -176,9 +178,9 @@ public class GlobalCommandTest : BaseIntegrationTest {
 			res.Should ().NotBeNull ().And.NotBeOfType<ErrorCommandResult> ();
 
 			if ( helpMsg == null ) {
-				AssertHelpMsg ( command, res.Message );
-
 				Output?.WriteLine ( res.Message );
+
+				AssertHelpMsg ( command, res.Message );
 				helpMsg = res.Message;
 			} else res.Message.Should ().Be ( helpMsg );
 		}

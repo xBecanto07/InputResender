@@ -4,7 +4,7 @@ using System.Linq;
 namespace InputResender.WindowsGUI;
 public class LowLevelInputCommand : ACommand {
 	override public string Description => "Low level hook (Win) access.";
-	override public string Help => $"{parentCommandHelp} inpll list <Selector>\n\tSelector: (events|hooks|errors)";
+	override public string Help => $"Usage: {parentCommandHelp} inpll list <Selector> - {Description}\n\tSelector: (events|hooks|errors)";
 	protected override bool PrintHelpOnEmpty => true;
 
 	public LowLevelInputCommand ( ACommand parent ) : base ( parent?.CallName ) {
@@ -14,7 +14,7 @@ public class LowLevelInputCommand : ACommand {
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
-		if (TryPrintHelp (context.Args, context.ArgID, () => $"{context[-2]} inpll list <Selector>\n\tSelector: (events|hooks|errors)", out var helpRes ) ) return helpRes;
+		if (TryPrintHelp (context.Args, context.ArgID+ 1, () => $"{context[-2]} inpll list <Selector>\n\tSelector: (events|hooks|errors)", out var helpRes ) ) return helpRes;
 
 		VWinLowLevelLibs LLInput = context.CmdProc.Owner.Fetch<VWinLowLevelLibs> ();
 		if ( LLInput == null ) return new CommandResult ( "Low level input library not available." );

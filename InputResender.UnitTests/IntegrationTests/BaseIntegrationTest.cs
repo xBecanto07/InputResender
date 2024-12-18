@@ -11,9 +11,12 @@ using System.Threading.Tasks;
 
 namespace InputResender.UnitTests.IntegrationTests;
 public class BaseIntegrationTest {
-	public static readonly string[] GeneralInitCmds = {
-		"loadall", "safemode on", "core new", "core own", "hook manager start"
-	};
+	public static string[] InitCmdsList (params string[] extras) {
+		List<string> ret = new () { "loadall", "safemode on", "core new", "core own", "hook manager start" };
+		ret.AddRange ( extras );
+		return ret.ToArray ();
+	}
+	public static readonly string[] GeneralInitCmds = InitCmdsList ();
 
 	public static void ConsumeMessages () => Application.DoEvents ();
 	public static bool ActiveWait ( int msTime, Func<bool> waiter ) {
