@@ -46,17 +46,18 @@ public class GlobalCommandTest : BaseIntegrationTest {
 	const string arg1 = $" \\({ascii}(\\|{ascii})*\\)";
 	const string arg2 = $" <\\S+?>";
 	const string sw = $"((-[a-z])|(--[A-Z][a-zA-Z]+)|(<{ascii}>))";
+	const string SW = $"(?:{sw}|(\\[-[a-z]\\|--[A-Z][a-zA-Z]+\\]))";
 	const string line1 = $"{callname}.*?(({arg1})|({arg2}))*"; // Not restrictive enough. Since this is getting realllly large, custom regex processor is getting more and more tempting.
 	const string line2 = $"\\n\\s+- {asciiSpace}.*";
 	const string line3 = $"\\n\\s+{asciiSpace}: .*";
 	const string line5 = $"\\n\\s+[+>] .*";
-	const string line4 = $"\\n\\s+{sw}({arg2})*( = \\S+)?: \\S.*";
+	const string line4 = $"\\n\\s+{SW}({arg2})*( = \\S+)?: \\S.*";
 	public static readonly Regex helpRegex = new ( $"^{line1}((: [\\S ]*)|({line2})|({line3})|({line5})|({line4}))+$", RegexOptions.ExplicitCapture );
 
 	const string callname = $"Usage:( ({ascii})(\\[\\.(\\|({ascii}))\\])?)+";
 	public static readonly Regex callnameRegex = new ( callname );
 
-	public GlobalCommandTest ( Outputter output ) : base ( GeneralInitCmds ) {
+	public GlobalCommandTest ( Outputter output ) : base ( null, output, GeneralInitCmds ) {
 		Output = output;
 	}
 

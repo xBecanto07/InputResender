@@ -20,6 +20,9 @@
 		public override bool IsSerializable => true;
 		public SerializableDataHolderBase ( CompT owner ) : base ( owner ) { }
 		public abstract byte[] Serialize ();
-		public abstract SerializableDataHolderBase<CompT> Deserialize ( byte[] Data );
+		/// <summary>Note that overwriting might not be always possible (if original structure uses readonly fiels for example).
+		/// <para>When overwriting, simply use: samaData.Deserialize(binaryArray); This way it should always return self-reference.</para>
+		/// <para>Otherwise use the return value: var ret = otherData.Deserialize(binary); This way it should always return new object.</para></summary>
+		public abstract SerializableDataHolderBase<CompT> Deserialize ( byte[] Data, bool overwrite = false );
 	}
 }

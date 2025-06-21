@@ -75,7 +75,7 @@ namespace Components.Interfaces {
 			if ( !receiving ) return CallbackResult.Stop;
 			var packet = Owner.DataSigner.Encrypt ( data.Data );
 			if ( lastInputData == null ) lastInputData = new InputData ( this ); // Prepare the 'deserializer' (cannot be static couse it inherits)
-			lastInputData = (InputData)lastInputData.Deserialize ( packet.InnerMsg );
+			lastInputData = (InputData)lastInputData.Deserialize ( packet.InnerMsg, false );
 			recvCallback?.Invoke ( lastInputData );
 			return CallbackResult.None;
 		}

@@ -4,7 +4,7 @@ using System.Net;
 namespace Components.Interfaces;
 public abstract class DMainAppCore : CoreBase {
 	[Flags]
-	public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputParser = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, ShortcutWorker = 256, CommandWorker = 512, All = 0xFFFF }
+	public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputParser = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, ShortcutWorker = 256, CommandWorker = 512, ComponentJoiner = 1024, All = 0xFFFF }
 
 	public DEventVector EventVector { get => Fetch<DEventVector> (); }
 	public DLowLevelInput LowLevelInput { get => Fetch<DLowLevelInput> (); }
@@ -16,6 +16,7 @@ public abstract class DMainAppCore : CoreBase {
 	public DMainAppControls MainAppControls { get => Fetch<DMainAppControls> (); }
 	public DShortcutWorker ShortcutWorker { get => Fetch<DShortcutWorker> (); }
 	public DCommandWorker CommandWorker { get => Fetch<DCommandWorker> (); }
+	public DComponentJoiner ComponentJoiner { get => Fetch<DComponentJoiner> (); }
 
 	public DMainAppCore (
 		Func<DMainAppCore, DEventVector> CreateEventVector,
@@ -28,6 +29,7 @@ public abstract class DMainAppCore : CoreBase {
 		Func<DMainAppCore, DMainAppControls> CreateMainAppControls,
 		Func<DMainAppCore, DShortcutWorker> CreateShortcutWorker,
 		Func<DMainAppCore, DCommandWorker> CreateCommandWorker,
+		Func<DMainAppCore, DComponentJoiner> CreateComponentJoiner,
 		CompSelect componentMask = CompSelect.All
 		) {
 
@@ -43,6 +45,7 @@ public abstract class DMainAppCore : CoreBase {
 		CreateComponent ( CreateMainAppControls, nameof ( DMainAppControls ) );
 		CreateComponent ( CreateShortcutWorker, nameof ( DShortcutWorker ) );
 		CreateComponent ( CreateCommandWorker, nameof ( DCommandWorker ) );
+		CreateComponent ( CreateComponentJoiner, nameof ( DComponentJoiner ) );
 
 		if ( missingComponents.Count > 0 ) {
 			var SB = new System.Text.StringBuilder ();
@@ -89,6 +92,7 @@ public abstract class DMainAppCore : CoreBase {
 			( core ) => new VMainAppControls ( core ),
 			( core ) => null,
 			( core ) => new VCommandWorker ( core ),
+			( core ) => new VComponentJoiner ( core ),
 			selector
 			);
 }
@@ -105,7 +109,8 @@ public class MMainAppCore : DMainAppCore {
 		Func<DMainAppCore, DMainAppControls> CreateMainAppControls,
 		Func<DMainAppCore, DShortcutWorker> CreateShortcutWorker,
 		Func<DMainAppCore, DCommandWorker> CreateCommandWorker,
-		CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputParser, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, componentMask ) {
+		Func<DMainAppCore, DComponentJoiner> CreateComponentJoiner,
+		CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputParser, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, CreateComponentJoiner, componentMask ) {
 	}
 
 	public override void Initialize () {}

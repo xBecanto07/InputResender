@@ -90,8 +90,13 @@ public class ConsoleManager {
 	}
 
 	private void ReaderTask () {
+		string line;
 		while ( true ) {
-			string line = RealReadLine ();
+			try { line = RealReadLine (); }
+			catch {
+				// This should happen but since object should be disposed by now, no way of reporting this exception
+				return;
+			}
 			if ( line == null || line == "exit" ) {
 				lock ( readerWaiter ) {
 					NewInput = EOF;

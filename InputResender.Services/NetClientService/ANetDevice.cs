@@ -18,6 +18,14 @@ namespace InputResender.Services.NetClientService {
 		public readonly List<(NetMessagePacket, string)> LastErrors = new ();
 		private Dictionary<EPT, Connector<EPT>> OpenConnRequests = new ();
 
+		public List<string> Logbook = [];
+		public string GetLog () {
+			lock ( Logbook ) return string.Join ( "\n", Logbook );
+		}
+		protected void Note ( string msg ) {
+			lock ( Logbook ) Logbook.Add ( msg );
+		}
+
 		protected EPT locEP { get; private set; }
 		protected abstract ANetDeviceLL<EPT> boundedLLDevice { get; }
 		protected abstract void BindLL ( EPT ep );

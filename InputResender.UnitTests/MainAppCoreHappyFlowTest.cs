@@ -11,7 +11,7 @@ using InputResender.Services;
 using System.Linq;
 
 namespace InputResender.UnitTests {
-	public abstract class DMainAppCoreHappyFlowTest<AppCore> where AppCore : DMainAppCore {
+	public abstract class DMainAppCoreHappyFlowTest<AppCore> : System.IDisposable where AppCore : DMainAppCore {
 		protected AppCore Sender, Receiver;
 		protected List<InputData> SentInput, ReceivedInput;
 		protected byte[] Key, IV;
@@ -24,12 +24,24 @@ namespace InputResender.UnitTests {
 			SentInput = new List<InputData>();
 			ReceivedInput = new List<InputData>();
 			Sender = GenerateAppCore ();
-			Sender.OnError += msg => Output.WriteLine ( $"Sender-Error:: {msg}" );
-			Sender.OnMessage += msg => Output.WriteLine ( $"Sender:: {msg}" );
+			Sender.OnError += WriteSenderError;
+			Sender.OnMessage += WriteSenderMessage;
 			Receiver = GenerateAppCore ();
-			Receiver.OnError += msg => Output.WriteLine ( $"Receiver-Error:: {msg}" );
-			Receiver.OnMessage += msg => Output.WriteLine ( $"Receiver:: {msg}" );
+			Receiver.OnError += WriteReceiverError;
+			Receiver.OnMessage += WriteReceiverMessage;
 		}
+
+		public void Dispose () {
+			Sender.OnError -= WriteSenderError;
+			Sender.OnMessage -= WriteSenderMessage;
+			Receiver.OnMessage -= WriteReceiverMessage;
+			Receiver.OnError -= WriteReceiverError;
+		}
+
+		private void WriteSenderError (string msg) => Output.WriteLine ( $"Sender-Error:: {msg}" );
+		private void WriteSenderMessage ( string msg ) => Output.WriteLine ( $"Sender:: {msg}" );
+		private void WriteReceiverError ( string msg ) => Output.WriteLine ( $"Receiver-Error:: {msg}" );
+		private void WriteReceiverMessage ( string msg ) => Output.WriteLine ( $"Receiver:: {msg}" );
 
 		protected abstract AppCore GenerateAppCore ();
 
@@ -64,7 +76,7 @@ namespace InputResender.UnitTests {
 				recvData = null;
 			} else {
 				HMessageHolder decoded = Receiver.DataSigner.Decrypt ( data.Data, IV );
-				recvData = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded.InnerMsg );
+				recvData = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded.InnerMsg, false );
 			}
 			lock (ReceivedInput) {
 				ReceivedInput.Add ( recvData );
@@ -93,7 +105,7 @@ namespace InputResender.UnitTests {
 			var packet = Sender.DataSigner.Encrypt ( msg, IV );
 
 			HMessageHolder decoded = Receiver.DataSigner.Decrypt ( packet, IV );
-			var recreated = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded.InnerMsg );
+			var recreated = (InputData)new InputData ( Receiver.Fetch<DPacketSender> () ).Deserialize ( decoded.InnerMsg, false );
 			recreated.Should ().Be ( data );
 		}
 

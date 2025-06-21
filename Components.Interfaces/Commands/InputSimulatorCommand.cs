@@ -35,8 +35,8 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		//if (TryPrintHelp(context.Args, context.ArgID + 1, () => "sim <Action> [Options]\n\tAction: {mousemove|keydown|keyup|keypress}\n\tOptions: Action specific options", out var helpRes ) ) return helpRes;
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"mousemove" => $"sim mousemove [-x <Xaxis>] [-y <Yaxis>]: Simulate mouse move event\n\t-x <Xaxis> = 0: X axis movement\n\t-y <Yaxis> = 0: Y axis movement",
-			"keydown" => "sim keydown <Key>: Simulate key down event (not yet implemented)\n\tKey: {{Windows-style keycode}}",
-			"keyup" => "sim keyup <Key>: Simulate key up event (not yet implemented)\n\tKey: {{Windows-style keycode}}",
+			"keydown" => "sim keydown <Key>: Simulate key down event (not yet implemented)\n\tKey: {Windows-style keycode}",
+			"keyup" => "sim keyup <Key>: Simulate key up event (not yet implemented)\n\tKey: {Windows-style keycode}",
 			"keypress" => $"sim keypress <Key>: Simulate key press event (keydown, keyup)\n\tKey: {{{string.Join ( "|", Enum.GetNames<KeyCode> () )}}}",
 			_ => null
 		}, out var helpRes ) ) return helpRes;
@@ -49,25 +49,15 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 
 		switch (context.SubAction) {
 		case "keydown": {
-			var key = context.Args.EnumC<KeyCode> ( context.ArgID + 1, "Key", true );
-			var keydown = HInputEventDataHolder.KeyDown ( sim, null, key );
-			sim.AllowRecapture = true; // This needs to be true, so that hook is fired after simulating
-			int sent = sim.Simulate ( keydown );
+			int sent = Simulate ( context, 1, sim, true, false );
 			return new CommandResult ( $"Sent {sent} key down events." );
 		}
 		case "keyup": {
-			var key = context.Args.EnumC<KeyCode> ( context.ArgID + 1, "Key", true );
-			var keyup = HInputEventDataHolder.KeyUp ( sim, null, key );
-			sim.AllowRecapture = true;
-			int sent = sim.Simulate ( keyup );
+			int sent = Simulate ( context, 1, sim, false, true );
 			return new CommandResult ( $"Sent {sent} key up events." );
 		}
 		case "keypress": {
-			var key = context.Args.EnumC<KeyCode> ( context.ArgID + 1, "Key", true );
-			var keydown = HInputEventDataHolder.KeyDown ( sim, null, key );
-			var keyup = HInputEventDataHolder.KeyUp ( sim, null, key );
-			sim.AllowRecapture = true;
-			int sent = sim.Simulate ( keydown, keyup );
+			int sent = Simulate ( context, 1, sim, true, true );
 			return new CommandResult ( $"Sent {sent} keyboard input (keypress) events." );
 		}
 		case "mousemove": {
@@ -84,5 +74,27 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		}
 		default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
 		}
+	}
+
+	int Simulate ( CommandProcessor.CmdContext context, int offset, DInputSimulator sim, bool keyDown, bool keyUp) {
+		List<KeyCode> keys = GetKeysFromArgs ( context, offset );
+
+		List<HInputEventDataHolder> events = [];
+		for ( int i = 0; i < keys.Count; i++ ) {
+			if ( keyDown ) events.Add ( HInputEventDataHolder.KeyDown ( sim, null, keys[i] ) );
+			if ( keyUp ) events.Add ( HInputEventDataHolder.KeyUp ( sim, null, keys[i] ) );
+		}
+
+		sim.AllowRecapture = true;
+		return sim.Simulate ( [.. events] );
+	}
+
+	public static List<KeyCode> GetKeysFromArgs (CommandProcessor.CmdContext context, int offset) {
+		List<KeyCode> keys = [context.Args.EnumC<KeyCode> ( context.ArgID + offset, "Key", true )];
+		for ( int i = context.ArgID + offset + 1; i < context.Args.ArgC; i++ ) {
+			keys.Add ( context.Args.EnumC<KeyCode> ( i, "Key", true ) );
+			// Not allowing other arguments after first key
+		}
+		return keys;
 	}
 }

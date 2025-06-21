@@ -32,6 +32,11 @@ namespace Components.Interfaces {
 		private Action<InputData> callback;
 		public Action<InputData> Callback { set { callback = value; } protected get => callback ?? Owner.Fetch<DCommandWorker> ().Push; }
 
+		protected void FireCallback ( InputData data ) {
+			Callback?.Invoke ( data );
+			DComponentJoiner.TrySend ( this, null, data );
+		}
+
 		private Dictionary<KeyCode, (Modifier mod, bool system)> ModifiersDict;
 		public IReadOnlyDictionary<KeyCode, (Modifier mod, bool readOnly)> Modifiers {
 			get => ModifiersDict.AsReadOnly ();
@@ -162,8 +167,18 @@ namespace Components.Interfaces {
 		}
 		public override int GetHashCode () => (Cmnd, Key, DeviceID, Modifiers, X, Y, Z).GetHashCode ();
 		public override string ToString () => $"({Cmnd}@{Key}({DeviceID})[{Modifiers}]:{{{X}, {Y}, {Z}}})";
-		public override SerializableDataHolderBase<ComponentBase> Deserialize ( byte[] Data ) {
-			return new InputData ( Owner ) {
+		/// <inheritdoc/>
+		public override SerializableDataHolderBase<ComponentBase> Deserialize ( byte[] Data, bool overwrite ) {
+			if (overwrite) {
+				Cmnd = (Command)BitConverter.ToUInt32 ( Data, 0 );
+				Key = (KeyCode)BitConverter.ToUInt32 ( Data, 4 );
+				DeviceID = BitConverter.ToInt32 ( Data, 8 );
+				Modifiers = (Modifier)BitConverter.ToUInt32 ( Data, 12 );
+				X = BitConverter.ToSingle ( Data, 16 );
+				Y = BitConverter.ToSingle ( Data, 20 );
+				Z = BitConverter.ToSingle ( Data, 24 );
+				return this;
+			} else return new InputData ( Owner ) {
 				Cmnd = (Command)BitConverter.ToUInt32 ( Data, 0 ),
 				Key = (KeyCode)BitConverter.ToUInt32 ( Data, 4 ),
 				DeviceID = BitConverter.ToInt32 ( Data, 8 ),

@@ -42,12 +42,22 @@ namespace InputResender.Services {
 		event Action<INetDevice, INetPoint> OnClosed;
 
 		public string GetInfo ();
+
+		public string GetLog ();
 	}
 
 	public abstract class ANetDeviceLL<T> where T : INetPoint {
+		private string LogInfo = "";
+		public string GetLog() {
+			lock ( LogInfo ) return LogInfo;
+		}
+		protected void Note ( string msg ) {
+			lock ( LogInfo ) LogInfo += msg + "\n";
+		}
 		public enum ErrorType { None, Unknown, InvalidData, InvalidTarget, Unbound }
 		public T LocalEP { get; }
 		public bool Send ( byte[] data, T ep ) {
+			Note ($"Requested to send {data.Length} bytes to {ep}" );
 			var err = InnerSend ( data, ep );
 			if ( err != ErrorType.None ) {
 				LastError = err;
@@ -72,6 +82,7 @@ namespace InputResender.Services {
 		}
 
 		protected INetDevice.ProcessResult ReceiveMsg ( NetMessagePacket msg ) {
+			Note ( $"Received {msg.Data.Length} bytes from {msg.SourceEP}" );
 			foreach ( var receiver in Receivers )
 				if ( receiver ( msg ) )
 					return INetDevice.ProcessResult.Accepted;

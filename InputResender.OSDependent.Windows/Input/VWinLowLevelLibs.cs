@@ -5,6 +5,8 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using System.Reflection.Emit;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InputResender.WindowsGUI {
 	public partial class VWinLowLevelLibs : DLowLevelInput {
@@ -12,8 +14,13 @@ namespace InputResender.WindowsGUI {
 		private const int WH_MOUSE_LOW_LEVEL = 14;
 		private static VWinLowLevelLibs mainInstance;
 		private HookGroupCollection OwnHooks;
+		private Dictionary<DictionaryKey, string> DeletedHookDiscription;
 		const int MaxLog = 256;
 		public static List<(int nCode, VKChange changeCode, HWInput.KeyboardInput inputData)> EventList = new( MaxLog );
+
+		static VWinLowLevelLibs () {
+			LLInputLogger.DefaultParser = ProbeWinHook.Convert_S;
+		}
 
 		private static void Log ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
 			var change = (VKChange)vkChngCode;
@@ -26,6 +33,7 @@ namespace InputResender.WindowsGUI {
 		public VWinLowLevelLibs ( CoreBase owner ) : base ( owner ) {
 			mainInstance = this;
 			OwnHooks = new HookGroupCollection ( this );
+			DeletedHookDiscription = [];
 		}
 
 		public override int ComponentVersion => 1;
@@ -44,7 +52,7 @@ namespace InputResender.WindowsGUI {
 			_ => throw new InvalidCastException ( $"No key change action type corresponds to code {vkCode:X}" )
 			};*/
 
-		private static int GetHookType (VKChange vkChange) => vkChange switch {
+		public static int GetHookType (VKChange vkChange) => vkChange switch {
 			VKChange.KeyDown => WH_KEYBOARD_LOW_LEVEL,
 			VKChange.KeyUp => WH_KEYBOARD_LOW_LEVEL,
 			VKChange.MouseMove => WH_MOUSE_LOW_LEVEL,
@@ -92,7 +100,7 @@ namespace InputResender.WindowsGUI {
 			return new WinLLInputData ( highLevelData.Owner, new HWInput ( 1, inputUnion ) );
 		}
 
-		public override HInputData ParseHookData ( DictionaryKey hookID, nint vkChngCode, nint vkCode ) {
+		public override HInputData ParseHookData ( DictionaryKey _, nint vkChngCode, nint vkCode ) {
 			VKChange vkChange = (VKChange)vkChngCode;
 			int vkChangeType = GetHookType ( vkChange );
 
@@ -106,7 +114,17 @@ namespace InputResender.WindowsGUI {
 				WH_MOUSE_LOW_LEVEL => WinLLInputData.NewMouseData ( this, vkChngCode, vkCode ),
 				_ => throw new ArgumentOutOfRangeException ( nameof ( vkChange ), vkChange, "Hook code is not supported!" )
 			};
-			
+		}
+
+		public override IReadOnlyCollection<HInputData> TryParseHookDataContextfree ( IntPtr vkChngCode, IntPtr vkCode ) {
+			VKChange vkChange = (VKChange)vkChngCode;
+			int vkChangeType = GetHookType ( vkChange );
+
+			return vkChangeType switch {
+				WH_KEYBOARD_LOW_LEVEL => [WinLLInputData.NewKeyboardData ( this, vkChngCode, vkCode )],
+				WH_MOUSE_LOW_LEVEL => [WinLLInputData.NewMouseData ( this, vkChngCode, vkCode )],
+				_ => throw new ArgumentOutOfRangeException ( nameof ( vkChange ), vkChange, "Hook code is not supported!" )
+			};
 		}
 
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
@@ -197,16 +215,46 @@ namespace InputResender.WindowsGUI {
 				ErrorList.Add ( (nameof ( UnhookHookEx ), new KeyNotFoundException ( $"Hook #{hookID.Key} is not owned by this component!" )) );
 				return false;
 			}
+			DeletedHookDiscription[hookID.Key] = PrintHookInfo ( hookID.Key );
+
 			bool ret;
 			if (!(ret = UnhookWindowsHookEx ( hookID.HookID ))) ErrorList.Add ( (nameof ( UnhookHookEx ), new Win32Exception ()) );
 			HookIDDict.Remove ( hookID.Key );
 			OwnHooks.RemoveHookByID ( hookID.Key );
+			if ( ret ) hookID.Destroy ();
 			return ret;
+		}
+
+		/// <summary>This is mostly for debugging purposes. It's up to the caller to pass proper arguments! Here, ensure that changeMask is for only one type of hook!</summary>
+		public override ProbeHook InstallProbe (bool consume, ICollection<VKChange> changeMask, params KeyCode[] acceptedKeys) {
+			KeyCode keyMask = KeyCode.None;
+			foreach ( var key in acceptedKeys ?? [] ) keyMask |= key;
+			ProbeWinHook probe = new ( ( self, id ) => { InputManagementService.UnregisterProbe ( self ); return UnhookWindowsHookEx ( id ); } );
+			probe.Consume = consume;
+			probe.Changes = new HashSet<VKChange>();
+			foreach ( var change in changeMask ) probe.Changes.Add ( change );
+			probe.KeyMask = keyMask;
+
+			var moduleHandle = GetModuleHandleID ( "user32.dll" );
+			int threadID = 0;
+
+			int code = -1;
+			if ( changeMask.Contains ( VKChange.KeyDown ) || changeMask.Contains ( VKChange.KeyUp ) ) code = WH_KEYBOARD_LOW_LEVEL;
+			else throw new NotImplementedException ( "Other than WH_KEYBOARD_LL hooks are not supported yet!" );
+
+			nint hookID = SetWindowsHookEx ( code, probe.Callback, moduleHandle, (uint)threadID );
+			if (hookID == IntPtr.Zero) throw new Win32Exception ( "Failed to set probe hook!" );
+			LLInputLogger.Log ( hookID, 'W', $"Added new probe" );
+			probe.HookID = hookID;
+			InputManagementService.RegisterProbe ( probe );
+			return probe;
 		}
 
 		public override string PrintHookInfo ( DictionaryKey key ) {
 			var hookStatus = OwnHooks[key];
-			if ( hookStatus == null ) return $"Hook with key {key} was not found in this component!";
+			if ( hookStatus == null )
+				if (DeletedHookDiscription.TryGetValue(key, out string desc ) ) return desc;
+				else return $"Hook with key {key} was not found in this component!";
 
 			Hook hook = hookStatus.Item1;
 			int vkType = hookStatus.Item2;
@@ -215,14 +263,22 @@ namespace InputResender.WindowsGUI {
 			return $"WinHook#{key}[{vkType}]:{hook.HookInfo.DeviceID}<{string.Join ( ", ", changes )}>";
 		}
 
+		uint LastSimulatedInputTime = 0;
 		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null ) {
 			//var inputs = pInputs.Select ( ( input ) => (Input)input.Data ).ToArray ();
 			HWInput[] inputs = new HWInput[nInputs];
 			for (int i = 0; i < nInputs; i++) {
 				inputs[i] = (HWInput)pInputs[i].Data;
-				inputs[i].Data.ki.ToSendFlags ();
-				inputs[i].Data.ki.ClearValidity ();
+				if ( inputs[i].Type == HWInput.TypeKEY ) {
+					inputs[i].Data.ki.ToSendFlags ();
+					inputs[i].Data.ki.ClearValidity ();
+					if ( inputs[i].Data.ki.time <= LastSimulatedInputTime )
+						inputs[i].Data.ki.time = LastSimulatedInputTime + 1;
+					LastSimulatedInputTime = inputs[i].Data.ki.time;
+				} else throw new NotSupportedException ( "Non-keyboard input simulation is not currently supported :(" );
 			}
+			Owner.PushDelayedMsg ( "Simulating input: " + string.Join ( " | ", inputs ) );
+			LLInputLogger.Log(42, 'W', $"Simulating input: {string.Join ( " | ", inputs )}" );
 			var ret = SendInput ( nInputs, inputs, cbSize );
 			if (ret < nInputs) ErrorList.Add ( (nameof ( SimulateInput ), new Win32Exception ()) );
 			return ret;
@@ -237,7 +293,7 @@ namespace InputResender.WindowsGUI {
 		private static extern bool UnhookWindowsHookEx ( IntPtr hhk );
 
 		[DllImport ( "User32.dll", CharSet = CharSet.Auto, SetLastError = true )]
-		private static extern IntPtr CallNextHookEx ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
+		public static extern IntPtr CallNextHookEx ( IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam );
 
 		[DllImport ( "kernel32.dll", CharSet = CharSet.Auto, SetLastError = true )]
 		private static extern IntPtr GetModuleHandle ( string lpModuleName );
@@ -258,6 +314,56 @@ namespace InputResender.WindowsGUI {
 	}
 
 
+	public class ProbeWinHook : ProbeHook {
+		public ProbeWinHook (Func<ProbeHook, nint, bool> unhook) : base ( VWinLowLevelLibs.CallNextHookEx, unhook ) { }
+
+		protected override (Status, VKChange, KeyCode, uint, nint) Convert ( int ncode, IntPtr vkChngCode, IntPtr dataPtr ) => Convert_S ( ncode, vkChngCode, dataPtr );
+		public static (Status, VKChange, KeyCode, uint, nint) Convert_S ( int ncode, IntPtr vkChngCode, IntPtr dataPtr ) {
+			Status consumed = ncode < 0 ? Status.Passing : Status.Consumable;
+			VKChange vkChange = (VKChange)vkChngCode;
+			KeyCode key = KeyCode.None;
+			uint time = 42;
+			nint eID = IntPtr.Zero;
+			if ( vkChange == VKChange.KeyDown || vkChange == VKChange.KeyUp ) {
+				var data = new HWInput.KeyboardInput ( dataPtr );
+				key = (KeyCode)data.vkCode;
+				time = data.time;
+				eID = data.dwExtraInfo;
+			} else if ( vkChange == VKChange.MouseMove ) {
+				var data = new HWInput.MouseInput ( dataPtr );
+				key = KeyCode.MouseMove;
+				time = data.time;
+				eID = data.dwExtraInfo;
+			} else {
+				nint newEID = InputManagementService.GetNewEventID ();
+				eID = newEID;
+				LLInputLogger.Log ( 1234, 'E', $"Couldn't parse data for unknown ChangeCode {vkChange}! Known data are: vkCange={vkChange}; key={key}; time={time}; eID={eID}. Creating new extras value {newEID}." );
+			}
+			if ( eID == IntPtr.Zero ) {
+				nint newEID = InputManagementService.GetNewEventID ();
+				eID = newEID;
+			}
+			return (consumed, vkChange, key, time, eID);
+		}
+
+		protected override void SetExtraInfo ( int nCode, nint wParam, nint lParam, nint extras ) {
+			if ( nCode < 0 ) return;
+			if ( wParam == (nint)VKChange.KeyDown || wParam == (nint)VKChange.KeyUp ) {
+				var data = new HWInput.KeyboardInput ( lParam );
+				data.dwExtraInfo = extras;
+				data.Write ( lParam );
+			} else if ( wParam == (nint)VKChange.MouseMove ) {
+				var data = new HWInput.MouseInput ( lParam );
+				data.dwExtraInfo = extras;
+				data.Write ( lParam );
+			} else {
+				LLInputLogger.Log ( 0, 'D', $"Unknown hook type {wParam}!" );
+				throw new ArgumentOutOfRangeException ( nameof ( wParam ), wParam, "Unknown hook type!" );
+			}
+		}
+
+		public override string ToString () => $"WinProbe{HookID}";
+	}
 
 
 	public class WinLLInputData : HInputData {
@@ -300,6 +406,44 @@ namespace InputResender.WindowsGUI {
 			ret.Pressed = (VKChange)vkChngCode;
 			return ret;
 		}
+		public override nint GetFullHash ( nint wParam, nint lParam ) {
+			if ( data.Type == HWInput.TypeKEY ) return InputManagementService.CalcHashKeyboard (
+				(VKChange)data.Data.ki.vkCode
+				, (KeyCode)data.Data.ki.scanCode
+				, data.Data.ki.time
+				, wParam );
+			else if ( data.Type == HWInput.TypeMOUSE ) return InputManagementService.CalcHashMouse (
+				VKChange.MouseMove
+				, data.Data.mi.dx
+				, data.Data.mi.dy
+				, data.Data.mi.time
+				, wParam );
+			else if ( data.Type == HWInput.TypeHARDWARE ) throw new NotImplementedException ( "Hardware input is not supported yet!" );
+			else return 0;
+		}
+
+		public nint SaveUnmanaged () {
+			var ptr = Marshal.AllocHGlobal ( data.SizeOf );
+			if ( data.Type == HWInput.TypeKEY ) data.Data.ki.Write ( ptr );
+			else if ( data.Type == HWInput.TypeMOUSE ) data.Data.mi.Write ( ptr );
+			else if ( data.Type == HWInput.TypeHARDWARE ) throw new NotImplementedException ( "Hardware input is not supported yet!" );
+			else throw new ArgumentOutOfRangeException ( nameof ( data.Type ), data.Type, "Unknown input type!" );
+			return ptr;
+		}
+		public void FreeUnmanaged ( nint ptr ) {
+			if ( ptr == 0 ) return;
+			Marshal.FreeHGlobal ( ptr );
+		}
+
+		public override void SetExtraInfo ( nint dataLocation, nint extraInfo ) {
+			if ( data.Type == HWInput.TypeKEY ) data.Data.ki.dwExtraInfo = extraInfo;
+			else if ( data.Type == HWInput.TypeMOUSE ) data.Data.mi.dwExtraInfo = extraInfo;
+			else throw new NotImplementedException ( "Setting extras for generic hardware input is not yet supported." );
+				ExtraInfo = extraInfo;
+			if ( data.Type == HWInput.TypeKEY ) data.Data.ki.Write ( dataLocation );
+			else if ( data.Type == HWInput.TypeMOUSE ) data.Data.mi.Write ( dataLocation );
+			else throw new NotImplementedException ( "Setting extras for generic hardware input is not yet supported." );
+		}
 
 		public override IInputLLValues Data { get => data; protected set => data = (HWInput)value; }
 
@@ -307,6 +451,13 @@ namespace InputResender.WindowsGUI {
 
 		public override int DeviceID { get ; protected set; }
 		public override VKChange Pressed { get; protected set; }
+		public override uint TimeStamp => data.Type switch {
+			HWInput.TypeKEY => data.Data.ki.time,
+			HWInput.TypeMOUSE => data.Data.mi.time,
+			HWInput.TypeHARDWARE => throw new NotImplementedException ( "Hardware input is not supported yet!" ),
+			_ => 42
+		};
+		public override nint ExtraInfo { get => data.Data.ki.dwExtraInfo; protected set => data.Data.ki.dwExtraInfo = value; }
 
 		public override DataHolderBase<ComponentBase> Clone () => new WinLLInputData ( Owner, data );
 		public override bool Equals ( object obj ) {

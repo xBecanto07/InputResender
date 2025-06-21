@@ -12,7 +12,8 @@ namespace Components.Implementations {
 			Func<DMainAppCore, DMainAppControls> CreateMainAppControls,
 			Func<DMainAppCore, DShortcutWorker> CreateShortcutWorker,
 			Func<DMainAppCore, DCommandWorker> CreateCommandWorker,
-			CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputParser, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, componentMask ) {
+			Func<DMainAppCore, DComponentJoiner> CreateComponentJoiner,
+			CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputParser, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, CreateComponentJoiner, componentMask ) {
 		}
 
 		public override void Initialize () {

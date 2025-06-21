@@ -22,6 +22,11 @@ namespace InputResender.Services.NetClientService.InMemNet {
 		/// <inheritdoc />
 		public string FullNetworkPath => GetKey ( ID, _port );
 
+		public List<string> Logbook = [];
+		protected void Note (string msg) {
+			lock ( Logbook ) Logbook.Add ( msg );
+		}
+
 		private InMemNetPoint ( int id, int port, bool reserve = true ) {
 			ID = id;
 			_port = port;
@@ -78,6 +83,7 @@ namespace InputResender.Services.NetClientService.InMemNet {
 			if ( ListeningDevice == null ) throw new InvalidOperationException ( $"Not listening" );
 			if ( ListeningDevice.BoundedInMemDeviceLL == null ) throw new InvalidOperationException ( $"Listening device not bound properly" );
 			NetMessagePacket msg = new ( (HMessageHolder)data, this, senderEP );
+			Note ( $"Requested to send {data.Length} bytes from {senderEP} to {this}" );
 			var status = ListeningDevice.BoundedInMemDeviceLL.ReceiveMsg ( msg );
 			switch (status) {
 			case INetDevice.ProcessResult.Accepted: return true;

@@ -53,7 +53,7 @@ namespace Components.Interfaces {
 			return ret & (HookInfo.Equals ( item.HookInfo ));
 		}
 		public override int GetHashCode () => (HookInfo, InputCode, ValueX, ValueY, ValueZ, DeltaX, DeltaY, DeltaZ).GetHashCode ();
-		public override string ToString () => $"{HookInfo.DeviceID}.{InputCode} [{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}] Δ[{DeltaX.ToShortString ()};{DeltaY.ToShortString ()};{DeltaZ.ToShortString ()}]";
+		public override string ToString () => $"{(HookInfo == null ? "NoID" : HookInfo.DeviceID)}.{InputCode} ({(KeyCode)InputCode})[{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}] Δ[{DeltaX.ToShortString ()};{DeltaY.ToShortString ()};{DeltaZ.ToShortString ()}]";
 	}
 
 	/// <summary>Low-Level version of HInputEventDataHolder</summary>
@@ -65,8 +65,11 @@ namespace Components.Interfaces {
 		public bool IsPressed { get => Pressed == VKChange.KeyDown; }
 		public abstract VKChange Pressed { get; protected set; }
 		public abstract IInputLLValues Data { get; protected set; }
+		public abstract nint ExtraInfo { get; protected set; }
 		public abstract int SizeOf { get; }
+		public abstract uint TimeStamp { get; }
 		public abstract void UpdateByHook (DLowLevelInput hookObj, DictionaryKey hookID );
+		public abstract void SetExtraInfo ( nint dataLocation, nint extraInfo );
 		public KeyCode Key { get => Data.Key; }
 
 		public override bool Equals ( object obj ) {
@@ -75,6 +78,7 @@ namespace Components.Interfaces {
 			var item = (HInputData)obj;
 			return (Pressed == item.Pressed) & (SizeOf == item.SizeOf) & (DeviceID == item.DeviceID) & (DeviceID == item.DeviceID);
 		}
+		public abstract nint GetFullHash ( nint wParam, nint lParam );
 	}
 
 	public interface IInputLLValues {
@@ -98,6 +102,8 @@ namespace Components.Interfaces {
 
 		public override int SizeOf => data.SizeOf;
 		public override int DeviceID { get => deviceID; protected set => deviceID = value; }
+		public override uint TimeStamp => (uint)CreationTime.Ticks;
+		public override nint ExtraInfo { get; protected set; }
 		public override VKChange Pressed { get => data.KeyChange; protected set => data.KeyChange = value; }
 
 		public override DataHolderBase<ComponentBase> Clone () => new HInputData_Mock ( Owner, (IInputStruct_Mock)data.Clone () );
@@ -112,6 +118,8 @@ namespace Components.Interfaces {
 		public override void UpdateByHook ( DLowLevelInput hookObj, DictionaryKey hookID ) {
 			data.HookID = hookID;
 		}
+		public override void SetExtraInfo ( nint dataLocation, nint extraInfo ) => ExtraInfo = extraInfo;
+		public override nint GetFullHash ( nint wParam, nint lParam ) => InputManagementService.CalcHashKeyboard ( data.KeyChange, data.Key, (uint)CreationTime.Ticks, wParam );
 
 		public struct IInputStruct_Mock : IInputLLValues {
 			public DictionaryKey HookID;

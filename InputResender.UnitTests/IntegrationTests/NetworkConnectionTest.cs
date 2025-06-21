@@ -21,20 +21,21 @@ public class NetworkConnectionTest {
 
 	public NetworkConnectionTest (ITestOutputHelper output) {
 		Output = output;
-		sender = initObj ( "sender" );
-		receiver = initObj ( "receiver" );
+		sender = InitTestObj( output, "sender", Errors );
+		receiver = InitTestObj( output, "receiver", Errors );
+	}
 
-		BaseIntegrationTest initObj ( string objName ) {
-			BaseIntegrationTest ret = new ( BaseIntegrationTest.InitCmdsList ( "core new comp packetSender" ) );
-			var core = ret.cliWrapper.CmdProc.Owner;
-			core.Name = $"{objName} ({core.Name})";
-			core.OnError += msg => Errors.Add ( $"{objName}:: {msg}" );
-			return ret;
-		}
+	public static BaseIntegrationTest InitTestObj ( ITestOutputHelper output, string objName, List<string> errorList ) {
+		BaseIntegrationTest ret = new ( objName + ":: ", output, BaseIntegrationTest.InitCmdsList ( "core new comp packetSender" ) );
+		var core = ret.cliWrapper.CmdProc.Owner;
+		core.Name = $"{objName} ({core.Name})";
+		if ( errorList != null )
+			core.OnError += msg => errorList.Add ( $"{objName}:: {msg}" );
+		return ret;
 	}
 
 	/// <summary>Cmd 'network hostlist' should return at least one INM endpoint, extract and return it</summary>
-	private InMemNetPoint GetEP (BaseIntegrationTest obj) {
+	public static InMemNetPoint GetEP (BaseIntegrationTest obj) {
 		var res = obj.cliWrapper.ProcessLine ( "network hostlist" );
 		res.Should ().NotBeNull ();
 		res.Message.Should ().NotBeNullOrWhiteSpace ().And.MatchRegex ( InMemNetReg );
@@ -127,13 +128,14 @@ public class NetworkConnectionTest {
 		Output.WriteLine ( statusA.Message );
 		Output.WriteLine ( statusB.Message );
 
-		var targSetCmd = sender.cliWrapper.ProcessLine ( $"target set {EPB.FullNetworkPath}" );
-		targSetCmd.Should ().NotBeNull ();
-		targSetCmd.Message.Should ().Be ( $"Target set to InMemNet point {EPB}" );
+		sender.AssertExec ( $"target set {EPB.FullNetworkPath}", $"Target set to InMemNet point {EPB}" );
 		var A_B = AssertConn ( connsA, EPA, EPB );
 		var B_A = AssertConn ( connsB, EPB, EPA );
 
 		sender.AssertExec ( $"conns send {EPB.FullNetworkPath} \"Hello, World!\"", $"Sent 13 bytes to '{EPB}'." );
 		AssertMessage ( recvB, "Hello, World!", EPA, EPB );
+
+		sender.AssertExec ( "target set none", "Target disconnected." );
+
 	}
 }

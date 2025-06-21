@@ -132,29 +132,31 @@ public abstract class ACommand {
 		helpRes = new CommandResult ( "Usage: " + msg );
 		return true;
 	}
+
+	protected static string EnumPar<T> ( string paramName, string pre = "/n/t" ) where T : struct, Enum => $"\n\t{paramName}: {{{string.Join ( "|", Enum.GetNames<T> () )}}}";
 }
 
 
 public class CommandResult {
 	public readonly string Message;
 	public readonly bool IsExit;
-	public readonly Exception Expection;
+	public readonly Exception Exception;
 
 	public CommandResult ( string message, bool isExit = false, Exception expection = null ) {
 		Message = message;
 		IsExit = isExit;
-		Expection = expection;
+		Exception = expection;
 	}
 
 	public CommandResult ( Exception ex ) : this ( ex == null ? "Null exception provided" : ex.Message, false, ex ?? new ArgumentNullException ( nameof ( ex ) ) ) { }
 
-	public override string ToString () => $"{(IsExit ? "Exit: " : string.Empty)}{(Expection == null ? string.Empty : "Error: ")}{Message}";
+	public override string ToString () => $"{(IsExit ? "Exit: " : string.Empty)}{(Exception == null ? string.Empty : "Error: ")}{Message}";
 }
 
 public class ErrorCommandResult : CommandResult {
 	public readonly CommandResult OrigResult;
 	public ErrorCommandResult ( CommandResult origResult, Exception ex ) : base ( ex ) => OrigResult = origResult;
-	public override string ToString () => $"Error result: {Expection} | {OrigResult}";
+	public override string ToString () => $"Error result: {Exception} | {OrigResult}";
 }
 
 public class StructCommandResult<T> : CommandResult where T : struct {

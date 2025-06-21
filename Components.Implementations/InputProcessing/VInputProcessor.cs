@@ -22,7 +22,7 @@ namespace Components.Implementations {
 				Z = inputCombination[0].ValueZ,
 			};
 			ret.Modifiers = ReadModifiers ( inputCombination );
-			Callback ( ret );
+			FireCallback ( ret );
 		}
 
 		public override StateInfo Info => new VStateInfo ( this );

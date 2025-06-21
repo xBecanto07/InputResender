@@ -119,6 +119,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 				return cmd.Execute ( context );
 			} catch ( Exception e ) {
 				string fullInfo = $"Error processing '{line}': {e.Message}\n{e.StackTrace}";
+				Owner.PushDelayedError ( fullInfo, e );
 				return new ErrorCommandResult ( null, e );
 			}
 		}
@@ -177,7 +178,9 @@ public class CommandProcessor : ComponentBase, IDisposable {
 			Line = line ?? string.Empty;
 			ArgID = argID;
 			Console = console;
-			Args = args ?? new ( line, console.WriteLine );
+			Args = args ?? new ( line, ( s ) => {
+				if ( console != null ) console.WriteLine ( s );
+			} );
 		}
 		public readonly CmdContext Sub (int offset = 1) => new ( CmdProc, Line, ArgID + offset, Console, Args );
 	}

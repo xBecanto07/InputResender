@@ -48,6 +48,42 @@ namespace InputResender.GUIComponentTests {
 			TestObject.ErrorList.Should ().BeEmpty ();
 		}
 
+		protected void AssertIntpuData ( HInputData data, uint testStartTime, uint testEndTime, nint extraInfo = 0 ) {
+			data.Should ().NotBeNull ();
+			data.Pressed.Should ().Be ( VKChange.KeyDown );
+			data.Data.Should ().NotBeNull ().And.BeOfType<HWInput> ();
+			HWInput hwInput = (HWInput)data.Data;
+			hwInput.Type.Should ().Be ( HWInput.TypeKEY );
+			hwInput.Data.ki.vkCode.Should ().Be ( (ushort)KeyCode.E );
+			hwInput.Data.ki.scanCode.Should ().Be ( (ushort)KeyCode.None );
+			hwInput.Data.ki.dwFlags.Should ().Be ( HWInput.KeyboardInput.keyDownID | (uint)HWInput.KeyboardInput.CallbackFlags.ValidCallbackFlags );
+			hwInput.Data.ki.time.Should ().BeInRange ( testStartTime, testEndTime );
+			hwInput.Data.ki.dwExtraInfo.Should ().Be ( extraInfo );
+		}
+
+		[Fact]
+		public void CorrectInputDataParsing () {
+			uint testStartTime = (uint)(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
+			var hookID = SetupHook ();
+			WinLLInputData data = new ( TestObject, HWInput.KeyboardInput.Create ( VKChange.KeyDown, KeyCode.E ) );
+			nint ptr = data.SaveUnmanaged ();
+			var parsed = TestObject.ParseHookData ( hookID.Key, (nint)VKChange.KeyDown, ptr );
+			uint testEndTime = (uint)(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
+
+			AssertIntpuData ( parsed, testStartTime, testEndTime ); // Test initial parsing
+
+			nint hash = parsed.GetFullHash ( (nint)VKChange.KeyDown, ptr );
+			parsed.SetExtraInfo ( ptr, hash );
+			parsed.ExtraInfo.Should ().Be ( hash );
+			AssertIntpuData ( parsed, testStartTime, testEndTime, hash ); // Test correct data inside the managed structure
+
+			parsed.SetExtraInfo ( ptr, hash );
+			AssertIntpuData ( parsed, testStartTime, testEndTime, hash ); // Test correct save to unmanaged structure
+
+			TestObject.UnhookHookEx ( hookID );
+			data.FreeUnmanaged ( ptr );
+		}
+
 		[Fact]
 		public void InputDataToStringTest () {
 			var inputData = GenerateInputData ();

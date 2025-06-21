@@ -30,7 +30,31 @@ public class HookManagerCommand : ACommand {
 
     bool debugMode = false;
 
-    override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+    private (DHookManager, List<VKChange>) ParseVKChanges ( DMainAppCore core, CommandProcessor.CmdContext context, int offset ) {
+		List<VKChange> actionList = new ();
+		for ( int i = context.ArgID + offset; i < context.Args.ArgC; i++ ) {
+			var act = context.Args.EnumC<VKChange> ( i, i == context.ArgID + offset ? "Action" : null );
+			if ( act == VKChange.None )
+                throw new ArgumentException ( $"Invalid VKChange '{context[i]}'." );
+			actionList.Add ( act );
+		}
+
+		DHookManager hookManager = core.Fetch<DHookManager> ();
+		if ( hookManager == null ) throw new InvalidOperationException ( "Hook manager not started." );
+
+		return (hookManager, actionList);
+	}
+
+    private static string HookInfo (DMainAppCore core, ICollection<DictionaryKey> hookIDs) {
+        var inputReader = core.Fetch<DInputReader> ();
+        string[] hookInfo = new string[hookIDs.Count];
+        int j = 0;
+        foreach ( var hookID in hookIDs )
+            hookInfo[j++] = inputReader.PrintHookInfo ( hookID );
+        return string.Join ( ", ", hookInfo );
+	}
+
+	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
 		switch ( context.SubAction ) {
         case "manager": {
@@ -57,49 +81,49 @@ public class HookManagerCommand : ACommand {
             /// 1. <see cref="VHookManager.AddHook"/> (under <see cref="DHookManager.AddHook(int, VKChange[])"/> - add hook to manager
             /// 2. <see cref="VInputReader_KeyboardHook.SetupHook"/> (under <see cref="DInputReader.SetupHook(HHookInfo, Func{DictionaryKey, HInputEventDataHolder, bool}, Action{DictionaryKey, HInputEventDataHolder})"/> - Inter-step separating action into fast and delayed callbacks
             /// 3. <see cref="VWinLowLevelLibs.SetHookEx"/> (under <see cref="DLowLevelInput.SetHookEx(HHookInfo, Func{DictionaryKey, HInputData, bool})"/> - Create struct containing the hook and register it
-            /// 4. <see cref="VWinLowLevelLibs.SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId)"/> - Call the Windows API to set the hook
+            /// 4. <see cref="VWinLowLevelLibs.SetWindowsHookEx(int, HookProc, IntPtr, uint)"/> - Call the Windows API to set the hook
 
             /// Hook callback propagation (on key press):
-            /// 1. <see cref="Hook.LLCallback(int, IntPtr, IntPtr"/> - event origin, called by Windows API
-            /// 2. <see cref="VInputReader_KeyboardHook.LocalCoolback(DictionaryKey, HInputData"/> - Call fast and queue delayed callbacks
+            /// 1. <see cref="Hook.LLCallback(int, IntPtr, IntPtr)"/> - event origin, called by Windows API
+            /// 2. <see cref="VInputReader_KeyboardHook.LocalCoolback(DictionaryKey, HInputData)"/> - Call fast and queue delayed callbacks
             /// 3. <see cref="VHookManager.FastCB"/> or <see cref="VHookManager.DelayedCB"/> - Loop through all registered callbacks, stop at first consuming one
             /// 4. <see cref="HookManagerCommand.HookCallback(HInputEventDataHolder)"/> - Callback assign via command
 
-            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook add <CbAction> <VKChange1> [<VKChange2> ...]\n\tCbAction: {{{string.Join ( "|", Enum.GetNames<CallbackFcn> () )}}}\n\tVKChange: {{{string.Join ( "|", Enum.GetNames<VKChange> () )}}}", out var helpRes ) ) return helpRes;
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook add <CbAction> <VKChange1> [<VKChange2> ...]{EnumPar<CallbackFcn>("CbAction")}{EnumPar<VKChange> ("VKChange")}\n\t[-c|--Consume]: Consume the events", out var helpRes ) ) return helpRes;
 
-            CallbackFcn cbFcn = context.Args.EnumC<CallbackFcn> ( context.ArgID + 1, "Callback action", true );
+			// This should be somehow overwritable. When e.g. changing callback function on hook set to 'consume' this sould be possible to be turned off.
+			context.Args.RegisterSwitch ( 'c', "Consume" );
+            context.Args.RegisterSwitch ( 'p', "Passthrough" );
+
+			CallbackFcn cbFcn = context.Args.EnumC<CallbackFcn> ( context.ArgID + 1, "Callback action", true );
             lastContext = context;
             CbFcn = cbFcn;
             if ( cbFcn == CallbackFcn.Aggregate ) {
                 try { context.CmdProc.GetVar<List<string>> ( "hookEvents" ); } catch ( Exception ) { context.CmdProc.SetVar ( "hookEvents", aggregatedEvetns = new () ); }
             }
 
-            List<VKChange> actionList = new ();
-            for ( int i = context.ArgID + 2; i < context.Args.ArgC; i++ ) {
-                var act = context.Args.EnumC<VKChange> ( i, i == context.ArgID + 2 ? "Action" : null );
-                if ( act == VKChange.None ) return new CommandResult ( "Invalid action." );
-                actionList.Add ( act );
-            }
-            var hookManager = core.Fetch<DHookManager> ();
-            if ( hookManager == null ) return new CommandResult ( "No hook manager available." );
+            (var hookManager, var actionList) = ParseVKChanges ( core, context, 2 );
 
-            var newHooks = hookManager.AddHook ( 0, actionList.ToArray () );
+			var newHooks = hookManager.AddHook ( 0, actionList.ToArray () );
             if (newHooks == null || !newHooks.Any ()) return new CommandResult ( "No hooks added." );
 
             var cb = hookManager.AddCallback ( DHookManager.CBType.Delayed, 0 );
             cb.callback = HookCallback;
+            // Shouldn't the 'cb' be stored somewhere to unregister it later?
+            if ( context.Args.Present ( "-c" ) ) {
+                cb = hookManager.AddCallback ( DHookManager.CBType.Fast, 0 );
+                cb.callback = ( e ) => false;
+			}
 
-            string[] hookInfo = new string[newHooks.Count];
-            int j = 0;
-            foreach ( var hook in newHooks ) hookInfo[j++] = core.Fetch<DInputReader> ().PrintHookInfo ( hook );
-
-
-            return new CommandResult ( $"Hook added ({string.Join ( ", ", hookInfo )})." );
+            return new CommandResult ( $"Hooks added ({HookInfo ( core, newHooks )})." );
         }
         case "remove": {
-            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "hook remove <VKChange1> [<VKChange2> ...]: Not currently implemented.", out var helpRes ) ) return helpRes;
-			return new CommandResult ( "Removing hooks is not implemented." );
-        }
+            if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook remove <VKChange1> [<VKChange2> ...]{EnumPar<CallbackFcn>("CbAction")}", out var helpRes ) ) return helpRes;
+			(var hookManager, var actionList) = ParseVKChanges ( core, context, 1 );
+            var removed = hookManager.RemoveHook ( 0, [.. actionList] );
+			if ( removed == null || !removed.Any () ) return new CommandResult ( "No hooks removed." );
+            return new CommandResult ( $"Hooks removed ({HookInfo ( core, removed )})." );
+		}
         case "list": {
             if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "hook list: Not currently implemented.", out var helpRes ) ) return helpRes;
 			return new CommandResult ( "Listing hooks is not implemented." );

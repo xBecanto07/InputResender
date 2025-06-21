@@ -12,7 +12,7 @@ namespace Components.InterfaceTests;
 public class PasswordManagerTest : CommandTestBaseMCore {
 	const string EmptyPasswordHash = "-B";
 	const string Password = "asdf";
-	const string PasswordHash = "0/€4f";
+	//const string PasswordHash = "0/€4f";
 	public PasswordManagerTest () : base ( new PasswordManagerCommand () ) { }
 
 	[Fact]
@@ -21,7 +21,8 @@ public class PasswordManagerTest : CommandTestBaseMCore {
 		SetMCore ( DMainAppCore.CompSelect.DataSigner );
 		AssertCorrectMsg ( "password print", "Current password: " + EmptyPasswordHash );
 		// Hash might be randomized here. If so, probably just checking that the result is not original password and contains somewhat proper ammount of characters should be enough
-		AssertCorrectMsg ( "password add " + Password, "Password set to " + PasswordHash );
+		string ExpectedHash = 952669910.ToShortCode ();
+		AssertCorrectMsg ( "password add " + Password, "Password set to " + ExpectedHash );
 	}
 }
 

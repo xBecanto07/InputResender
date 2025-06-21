@@ -64,19 +64,42 @@ public struct HWInput : IInputLLValues {
 		public uint time;
 		public IntPtr dwExtraInfo;
 
-		const uint keyDownID = (uint)(SendInputFlags.KeyDown | SendInputFlags.Scancode);
-		const uint keyUpID = (uint)(SendInputFlags.KeyUp | SendInputFlags.Scancode);
+		public const uint keyDownID = (uint)(SendInputFlags.KeyDown | SendInputFlags.Scancode);
+		public const uint keyUpID = (uint)(SendInputFlags.KeyUp | SendInputFlags.Scancode);
 
 		CallbackFlags callbackFlags => (CallbackFlags)dwFlags;
 		SendInputFlags sendInputFlags => (SendInputFlags)dwFlags;
 
+		public static HWInput Create(VKChange change, KeyCode key, nint extraInfo = 0) {
+			KeyboardInput ki = new KeyboardInput {
+				vkCode = (ushort)key,
+				scanCode = (ushort)KeyCode.None, // Set to None, will be set by OS
+				dwFlags = change == VKChange.KeyDown ? keyDownID : keyUpID,
+				time = (uint)(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond),
+				dwExtraInfo = extraInfo
+			};
+			return new HWInput ( Keyboard, new InputUnion { ki = ki } );
+		}
 		public KeyboardInput (nint ptr ) {
+			// Read the written data for debugging purposes
+			byte[] data = new byte[Marshal.SizeOf ( this )];
+			Marshal.Copy ( ptr, data, 0, data.Length );
 			vkCode = (ushort)Marshal.ReadInt32 ( ptr );
 			scanCode = (ushort)Marshal.ReadInt32 ( ptr, 4 );
 			dwFlags = (uint)Marshal.ReadInt32 ( ptr, 8 );
 			dwFlags |= (uint)CallbackFlags.ValidCallbackFlags;
 			time = (uint)Marshal.ReadInt32 ( ptr, 12 );
 			dwExtraInfo = Marshal.ReadIntPtr ( ptr, 16 );
+		}
+		public void Write (nint ptr) {
+			LLInputLogger.Log(1337, 'W', $"Writing KeyboardInput to {ptr:X} with vkCode:{vkCode}, scanCode:{scanCode}, dwFlags:{dwFlags}, time:{time}, dwExtraInfo:{dwExtraInfo}" );
+			Marshal.WriteInt32 ( ptr, 0, vkCode );
+			Marshal.WriteInt32 ( ptr, 4, scanCode );
+			Marshal.WriteInt32 ( ptr, 8, (int)dwFlags );
+			Marshal.WriteInt32 ( ptr, 12, (int)time );
+			Marshal.WriteIntPtr ( ptr, 16, dwExtraInfo );
+			byte[] data = new byte[Marshal.SizeOf ( this )];
+			Marshal.Copy ( ptr, data, 0, data.Length );
 		}
 		public override string ToString () => $"wVK:{(KeyCode)vkCode}, wScan:{(KeyCode)scanCode}, dwFlags:{dwFlags}{(IsValidated () ? '+' : '?')}, time:{time}, dwEI *{dwExtraInfo}";
 		public override bool Equals ( [NotNullWhen ( true )] object obj ) {
@@ -160,9 +183,18 @@ public struct HWInput : IInputLLValues {
 		public MouseInput ( nint ptr ) {
 			dx = Marshal.ReadInt32 ( ptr );
 			dy = Marshal.ReadInt32 ( ptr, 4 );
-			dwFlags = (uint)Marshal.ReadInt32 ( ptr, 8 );
-			time = (uint)Marshal.ReadInt32 ( ptr, 12 );
-			dwExtraInfo = Marshal.ReadIntPtr ( ptr, 16 );
+			mouseData = (uint)Marshal.ReadInt32 ( ptr, 8 );
+			dwFlags = (uint)Marshal.ReadInt32 ( ptr, 12 );
+			time = (uint)Marshal.ReadInt32 ( ptr, 16 );
+			dwExtraInfo = Marshal.ReadIntPtr ( ptr, 20 );
+		}
+		public void Write ( nint ptr ) {
+			Marshal.WriteInt32 ( ptr, 0, dx );
+			Marshal.WriteInt32 ( ptr, 4, dy );
+			Marshal.WriteInt32 ( ptr, 8, (int)mouseData );
+			Marshal.WriteInt32 ( ptr, 12, (int)dwFlags );
+			Marshal.WriteInt32 ( ptr, 16, (int)time );
+			Marshal.WriteIntPtr ( ptr, 20, dwExtraInfo );
 		}
 	}
 	/// <summary>Obtained info about keyboard event during a hook.</summary>

@@ -65,6 +65,14 @@ public class MPacketSender : DPacketSender, INetPoint, INetDevice {
 	public override bool IsEPConnected ( INetPoint ep ) => Conns.ContainsKey ( (MPacketSender)ep );
 	public override INetPoint OwnEP ( int TTL, int network ) => this;
 
+	public List<string> Logbook = [];
+	public string GetLog () {
+		lock ( Logbook ) return string.Join ( "\n", Logbook );
+	}
+	protected void Note ( string msg ) {
+		lock ( Logbook ) Logbook.Add ( msg );
+	}
+
 	public override void Recv ( NetMessagePacket data ) {
 		bool proc = false;
 		List<OnReceiveHandler> removedCBs = new ();

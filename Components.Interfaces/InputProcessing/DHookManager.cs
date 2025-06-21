@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using Components.Library;
+using System.Collections;
 
 namespace Components.Interfaces;
 public abstract class DHookManager : ComponentBase<CoreBase> {
@@ -19,9 +20,9 @@ public abstract class DHookManager : ComponentBase<CoreBase> {
 
 	public DHookManager ( CoreBase owner ) : base ( owner ) { }
 
-	public abstract IReadOnlyCollection<DictionaryKey> AddHook ( int device, params VKChange[] vkChanges );
+	public abstract ICollection<DictionaryKey> AddHook ( int device, params VKChange[] vkChanges );
+	public abstract ICollection<DictionaryKey> RemoveHook ( int device, params VKChange[] vkChanges );
 	public abstract HHookInfo GetHook ( int device, VKChange vkChange );
-	public abstract void RemoveHook ( int device, params VKChange[] vkChanges );
 	public abstract void ClearHooks ( int device = 0 );
 	public abstract Dictionary<int, DictionaryKey> ListHooks ();
 	/// <summary>Register callback for all active hooks (in this manager) for given device. Callback should return true if event should be passed to other hooks, false if it should be consumed.</summary>

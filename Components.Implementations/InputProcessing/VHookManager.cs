@@ -10,6 +10,14 @@ public class VHookManager : DHookManager {
 	readonly Dictionary<(DeviceID, CBType), HashSet<CallbackHolder>> Callbacks = new ();
 	readonly Dictionary<DictionaryKey, HHookInfo> OwnedHooks = new ();
 
+	public readonly static VKChange[] SupportedVKs = { VKChange.KeyDown, VKChange.KeyUp, VKChange.MouseMove };
+	private static void AssertVKs (params VKChange[] vkChanges) {
+		if ( vkChanges == null ) return;
+		foreach ( var vkChange in vkChanges )
+			if ( !SupportedVKs.Contains ( vkChange ) )
+				throw new ArgumentOutOfRangeException ( nameof ( vkChanges ), vkChange, "Unsupported VKChange" );
+	}
+
 	public VHookManager ( CoreBase owner ) : base ( owner ) {
 	}
 
@@ -22,42 +30,39 @@ public class VHookManager : DHookManager {
 	}
 
 	/// <summary>Return value can be ignored. It is returned only to let caller know if hook was successfully added and to provide info if caller needs that. Otherwise, all important data are stored inside of this component</summary>
-	public override IReadOnlyCollection<DictionaryKey> AddHook ( DeviceID device, params VKChange[] vKChanges ) {
+	public override ICollection<DictionaryKey> AddHook ( DeviceID device, params VKChange[] vkChanges ) {
 		HashSet<DictionaryKey> ret = new ();
-		List<VKChange> WinLLHook = new (); // keyboard and mouse can be combined here
-		foreach ( var vKChange in vKChanges ) {
-			switch ( vKChange ) {
-			case VKChange.KeyDown: WinLLHook.Add ( vKChange ); break;
-			case VKChange.KeyUp: WinLLHook.Add ( vKChange ); break;
-			case VKChange.MouseMove: WinLLHook.Add ( vKChange ); break;
-			default:
-				throw new ArgumentOutOfRangeException ( nameof ( vKChanges ), vKChange, null );
-			}
-		}
-
-		if ( !WinLLHook.Any () ) return ret;
+		AssertVKs ( vkChanges );
+		if ( !vkChanges.Any () ) return ret;
 
 		var inputReader = Owner.Fetch<VInputReader_KeyboardHook> ();
 		if ( inputReader == null ) throw new InvalidOperationException ( "VInputReader_KeyboardHook not found!" );
 		if ( !ActiveHooks.ContainsKey ( device ) ) ActiveHooks.Add ( device, new HookGroup () );
 
-		var first = WinLLHook[0];
-		WinLLHook.RemoveAt ( 0 );
-		HHookInfo keyHookInfo = new ( this, device, first, WinLLHook.ToArray () );
+		HHookInfo keyHookInfo = new ( this, device, vkChanges[0], vkChanges[1..] );
 		var setup = inputReader.SetupHook ( keyHookInfo, FastCB, DelayedCB );
-		foreach ( var newHook in ActiveHooks[device].Add ( setup ) )
+		foreach ((VKChange change, DictionaryKey key) in setup) {
+			keyHookInfo.AddHookID ( key, change );
+		}
+		foreach ( var newHook in ActiveHooks[device].Add ( setup ) ) {
 			ret.Add ( newHook );
+			OwnedHooks.Add ( newHook, keyHookInfo );
+		}
 
-		/*if ( WinLLHook.Any () ) {
-			var first = WinLLHook[0];
-			WinLLHook.RemoveAt ( 0 );
-			HHookInfo keyHookInfo = new ( this, device, first, WinLLHook.ToArray () );
-			var keyHooks = Owner.Fetch<VInputReader_KeyboardHook> ().SetupHook ( keyHookInfo, FastCB, DelayedCB );
-			if ( !ActiveHooks.ContainsKey ( device ) ) ActiveHooks.Add ( device, new HookGroup () );
-			ActiveHooks[device].Add ( WinLLHook, keyHooks );
-			ret.UnionWith ( keyHooks );
-		}*/
 		return ret;
+	}
+
+	public override ICollection<DictionaryKey> RemoveHook ( DeviceID device, params VKChange[] vKChanges ) {
+		if ( !ActiveHooks.ContainsKey ( device ) ) return [];
+		var inputReader = Owner.Fetch<VInputReader_KeyboardHook> ();
+		if ( inputReader == null ) throw new InvalidOperationException ( "VInputReader_KeyboardHook not found!" );
+
+		var removed = ActiveHooks[device].Remove ( vKChanges );
+		foreach (DictionaryKey hookID in removed) {
+			inputReader.ReleaseHook ( OwnedHooks[hookID] );
+			OwnedHooks.Remove ( hookID );
+		}
+		return removed;
 	}
 
 	public override HHookInfo GetHook ( DeviceID device, VKChange vKChange ) {
@@ -87,8 +92,6 @@ public class VHookManager : DHookManager {
 		return ret;
 	}
 
-	public override void RemoveHook ( DeviceID device, params VKChange[] vKChanges ) => throw new NotImplementedException ();
-
 	private bool FastCB ( DictionaryKey key, HInputEventDataHolder e ) {
 		if ( !Callbacks.TryGetValue ( (e.HookInfo.DeviceID, CBType.Fast), out var cbs ) ) return true; // no callback of this type, pass to another callback
 		foreach ( var cb in cbs ) if ( !cb.callback ( e ) ) return false;
@@ -112,6 +115,24 @@ public class VHookManager : DHookManager {
 					throw new InvalidOperationException ( $"Hook for {key} already exists" );
 				else if ( allHooks.Add ( value ) ) newHooks.Add ( value );
 			return newHooks;
+		}
+
+		// Maybe some way to storing removed hooks / temporarily disabling them? Not sure where and how to implement it
+		public HashSet<DictionaryKey> Remove ( ICollection<VKChange> vkChanges ) {
+			HashSet<DictionaryKey> removed = [];
+			HashSet<DictionaryKey> candidates = [];
+			foreach ( var vkChange in vkChanges ) {
+				if ( hookDict.TryGetValue ( vkChange, out var hook ) ) {
+					candidates.Add ( hook );
+					hookDict.Remove ( vkChange );
+				}
+			}
+			foreach ( var candidate in candidates ) {
+				if ( hookDict.ContainsValue ( candidate ) ) continue;
+				if ( allHooks.Remove ( candidate ) ) removed.Add ( candidate );
+				else throw new InvalidOperationException ( "Hook not found in allHooks" );
+			}
+			return removed;
 		}
 
 		public HashSet<DictionaryKey> this[VKChange vkChange] => throw new NotImplementedException ();

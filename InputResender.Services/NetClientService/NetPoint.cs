@@ -45,12 +45,13 @@ namespace InputResender.Services {
 			}
 		}
 
-		public static INetPoint Parse ( object epObj, int defPort ) {
+		public static INetPoint Parse ( object epObj, int defPort = -1 ) {
 			if ( epObj is INetPoint INP ) return INP;
 			if ( epObj is IPEndPoint IP ) return new IPNetPoint ( IP );
 			if ( epObj is string sEP ) {
 				if ( InMemNetPoint.TryParse ( sEP, out var IMEP ) ) return IMEP;
-				if ( IPAddress.TryParse ( sEP, out var IPAddr ) ) return new IPNetPoint ( IPAddr, defPort );
+				if ( IPEndPoint.TryParse ( sEP, out var ipEP ) ) return new IPNetPoint ( ipEP );
+				if ( defPort >= 0 && IPAddress.TryParse ( sEP, out var IPAddr ) ) return new IPNetPoint ( IPAddr, defPort );
 				if ( IPNetPoint.TryParse ( sEP, out var IPP ) ) return IPP;
 			}
 			throw new InvalidCastException ( $"Unexpected object type: {epObj.GetType ().Name}. Currently supported: {nameof ( INetPoint )}, {nameof ( IPEndPoint )}." );

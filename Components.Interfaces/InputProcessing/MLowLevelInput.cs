@@ -57,6 +57,7 @@ namespace Components.Interfaces {
 		}
 
 		public override HInputData ParseHookData ( DictionaryKey hookID, nint vkChngCode, nint vkCode ) => new HInputData_Mock ( this, hookID, GetChangeType ( (int)vkChngCode ), Marshal.ReadIntPtr ( vkCode ) );
+		public override IReadOnlyCollection<HInputData> TryParseHookDataContextfree ( nint vkChngCode, nint vkCode ) => [new HInputData_Mock ( this, DictionaryKey.Empty, GetChangeType ( (int)vkChngCode ), Marshal.ReadIntPtr ( vkCode ) )];
 		/// <inheritdoc />
 		public override IDictionary<VKChange, Hook> SetHookEx ( HHookInfo hookInfo, Func<DictionaryKey, HInputData, bool> callback ) {
 			if ( SetHookResult < 0 ) return null;
@@ -75,6 +76,9 @@ namespace Components.Interfaces {
 			if ( !HookIDDict.ContainsPair (hookID.Key, hookID) ) throw new KeyNotFoundException ( $"Hook with key {hookID} was not found!" );
 			HookList.Remove ( hookID.Key );
 			return UnhookResult;
+		}
+		public override ProbeHook InstallProbe ( bool consume, ICollection<VKChange> changeMask, params KeyCode[] acceptedKeys ) {
+			throw new NotImplementedException ();
 		}
 
 		public override string PrintHookInfo ( DictionaryKey key ) {

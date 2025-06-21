@@ -11,6 +11,7 @@ namespace Components.Implementations {
 		public override HInputEventDataHolder[] ParseCommand ( InputData data ) => GetParser ( data.Cmnd ).Parse ( data );
 		public override int Simulate ( params HInputEventDataHolder[] data ) {
 			int ret = 0;
+			Owner.PushDelayedMsg ( "Requested simulating input of " + string.Join ( " | ", data.ToList () ) );
 			foreach ( HInputEventDataHolder h in data )
 				ret += (short)Owner.Fetch<DInputReader> ().SimulateInput ( h, AllowRecapture );
 			return ret;

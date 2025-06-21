@@ -67,7 +67,7 @@ namespace Components.Implementations {
 					if ( Clients.OwnedDevices.Keys.Any ( ep => node.Equals ( ep ) ) ) continue;
 					try {
 						Clients.AddEP ( node );
-						Owner.Fetch<DLogger> ().Log ( $"Added {node} '{node.DscName}' as a valid local EP" );
+						Owner.Fetch<DLogger> ()?.Log ( $"Added {node} '{node.DscName}' as a valid local EP" );
 					} catch ( Exception e ) {
 						PrintError ( $"Failed to add {node} as a valid local EP", e );
 					}
@@ -82,7 +82,7 @@ namespace Components.Implementations {
 		}
 		private void PrintError (string msg, Exception e) {
 			errors.Add ( (msg, e) );
-			Owner.Fetch<DLogger> ().Log ( $"ERROR: {msg} ({e.Message})" );
+			Owner.Fetch<DLogger> ()?.Log ( $"ERROR: {msg} ({e.Message})" );
 			OnErrorLocal?.Invoke ( msg, e );
 		}
 
@@ -127,6 +127,8 @@ namespace Components.Implementations {
 					if ( ret.HasFlag ( CallbackResult.Skip ) ) return INetDevice.ProcessResult.Skiped;
 					if ( !ret.HasFlag ( CallbackResult.Stop ) ) return INetDevice.ProcessResult.Accepted;
 				}
+				if ( DComponentJoiner.TrySend ( this, null, msg, msg.Data ) > 0 )
+					return INetDevice.ProcessResult.Accepted;
 				if ( PacketBuffer.Count >= MaxBufferSize ) PacketBuffer.Take ();
 				PacketBuffer.Add ( msg );
 				return INetDevice.ProcessResult.Accepted;

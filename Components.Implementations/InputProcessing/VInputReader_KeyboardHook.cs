@@ -6,13 +6,24 @@ namespace Components.Implementations;
 public class VInputReader_KeyboardHook : DInputReader {
 	private readonly DelayedRunner delayedRunner;
 	Dictionary<DictionaryKey, (DLowLevelInput, HLHookInfo)> HookSet;
+	Dictionary<DictionaryKey, (DLowLevelInput, HLHookInfo)> DeletedHooks;
+	// For keeping track of hooks that were removed. Currently used only for printing info. Would be nice to have more sophisticated system for this, but it's not a priority. Change it once some overhaul of the DInputReader is done.
+	public string Status;
 
 	public VInputReader_KeyboardHook ( CoreBase owner ) : base ( owner ) {
+		Status = "Constructing";
 		HookSet = new ();
-		delayedRunner = new ( HookSet, Owner );
+		DeletedHooks = new ();
+		delayedRunner = new ( HookSet, this );
+		Note ( "Delayed Runner constructed" );
 	}
 
 	public HLHookInfo GetHook ( DictionaryKey key ) => HookSet[key].Item2;
+
+	public void Note (string info) {
+		if ( info == null ) return;
+		lock ( Status ) { Status += "\n" + info; }
+	}
 
 	public struct HLHookInfo {
 		public Hook hook;
@@ -41,6 +52,9 @@ public class VInputReader_KeyboardHook : DInputReader {
 		}
 
 		foreach ( var hook in hooks ) {
+			hook.Value.OnError += ( string msg, Exception ex ) => {
+				Owner?.LogFcn?.Invoke ( $"Error in hook: {hook.Key} - {msg}\n{ex}" );
+			};
 			ret.Add ( hook.Key, hook.Value.Key );
 			HookSet.TryAdd ( hook.Value.Key, (LowLevelComponent, new ( hook.Value, mainCB, delayedCB ) ) );
 		}
@@ -54,15 +68,18 @@ public class VInputReader_KeyboardHook : DInputReader {
 				Owner.LogFcn?.Invoke ( $"Couldn't find a hook ID for Hook Definition: {hookInfo}" );
 				continue;
 			}
-			if ( HookSet.Remove ( hookID ) )
+			if ( HookSet.Remove ( hookID, out var origVal ) ) {
 				released += LowLevelComponent.UnhookHookEx ( hookRef.Item2.hook ) ? 1 : 0;
+				DeletedHooks[hookID] = origVal;
+			}
 		}
 		if ( HookSet.Count == 0 ) delayedRunner.Stop ();
 		return released;
 	}
 
 	public override string PrintHookInfo ( DictionaryKey key ) {
-		if ( !HookSet.TryGetValue ( key, out var hookRef ) ) return null;
+		if ( !HookSet.TryGetValue ( key, out var hookRef ) )
+			if ( !DeletedHooks.TryGetValue ( key, out hookRef ) ) return null;
 		return hookRef.Item1.PrintHookInfo ( key );
 	}
 
@@ -91,31 +108,41 @@ public class VInputReader_KeyboardHook : DInputReader {
 		bool Continue = true;
 		readonly IReadOnlyDictionary<DictionaryKey, (DLowLevelInput, HLHookInfo)> HookSet;
 		readonly HashSet<(DictionaryKey hookID, HInputEventDataHolder eventData, DLowLevelInput llInput, HLHookInfo hookInfo)> FoundEvents;
-		Task runTask;
+		Thread runTask;
 		public event Action<string> TaskStateChanged;
 		private object hookSetLock;
 		private readonly CoreBase Owner;
+		private readonly VInputReader_KeyboardHook OwnerComponent;
 
-		public DelayedRunner (Dictionary<DictionaryKey, (DLowLevelInput, HLHookInfo)> hookSet, CoreBase owner ) {
-			Owner = owner;
+		public DelayedRunner (Dictionary<DictionaryKey, (DLowLevelInput, HLHookInfo)> hookSet, VInputReader_KeyboardHook ownerComp ) {
+			ownerComp.Note ( "Constructing DelayedRunner" );
+			Owner = ownerComp.Owner;
+			OwnerComponent = ownerComp;
 			hookSetLock = hookSet;
 			HookSet = new System.Collections.ObjectModel.ReadOnlyDictionary<DictionaryKey, (DLowLevelInput, HLHookInfo)> ( hookSet );
 			FoundEvents = new ();
 		}
 
 		public void Start () {
-			lock (this) {
-				if (waiter == null) {
+			lock ( this ) {
+				if ( waiter == null ) {
+					OwnerComponent.Note ( "Creating new waiters" );
 					waiter = new ( false );
 					confirmWaiter = new ( false );
 				} else {
+					OwnerComponent.Note ( "Resetting waiters" );
 					waiter.Reset ();
 					confirmWaiter.Reset ();
 				}
 				Continue = true;
-				runTask ??= Task.Run ( CallbackParaTask );
+				runTask = new ( CallbackParaTask );
+				runTask.Start ();
 			}
-			confirmWaiter.WaitOne ();
+			OwnerComponent.Note ( "Awaiting confirmation" );
+			if ( !confirmWaiter.WaitOne ( 250 ) ) {
+				lock ( OwnerComponent.Status )
+					throw new InvalidOperationException ( $"Failed to start DelayedRunner, current status: {TaskState}\n\n{OwnerComponent.Status}" );
+			}
 		}
 
 		public void Notify () {
@@ -132,13 +159,12 @@ public class VInputReader_KeyboardHook : DInputReader {
 					confirmWaiter.WaitOne ();
 				} else if ( runTask != null ) {
 					// 'Should' be already closing
-					if ( !runTask.Wait ( 500 ) ) throw new System.Threading.SynchronizationLockException ( "Possible deadlock" );
+					if ( !runTask.Join ( 500 ) ) throw new System.Threading.SynchronizationLockException ( "Possible deadlock" );
 				} else return; // Already closed
 				waiter.Dispose ();
 				waiter = null;
 				confirmWaiter.Dispose ();
 				confirmWaiter = null;
-				runTask.Dispose ();
 				runTask = null;
 			}
 		}
@@ -149,9 +175,11 @@ public class VInputReader_KeyboardHook : DInputReader {
 		}
 
 		private void CallbackParaTask () {
+			OwnerComponent.Note ( "Starting CallbackParaTask" );
 			SetTaskState ( "Waiting for initialization");
 			while ( waiter == null || confirmWaiter == null ) Thread.Sleep ( 1 );
 			confirmWaiter.Set ();
+			OwnerComponent.Note ( "Starting main loop, notifying confirmWaiter" );
 			while ( true ) {
 				SetTaskState ( "Waiting for signal");
 				waiter.WaitOne ( 20 );
@@ -169,11 +197,13 @@ public class VInputReader_KeyboardHook : DInputReader {
 				Owner.PushDelayedMsg ( $"Found {FoundEvents.Count} events" );
 
 				SetTaskState ( "Processing events" );
-				foreach (var e in FoundEvents) {
+				foreach ( var e in FoundEvents ) {
+					if ( e.eventData.InputCode == (int)KeyCode.F5 || e.eventData.InputCode == (int)KeyCode.F10 || e.eventData.InputCode == (int)KeyCode.F11 || e.eventData.InputCode == (int)KeyCode.ShiftKey || e.eventData.InputCode == (int)KeyCode.ControlKey ) continue;
 					Owner.PushDelayedMsg ( $"Processing event: {e.eventData}" );
 					try {
 						e.hookInfo.DelayedCB?.Invoke ( e.hookID, e.eventData );
-					} catch (Exception ex) {
+						DComponentJoiner.TrySend ( OwnerComponent, null, e, e.eventData, e.hookInfo );
+					} catch ( Exception ex ) {
 						Owner.PushDelayedError ( "Error during delayed processing of input event!", ex );
 					}
 				}
@@ -181,6 +211,7 @@ public class VInputReader_KeyboardHook : DInputReader {
 				FoundEvents.Clear ();
 			}
 			SetTaskState ( "Stopped");
+			OwnerComponent.Note( "CallbackParaTask stopped, notifying confirmWaiter" );
 			confirmWaiter.Set ();
 		}
 	}

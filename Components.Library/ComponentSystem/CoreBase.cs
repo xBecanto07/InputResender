@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 
 namespace Components.Library {
 	public abstract class CoreBase {
 		private readonly DictionaryKeyFactory KeyFactory;
 		private readonly Dictionary<DictionaryKey, ComponentInfo> Components;
+		internal ReadOnlyDictionary<DictionaryKey, ComponentInfo> RegisteredComponents => Components.AsReadOnly ();
 		private static int index = 0;
 		public readonly int CoreID;
 		public string Name;
@@ -29,11 +31,21 @@ namespace Components.Library {
 			public readonly CoreBase Core;
 			IEnumerable<ComponentInfo> comps;
 
-			public ComponentGroup ( CoreBase core, Func<ComponentInfo, bool> selector ) {
+			public ComponentGroup ( CoreBase core, params Func<ComponentInfo, bool>[] selectors ) {
 				Core = core;
-				comps = Core.Components.Values.Where ( selector );
+				comps = Core.Components.Values;
+				foreach ( var selector in selectors ) Reduce ( selector );
 			}
-			public ComponentGroup Reduce ( Func<ComponentInfo, bool> selector ) { comps = comps.Where ( selector ); return this; }
+			public ComponentGroup Reduce ( Func<ComponentInfo, bool> selector ) {
+				if ( selector != null ) { //comps = comps.Where ( selector );
+					List<ComponentInfo> newComps = [];
+					foreach ( var comp in comps )
+						if ( selector ( comp ) )
+							newComps.Add ( comp );
+					comps = newComps;
+				}
+				return this;
+			}
 			public ComponentBase[] GetComponents () => comps.Select ( ( val ) => val.Component ).ToArray ();
 			public ComponentInfo[] GetInfoGroup () => comps.ToArray ();
 			public ComponentInfo GetInfo () {
@@ -48,11 +60,11 @@ namespace Components.Library {
 			public bool Contains ( ComponentBase obj ) => comps.Any ( ( val ) => val.Component == obj );
 
 			public static Func<ComponentInfo, bool> ByType<T> () where T : ComponentBase => ByType ( typeof ( T ) );
-			public static Func<ComponentInfo, bool> ByType ( Type t ) => ( comp ) => comp.TypeTree.Contains ( t );
-			public static Func<ComponentInfo, bool> ByName ( string name ) => ( comp ) => comp.Name == name;
-			public static Func<ComponentInfo, bool> BySubGroupID ( DictionaryKey subGroupID ) => ( comp ) => comp.GroupID == subGroupID;
-			public static Func<ComponentInfo, bool> ByVariantName ( string variantName ) => ( comp ) => comp.VariantName == variantName;
-			public static Func<ComponentInfo, bool> ByAcceptedType ( Type acceptedType ) => ( comp ) => comp.AcceptedTypes.Contains ( acceptedType );
+			public static Func<ComponentInfo, bool> ByType ( Type t ) => t == null ? null : ( comp ) => comp.TypeTree.Contains ( t );
+			public static Func<ComponentInfo, bool> ByName ( string name ) => name == null ? null : ( comp ) => comp.Name == name;
+			public static Func<ComponentInfo, bool> BySubGroupID ( DictionaryKey subGroupID ) => subGroupID == default ? null : ( comp ) => comp.GroupID == subGroupID;
+			public static Func<ComponentInfo, bool> ByVariantName ( string variantName ) => variantName == null ? null : ( comp ) => comp.VariantName == variantName;
+			public static Func<ComponentInfo, bool> ByAcceptedType ( Type acceptedType ) => acceptedType == null ? null :  ( comp ) => comp.AcceptedTypes.Contains ( acceptedType );
 		}
 
 		private static readonly string[] nameList = new string[] { "Alfa", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu" };
@@ -122,7 +134,8 @@ namespace Components.Library {
 			}
 		}
 
-		private Type[] FindCompDefName ( Type t ) {
+		public static Type[] FindCompDefName ( Type t ) {
+			if ( t == null ) return null;
 			List<Type> ret = new List<Type> ();
 			while ( t.BaseType != null ) {
 				ret.Insert ( 0, t );
@@ -141,21 +154,20 @@ namespace Components.Library {
 			Components.Remove ( info.GlobalID );
 		}
 
-		public T Fetch<T> ( DictionaryKey subGroupID = default, string variantName = null, Type acceptedType = null ) where T : ComponentBase => Fetch ( typeof ( T ), subGroupID, variantName, acceptedType ) as T;
-		public ComponentBase Fetch ( Type t, DictionaryKey subGroupID = default, string variantName = null, Type acceptedType = null ) {
-			var ret = new ComponentGroup ( this, ComponentGroup.ByType ( t ) );
-			if ( subGroupID.Valid ) ret.Reduce ( ComponentGroup.BySubGroupID ( subGroupID ) );
-			if ( variantName != null ) ret.Reduce ( ComponentGroup.ByVariantName ( variantName ) );
-			if ( acceptedType != null ) ret.Reduce ( ComponentGroup.ByAcceptedType ( acceptedType ) );
-			return ret.Get ();
-		}
-		public ComponentBase Fetch ( string name, DictionaryKey subGroupID = default, string variantName = null, Type acceptedType = null ) {
-			var ret = new ComponentGroup ( this, ComponentGroup.ByName ( name ) );
-			if ( subGroupID.Valid ) ret.Reduce ( ComponentGroup.BySubGroupID ( subGroupID ) );
-			if ( variantName != null ) ret.Reduce ( ComponentGroup.ByVariantName ( variantName ) );
-			if ( acceptedType != null ) ret.Reduce ( ComponentGroup.ByAcceptedType ( acceptedType ) );
-			return ret.Get ();
-		}
+		public T Fetch<T> ( DictionaryKey subGroupID = default, string variantName = null, Type acceptedType = null ) where T : ComponentBase => Fetch ( typeof ( T ), null, subGroupID, variantName, acceptedType ) as T;
+		public ComponentBase Fetch (
+			Type t = null
+			, string name = null
+			, DictionaryKey subGroupID = default
+			, string variantName = null
+			, Type acceptedType = null )
+			=> new ComponentGroup ( this
+			, ComponentGroup.ByType ( t )
+			, ComponentGroup.ByName ( name )
+			, ComponentGroup.BySubGroupID ( subGroupID )
+			, ComponentGroup.ByVariantName ( variantName )
+			, ComponentGroup.ByAcceptedType ( acceptedType )
+			).Get ();
 
 
 		public bool IsRegistered ( ComponentBase comp ) {
@@ -192,9 +204,59 @@ namespace Components.Library {
 					PrintFcn = ( msg ) => cmdProc.ProcessLine ( $"print \"{msg}\"" );
 				}
 
-				foreach ( var msg in DelayedMessages ) LogFcn?.Invoke ( msg );
+				foreach ( var msg in DelayedMessages ) PrintFcn.Invoke ( msg );
 				DelayedMessages.Clear ();
 			}
+		}
+	}
+
+	public class ComponentSelector {
+		public DictionaryKey? ID;
+		public string VariantName;
+		public Type ComponentType;
+
+		public ComponentSelector ( CoreBase core = null, DictionaryKey? id = null, string variantName = null, Type componentType = null ) {
+			ID = id;
+			VariantName = variantName;
+			ComponentType = componentType;
+
+			AssertComponent ( core );
+		}
+
+		void AssertComponent ( CoreBase core ) {
+			if ( ComponentType != null ) {
+				Type t = ComponentType;
+				while ( t.BaseType != null ) {
+					if ( t.BaseType == typeof ( ComponentBase ) ) return;
+					t = t.BaseType;
+				}
+				throw new Exception ( $"Only components can be joined, but {t.Name} was provided!" );
+			} else {
+				if ( core == null ) throw new ArgumentNullException ( nameof ( core ), "Core must be provided to assert component selector validity!" );
+				if ( ID != null ) {
+					if ( core[ID.Value] == null )
+						throw new Exception ( $"No component with ID {ID.Value} was found!" );
+				} else if ( VariantName != null ) {
+					if ( core.Fetch ( variantName: VariantName ) == null )
+						throw new Exception ( $"No component variant with name {VariantName} was found!" );
+				}
+			}
+		}
+
+		public ComponentBase Fetch (CoreBase core) {
+			if ( ID != null ) return core[ID.Value];
+			if ( ComponentType != null ) return core.Fetch ( t: ComponentType );
+			if ( VariantName != null ) return core.Fetch ( variantName: VariantName );
+			return null;
+		}
+		public T Fetch<T> ( CoreBase core ) where T : ComponentBase => Fetch ( core ) as T;
+
+		public override string ToString () {
+			List<string> dsc = new ();
+			if ( ID != null ) dsc.Add ( $"ID: {ID}" );
+			if ( ComponentType != null ) dsc.Add ( $"Type: {ComponentType.Name}" );
+			if ( VariantName != null ) dsc.Add ( $"Variant: {VariantName}" );
+			return $"<{string.Join ( ", ", dsc )}>";
 		}
 	}
 
