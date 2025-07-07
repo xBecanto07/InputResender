@@ -15,7 +15,7 @@ namespace Components.InterfaceTests {
 
 		public override CoreBase CreateCoreBase () {
 			var ret = new CoreBaseMock ();
-			new MInputParser ( ret );
+			new MInputMerger ( ret );
 			new MInputReader ( ret );
 			return ret;
 		}

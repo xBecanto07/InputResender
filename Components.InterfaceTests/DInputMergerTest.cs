@@ -7,10 +7,10 @@ using DataHolder = Components.Interfaces.HInputEventDataHolder;
 using Xunit.Abstractions;
 
 namespace Components.InterfaceTests {
-	public abstract class DInputParserTest : ComponentTestBase<DInputParser> {
+	public abstract class DInputMergerTest : ComponentTestBase<DInputMerger> {
 		protected DInputReader InputReader;
 		protected HHookInfo HookInfo;
-		public DInputParserTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
+		public DInputMergerTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
 
 		public override CoreBase CreateCoreBase () {
 			var ret = new CoreBaseMock ();
@@ -60,8 +60,8 @@ namespace Components.InterfaceTests {
 		}
 	}
 
-	public class MInputParserTest : DInputParserTest {
-		public MInputParserTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
-		public override DInputParser GenerateTestObject () => new MInputParser ( OwnerCore );
+	public class MInputMergerTest : DInputMergerTest {
+		public MInputMergerTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
+		public override DInputMerger GenerateTestObject () => new MInputMerger ( OwnerCore );
 	}
 }

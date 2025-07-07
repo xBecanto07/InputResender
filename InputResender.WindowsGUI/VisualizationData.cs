@@ -21,7 +21,7 @@ namespace InputResender.WindowsGUI {
 			stopwatch.Start ();
 			generalInfo[typeof ( DLowLevelInput )] = Core.LowLevelInput.Info.AllInfo ();
 			generalInfo[typeof ( DInputReader )] = Core.InputReader.Info.AllInfo ();
-			generalInfo[typeof ( DInputParser )] = Core.InputParser.Info.AllInfo ();
+			generalInfo[typeof ( DInputMerger )] = Core.InputMerger.Info.AllInfo ();
 			generalInfo[typeof ( DInputProcessor )] = Core.InputProcessor.Info.AllInfo ();
 			generalInfo[typeof ( DDataSigner )] = Core.DataSigner.Info.AllInfo ();
 			generalInfo[typeof ( DPacketSender )] = Core.PacketSender.Info.AllInfo ();

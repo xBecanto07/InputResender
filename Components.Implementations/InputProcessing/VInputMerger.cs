@@ -3,10 +3,10 @@ using Components.Library;
 using DataHolder = Components.Interfaces.HInputEventDataHolder;
 
 namespace Components.Implementations {
-	public class VInputParser : DInputParser {
+	public class VInputMerger : DInputMerger {
 		protected List<DataHolder> eventList;
 
-		public VInputParser ( CoreBase owner ) : base ( owner ) {
+		public VInputMerger ( CoreBase owner ) : base ( owner ) {
 			eventList = new List<DataHolder> ();
 		}
 
@@ -60,8 +60,8 @@ namespace Components.Implementations {
 
 		public override StateInfo Info => new VStateInfo ( this );
 		public class VStateInfo : DStateInfo {
-			public new VInputParser Owner => (VInputParser)base.Owner;
-			public VStateInfo ( VInputParser owner ) : base ( owner ) { }
+			public new VInputMerger Owner => (VInputMerger)base.Owner;
+			public VStateInfo ( VInputMerger owner ) : base ( owner ) { }
 
 			protected override string[] GetBufferedEvents () {
 				int N = Owner.eventList.Count;
