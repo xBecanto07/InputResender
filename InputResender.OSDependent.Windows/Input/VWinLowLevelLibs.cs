@@ -5,13 +5,12 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System;
 using System.Linq;
-using System.Reflection.Emit;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
+[assembly:System.Runtime.CompilerServices.InternalsVisibleTo ( "InputResender.WindowsGUI.Tests" )]
 namespace InputResender.WindowsGUI {
 	public partial class VWinLowLevelLibs : DLowLevelInput {
-		private const int WH_KEYBOARD_LOW_LEVEL = 13;
-		private const int WH_MOUSE_LOW_LEVEL = 14;
+		internal const int WH_KEYBOARD_LOW_LEVEL = 13;
+		internal const int WH_MOUSE_LOW_LEVEL = 14;
 		private static VWinLowLevelLibs mainInstance;
 		private HookGroupCollection OwnHooks;
 		private Dictionary<DictionaryKey, string> DeletedHookDiscription;
@@ -34,6 +33,8 @@ namespace InputResender.WindowsGUI {
 			mainInstance = this;
 			OwnHooks = new HookGroupCollection ( this );
 			DeletedHookDiscription = [];
+			CInputLLParser inputLLParser = Owner.IsRegistered<CInputLLParser> () ? Owner.Fetch<CInputLLParser> () : new CInputLLParser ( Owner );
+			inputLLParser.Register ( new WinLLInputStatusExtra.WinLLInputStatusParser () );
 		}
 
 		public override int ComponentVersion => 1;
@@ -102,30 +103,16 @@ namespace InputResender.WindowsGUI {
 
 		public override HInputData ParseHookData ( DictionaryKey _, nint vkChngCode, nint vkCode ) {
 			VKChange vkChange = (VKChange)vkChngCode;
-			int vkChangeType = GetHookType ( vkChange );
 
 			if ( !OwnHooks.OwnsHookForVKChange ( vkChange ) ) {
 				ErrorList.Add ( (nameof ( ParseHookData ), new KeyNotFoundException ( $"No hook assigned to change code {vkChange} was found!" )) );
 				return null;
 			}
 
-			return vkChangeType switch {
-				WH_KEYBOARD_LOW_LEVEL => WinLLInputData.NewKeyboardData ( this, vkChngCode, vkCode ),
-				WH_MOUSE_LOW_LEVEL => WinLLInputData.NewMouseData ( this, vkChngCode, vkCode ),
-				_ => throw new ArgumentOutOfRangeException ( nameof ( vkChange ), vkChange, "Hook code is not supported!" )
-			};
+			return new WinLLInputData ( this, vkChngCode, vkCode );
 		}
 
-		public override IReadOnlyCollection<HInputData> TryParseHookDataContextfree ( IntPtr vkChngCode, IntPtr vkCode ) {
-			VKChange vkChange = (VKChange)vkChngCode;
-			int vkChangeType = GetHookType ( vkChange );
-
-			return vkChangeType switch {
-				WH_KEYBOARD_LOW_LEVEL => [WinLLInputData.NewKeyboardData ( this, vkChngCode, vkCode )],
-				WH_MOUSE_LOW_LEVEL => [WinLLInputData.NewMouseData ( this, vkChngCode, vkCode )],
-				_ => throw new ArgumentOutOfRangeException ( nameof ( vkChange ), vkChange, "Hook code is not supported!" )
-			};
-		}
+		public override IReadOnlyCollection<HInputData> TryParseHookDataContextfree ( IntPtr vkChngCode, IntPtr vkCode ) => [new WinLLInputData ( this, vkChngCode, vkCode )];
 
 		public override nint CallNextHook ( nint hhk, int nCode, nint wParam, nint lParam ) => CallNextHookEx ( hhk, nCode, wParam, lParam );
 
@@ -370,6 +357,10 @@ namespace InputResender.WindowsGUI {
 		HWInput data;
 
 		public WinLLInputData ( ComponentBase owner, HWInput newData ) : base ( owner ) { data = newData; }
+		public WinLLInputData ( ComponentBase owner, nint vkChngCode, IntPtr dataPtr )
+			: this ( owner, new HWInput ( vkChngCode, dataPtr ) ) {
+			Pressed = (VKChange)vkChngCode;
+		}
 		/// <summary>Create new LLInputData for key press</summary>
 		/// <param name="owner">A component that should be set as owner of this dataHolder</param>
 		/// <param name="vkCode">Virtual Key Code<para>Must be 0 when dwFlags = KEYEVENTF_UNICODE</para><seealso href="https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes"/></param>
@@ -390,19 +381,14 @@ namespace InputResender.WindowsGUI {
 			HWInput.InputUnion dataUnion = new HWInput.InputUnion () { ki = data } ;
 			return new WinLLInputData ( owner, new HWInput ( HWInput.TypeKEY, dataUnion ) );
 		}
+
 		public static WinLLInputData NewKeyboardData ( ComponentBase owner, nint vkChngCode, IntPtr dataPtr ) {
-			var data = new HWInput.KeyboardInput ( dataPtr );
-			if ( (VKChange)vkChngCode == VKChange.KeyUp )
-				data.dwFlags |= (uint)HWInput.KeyboardInput.CallbackFlags.KeyUp;
-			HWInput.InputUnion dataUnion = new HWInput.InputUnion () { ki = data };
-			var ret = new WinLLInputData ( owner, new HWInput ( HWInput.TypeKEY, dataUnion ) );
+			var ret = new WinLLInputData ( owner, new HWInput ( vkChngCode, dataPtr ) );
 			ret.Pressed = (VKChange)vkChngCode;
 			return ret;
 		}
 		public static WinLLInputData NewMouseData (ComponentBase owner, nint vkChngCode, IntPtr dataPtr ) {
-			var data = new HWInput.MouseInput ( dataPtr );
-			HWInput.InputUnion dataUnion = new HWInput.InputUnion () { mi = data };
-			var ret = new WinLLInputData ( owner, new HWInput ( HWInput.TypeMOUSE, dataUnion ) );
+			var ret = new WinLLInputData ( owner, new HWInput ( vkChngCode, dataPtr ) );
 			ret.Pressed = (VKChange)vkChngCode;
 			return ret;
 		}

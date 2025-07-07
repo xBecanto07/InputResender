@@ -31,13 +31,13 @@
 			PacketSenderLabel = new System.Windows.Forms.Label ();
 			DataSignerLabel = new System.Windows.Forms.Label ();
 			InputProcessorLabel = new System.Windows.Forms.Label ();
-			InputParserLabel = new System.Windows.Forms.Label ();
+			InputMergerLabel = new System.Windows.Forms.Label ();
 			InputReaderLabel = new System.Windows.Forms.Label ();
 			LowLevelInputLabel = new System.Windows.Forms.Label ();
 			EventVectorLabel = new System.Windows.Forms.Label ();
 			MainAppControlsGenericInfo = new System.Windows.Forms.Label ();
 			InputSimulatorGenericInfo = new System.Windows.Forms.Label ();
-			InputParserGenericInfo = new System.Windows.Forms.Label ();
+			InputMergerGenericInfo = new System.Windows.Forms.Label ();
 			InputProcessorGenericInfo = new System.Windows.Forms.Label ();
 			DataSignerGenericInfo = new System.Windows.Forms.Label ();
 			PacketSenderGenericInfo = new System.Windows.Forms.Label ();
@@ -126,16 +126,16 @@
 			InputProcessorLabel.TabIndex = 27;
 			InputProcessorLabel.Text = "InputProcessor";
 			// 
-			// InputParserLabel
+			// InputMergerLabel
 			// 
-			InputParserLabel.AutoSize = true;
-			InputParserLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
-			InputParserLabel.ForeColor = System.Drawing.Color.Silver;
-			InputParserLabel.Location = new System.Drawing.Point ( 12, 725 );
-			InputParserLabel.Name = "InputParserLabel";
-			InputParserLabel.Size = new System.Drawing.Size ( 91, 20 );
-			InputParserLabel.TabIndex = 26;
-			InputParserLabel.Text = "InputParser";
+			InputMergerLabel.AutoSize = true;
+			InputMergerLabel.Font = new System.Drawing.Font ( "Segoe UI", 11.25F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline );
+			InputMergerLabel.ForeColor = System.Drawing.Color.Silver;
+			InputMergerLabel.Location = new System.Drawing.Point ( 12, 725 );
+			InputMergerLabel.Name = "InputMergerLabel";
+			InputMergerLabel.Size = new System.Drawing.Size ( 91, 20 );
+			InputMergerLabel.TabIndex = 26;
+			InputMergerLabel.Text = "InputMerger";
 			// 
 			// InputReaderLabel
 			// 
@@ -196,15 +196,15 @@
 			// 
 			// InputParserGenericInfo
 			// 
-			InputParserGenericInfo.AutoSize = true;
-			InputParserGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
-			InputParserGenericInfo.ForeColor = System.Drawing.Color.Silver;
-			InputParserGenericInfo.Location = new System.Drawing.Point ( 12, 750 );
-			InputParserGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
-			InputParserGenericInfo.Name = "InputParserGenericInfo";
-			InputParserGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
-			InputParserGenericInfo.TabIndex = 32;
-			InputParserGenericInfo.Text = "Version: 0\r\nCreation time: 0-00-00\r\nName: #asdf\r\nVariant: VComponentMock";
+			InputMergerGenericInfo.AutoSize = true;
+			InputMergerGenericInfo.Font = new System.Drawing.Font ( "Source Code Pro", 9F );
+			InputMergerGenericInfo.ForeColor = System.Drawing.Color.Silver;
+			InputMergerGenericInfo.Location = new System.Drawing.Point ( 12, 750 );
+			InputMergerGenericInfo.MaximumSize = new System.Drawing.Size ( 380, 0 );
+			InputMergerGenericInfo.Name = "InputParserGenericInfo";
+			InputMergerGenericInfo.Size = new System.Drawing.Size ( 168, 60 );
+			InputMergerGenericInfo.TabIndex = 32;
+			InputMergerGenericInfo.Text = "Version: 0\r\nCreation time: 0-00-00\r\nName: #asdf\r\nVariant: VComponentMock";
 			// 
 			// InputProcessorGenericInfo
 			// 
@@ -325,14 +325,14 @@
 			Controls.Add ( PacketSenderLabel );
 			Controls.Add ( DataSignerLabel );
 			Controls.Add ( InputProcessorLabel );
-			Controls.Add ( InputParserLabel );
+			Controls.Add ( InputMergerLabel );
 			Controls.Add ( InputReaderLabel );
 			Controls.Add ( LowLevelInputLabel );
 			Controls.Add ( EventVectorLabel );
 			Controls.Add ( MainAppControlsGenericInfo );
 			Controls.Add ( InputSimulatorGenericInfo );
 			Controls.Add ( InputReaderGenericInfo );
-			Controls.Add ( InputParserGenericInfo );
+			Controls.Add ( InputMergerGenericInfo );
 			Controls.Add ( InputProcessorGenericInfo );
 			Controls.Add ( DataSignerGenericInfo );
 			Controls.Add ( PacketSenderGenericInfo );
@@ -357,7 +357,7 @@
 		private System.Windows.Forms.Label PacketSenderLabel;
 		private System.Windows.Forms.Label DataSignerLabel;
 		private System.Windows.Forms.Label InputProcessorLabel;
-		private System.Windows.Forms.Label InputParserLabel;
+		private System.Windows.Forms.Label InputMergerLabel;
 		private System.Windows.Forms.Label InputReaderLabel;
 		private System.Windows.Forms.Label LowLevelInputLabel;
 		private System.Windows.Forms.Label EventVectorLabel;
@@ -365,7 +365,7 @@
 		private System.Windows.Forms.Label InputSimulatorGenericInfo;
 		private System.Windows.Forms.Label LowLevelInputGenericInfo;
 		private System.Windows.Forms.Label InputReaderGenericInfo;
-		private System.Windows.Forms.Label InputParserGenericInfo;
+		private System.Windows.Forms.Label InputMergerGenericInfo;
 		private System.Windows.Forms.Label InputProcessorGenericInfo;
 		private System.Windows.Forms.Label DataSignerGenericInfo;
 		private System.Windows.Forms.Label PacketSenderGenericInfo;

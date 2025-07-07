@@ -81,7 +81,7 @@ public class PipelinesTest {
 
 		RegisterPipeline ( sender, typeof ( DInputProcessor ), typeof ( DDataSigner ), typeof ( DPacketSender ) );
 		RegisterPipeline ( receiver, typeof ( DPacketSender ), typeof ( DDataSigner ), typeof ( DInputSimulator ) );
-		RegisterPipeline ( sender, typeof ( DInputReader ), typeof ( DInputParser ), typeof ( DInputProcessor ) );
+		RegisterPipeline ( sender, typeof ( DInputReader ), typeof ( DInputMerger ), typeof ( DInputProcessor ) );
 
 		// Set up sender hook to fire the sending pipeline (hook needs only to be created,p
 		//    only the return value is important here (i.e. should the event be consumed or passed on).

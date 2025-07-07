@@ -7,9 +7,9 @@ using FluentAssertions;
 using Xunit.Abstractions;
 
 namespace Components.ImplementationTests {
-	public class VInputParserTest : DInputParserTest {
-		public VInputParserTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
-		public override DInputParser GenerateTestObject () => new VInputParser ( OwnerCore );
+	public class VInputMergerTest : DInputMergerTest {
+		public VInputMergerTest ( ITestOutputHelper outputHelper ) : base ( outputHelper ) { }
+		public override DInputMerger GenerateTestObject () => new VInputMerger ( OwnerCore );
 
 		[Fact]
 		public void NullDataReturnsEmpty () {

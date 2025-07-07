@@ -4,12 +4,12 @@ using System.Net;
 namespace Components.Interfaces;
 public abstract class DMainAppCore : CoreBase {
 	[Flags]
-	public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputParser = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, ShortcutWorker = 256, CommandWorker = 512, ComponentJoiner = 1024, All = 0xFFFF }
+	public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputMerger = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, ShortcutWorker = 256, CommandWorker = 512, ComponentJoiner = 1024, All = 0xFFFF }
 
 	public DEventVector EventVector { get => Fetch<DEventVector> (); }
 	public DLowLevelInput LowLevelInput { get => Fetch<DLowLevelInput> (); }
 	public DInputReader InputReader { get => Fetch<DInputReader> (); }
-	public DInputParser InputParser { get => Fetch<DInputParser> (); }
+	public DInputMerger InputMerger { get => Fetch<DInputMerger> (); }
 	public DInputProcessor InputProcessor { get => Fetch<DInputProcessor> (); }
 	public DDataSigner DataSigner { get => Fetch<DDataSigner> (); }
 	public DPacketSender PacketSender { get => Fetch<DPacketSender> (); }
@@ -22,7 +22,7 @@ public abstract class DMainAppCore : CoreBase {
 		Func<DMainAppCore, DEventVector> CreateEventVector,
 		Func<DMainAppCore, DLowLevelInput> CreateLowLevelInput,
 		Func<DMainAppCore, DInputReader> CreateInputReader,
-		Func<DMainAppCore, DInputParser> CreateInputParser,
+		Func<DMainAppCore, DInputMerger> CreateInputMerger,
 		Func<DMainAppCore, DInputProcessor> CreateInputProcessor,
 		Func<DMainAppCore, DDataSigner> CreateDataSigner,
 		Func<DMainAppCore, DPacketSender> CreatePacketSender,
@@ -38,7 +38,7 @@ public abstract class DMainAppCore : CoreBase {
 		CreateComponent ( CreateEventVector, nameof ( DEventVector ) );
 		CreateComponent ( CreateLowLevelInput, nameof ( DLowLevelInput ) );
 		CreateComponent ( CreateInputReader, nameof ( DInputReader ) );
-		CreateComponent ( CreateInputParser, nameof ( DInputParser ) );
+		CreateComponent ( CreateInputMerger, nameof ( DInputMerger ) );
 		CreateComponent ( CreateInputProcessor, nameof ( DInputProcessor ) );
 		CreateComponent ( CreateDataSigner, nameof ( DDataSigner ) );
 		CreateComponent ( CreatePacketSender, nameof ( DPacketSender ) );
@@ -77,7 +77,7 @@ public abstract class DMainAppCore : CoreBase {
 	public bool ShouldDefaultHookResend;
 	public bool DefaultFastHooCallback ( DictionaryKey key, HInputEventDataHolder inputData ) => ShouldDefaultHookResend;
 	public void DefaultDelayedCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {
-		var combo = InputParser.ProcessInput ( inputData );
+		var combo = InputMerger.ProcessInput ( inputData );
 		InputProcessor.ProcessInput ( combo );
 	}
 
@@ -85,7 +85,7 @@ public abstract class DMainAppCore : CoreBase {
 			( core ) => new MEventVector ( core ),
 			( core ) => new MLowLevelInput ( core ),
 			( core ) => new MInputReader ( core ),
-			( core ) => new MInputParser ( core ),
+			( core ) => new MInputMerger ( core ),
 			( core ) => new MInputProcessor ( core ),
 			( core ) => new MDataSigner ( core ),
 			( core ) => MPacketSender.Fetch ( 0, core ),
@@ -102,7 +102,7 @@ public class MMainAppCore : DMainAppCore {
 	public MMainAppCore ( Func<DMainAppCore, DEventVector> CreateEventVector,
 		Func<DMainAppCore, DLowLevelInput> CreateLowLevelInput,
 		Func<DMainAppCore, DInputReader> CreateInputReader,
-		Func<DMainAppCore, DInputParser> CreateInputParser,
+		Func<DMainAppCore, DInputMerger> CreateInputMerger,
 		Func<DMainAppCore, DInputProcessor> CreateInputProcessor,
 		Func<DMainAppCore, DDataSigner> CreateDataSigner,
 		Func<DMainAppCore, DPacketSender> CreatePacketSender,
@@ -110,7 +110,7 @@ public class MMainAppCore : DMainAppCore {
 		Func<DMainAppCore, DShortcutWorker> CreateShortcutWorker,
 		Func<DMainAppCore, DCommandWorker> CreateCommandWorker,
 		Func<DMainAppCore, DComponentJoiner> CreateComponentJoiner,
-		CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputParser, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, CreateComponentJoiner, componentMask ) {
+		CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputMerger, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, CreateComponentJoiner, componentMask ) {
 	}
 
 	public override void Initialize () {}

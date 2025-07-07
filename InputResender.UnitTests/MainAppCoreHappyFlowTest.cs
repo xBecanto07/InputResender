@@ -58,7 +58,7 @@ namespace InputResender.UnitTests {
 		}
 
 		protected bool ProcessInput ( DictionaryKey key, HInputEventDataHolder inputData) {
-			var parsedInput = Sender.InputParser.ProcessInput ( inputData );
+			var parsedInput = Sender.InputMerger.ProcessInput ( inputData );
 			Sender.InputProcessor.ProcessInput ( parsedInput );
 			return false;
 		}

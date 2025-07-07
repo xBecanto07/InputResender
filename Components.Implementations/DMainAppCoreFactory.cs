@@ -10,7 +10,7 @@ public class DMainAppCoreFactory {
 			( core ) => new MEventVector ( core ),
 			( core ) => new MLowLevelInput ( core ),
 			( core ) => new MInputReader ( core ),
-			( core ) => new MInputParser ( core ),
+			( core ) => new MInputMerger ( core ),
 			( core ) => new MInputProcessor ( core ),
 			( core ) => new MDataSigner ( core ),
 			( core ) => MPacketSender.Fetch ( 0, core ),
@@ -24,7 +24,7 @@ public class DMainAppCoreFactory {
 			( core ) => new MEventVector ( core ),
 			( core ) => new MLowLevelInput ( core ),
 			( core ) => new VInputReader_KeyboardHook ( core ),
-			( core ) => new VInputParser ( core ),
+			( core ) => new VInputMerger ( core ),
 			( core ) => new VInputProcessor ( core ),
 			( core ) => new VDataSigner ( core ),
 			( core ) => new VPacketSender ( core ),
@@ -72,9 +72,9 @@ public class DMainAppCoreFactory {
 			return (true, simulator.Simulate ( pressAr ));
 		} );
 
-		DComponentJoiner.TryRegisterJoiner<DInputReader, DInputParser, HInputEventDataHolder> ( compJoiner, ( joiner, parser, data ) =>
-			(true, parser.ProcessInput ( data )) );
-		DComponentJoiner.TryRegisterJoiner<DInputParser, DInputProcessor, HInputEventDataHolder[]> ( compJoiner, ( joiner, processor, data ) => {
+		DComponentJoiner.TryRegisterJoiner<DInputReader, DInputMerger, HInputEventDataHolder> ( compJoiner, ( joiner, merger, data ) =>
+			(true, merger.ProcessInput ( data )) );
+		DComponentJoiner.TryRegisterJoiner<DInputMerger, DInputProcessor, HInputEventDataHolder[]> ( compJoiner, ( joiner, processor, data ) => {
 			processor.ProcessInput ( data );
 			return (true, null);
 		} );

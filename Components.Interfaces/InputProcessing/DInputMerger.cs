@@ -1,8 +1,8 @@
 ﻿using Components.Library;
 
 namespace Components.Interfaces {
-	public abstract class DInputParser : ComponentBase<CoreBase> {
-		public DInputParser ( CoreBase owner ) : base ( owner ) { }
+	public abstract class DInputMerger : ComponentBase<CoreBase> {
+		public DInputMerger ( CoreBase owner ) : base ( owner ) { }
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(ProcessInput), typeof(HInputEventDataHolder[])),
@@ -17,7 +17,7 @@ namespace Components.Interfaces {
 		public abstract void ClearMemory ();
 
 		public abstract class DStateInfo : StateInfo {
-			protected DStateInfo ( DInputParser owner ) : base ( owner ) {
+			protected DStateInfo ( DInputMerger owner ) : base ( owner ) {
 				BufferedEvents = GetBufferedEvents ();
 			}
 			public readonly string[] BufferedEvents;
@@ -26,8 +26,8 @@ namespace Components.Interfaces {
 		}
 	}
 
-	public class MInputParser : DInputParser {
-		public MInputParser ( CoreBase owner ) : base ( owner ) {
+	public class MInputMerger : DInputMerger {
+		public MInputMerger ( CoreBase owner ) : base ( owner ) {
 		}
 
 		public override int ComponentVersion => 1;
@@ -38,7 +38,7 @@ namespace Components.Interfaces {
 
 		public override StateInfo Info => throw new NotImplementedException ();
 		public class VStateInfo : DStateInfo {
-			public VStateInfo ( MInputParser owner ) : base ( owner ) { }
+			public VStateInfo ( MInputMerger owner ) : base ( owner ) { }
 
 			protected override string[] GetBufferedEvents () => new string[0];
 		}

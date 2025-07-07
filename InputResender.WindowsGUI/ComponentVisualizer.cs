@@ -22,7 +22,7 @@ public partial class ComponentVisualizer : Form {
 		Data.Update ();
 		LowLevelInputGenericInfo.Text = Data.GeneralInfo[typeof ( DLowLevelInput )];
 		InputReaderGenericInfo.Text = Data.GeneralInfo[typeof ( DInputReader )];
-		InputParserGenericInfo.Text = Data.GeneralInfo[typeof ( DInputParser )];
+		InputMergerGenericInfo.Text = Data.GeneralInfo[typeof ( DInputMerger )];
 		InputProcessorGenericInfo.Text = Data.GeneralInfo[typeof ( DInputProcessor )];
 		DataSignerGenericInfo.Text = Data.GeneralInfo[typeof ( DDataSigner )];
 		PacketSenderGenericInfo.Text = Data.GeneralInfo[typeof ( DPacketSender )];

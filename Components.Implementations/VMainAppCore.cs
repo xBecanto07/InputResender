@@ -5,7 +5,7 @@ namespace Components.Implementations {
 		public VMainAppCore ( Func<DMainAppCore, DEventVector> CreateEventVector,
 			Func<DMainAppCore, DLowLevelInput> CreateLowLevelInput,
 			Func<DMainAppCore, DInputReader> CreateInputReader,
-			Func<DMainAppCore, DInputParser> CreateInputParser,
+			Func<DMainAppCore, DInputMerger> CreateInputMerger,
 			Func<DMainAppCore, DInputProcessor> CreateInputProcessor,
 			Func<DMainAppCore, DDataSigner> CreateDataSigner,
 			Func<DMainAppCore, DPacketSender> CreatePacketSender,
@@ -13,7 +13,7 @@ namespace Components.Implementations {
 			Func<DMainAppCore, DShortcutWorker> CreateShortcutWorker,
 			Func<DMainAppCore, DCommandWorker> CreateCommandWorker,
 			Func<DMainAppCore, DComponentJoiner> CreateComponentJoiner,
-			CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputParser, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, CreateComponentJoiner, componentMask ) {
+			CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputMerger, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, CreateComponentJoiner, componentMask ) {
 		}
 
 		public override void Initialize () {

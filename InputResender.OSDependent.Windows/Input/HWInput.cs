@@ -38,12 +38,63 @@ public struct HWInput : IInputLLValues {
 
 	public int SizeOf { get => Marshal.SizeOf ( typeof ( HWInput ) ); }
 
+	public static uint TimeConvert ( DateTime time ) => TimeConvert ( time.Ticks );
+	public static uint TimeConvert ( long ticks ) => (uint)(ticks / TimeSpan.TicksPerMillisecond);
+	public static DateTime TimeConvert ( uint time ) => new DateTime ( time * TimeSpan.TicksPerMillisecond, DateTimeKind.Utc );
+
 	public KeyCode Key { get {
 			switch (Type) {
 			case TypeKEY: return (KeyCode)Data.ki.vkCode;
+			case TypeMOUSE: return KeyCode.MouseMove;
 			default: return KeyCode.None;
 			}
-		} }
+		}
+	}
+	public uint Time {
+		get => Type switch {
+			TypeKEY => Data.ki.time,
+			TypeMOUSE => Data.mi.time,
+			_ => 0
+		};
+		set {
+			switch (Type) {
+			case TypeKEY: Data.ki.time = value; break;
+			case TypeMOUSE: Data.mi.time = value; break;
+			default: throw new InvalidOperationException ( "Cannot set Time for non-keyboard/mouse input." );
+			}
+		}
+	}
+	public void UpdateExtraInfo ( nint dataLocation, nint extraInfo ) {
+		ExtraInfo = extraInfo;
+		switch ( Type ) {
+		case TypeKEY: Data.ki.Write ( dataLocation ); break;
+		case TypeMOUSE: Data.mi.Write ( dataLocation ); break;
+		default: throw new InvalidOperationException ( "Cannot update ExtraInfo for non-keyboard/mouse input." );
+		}
+	}
+	public IntPtr ExtraInfo {
+		get => Type switch {
+			TypeKEY => Data.ki.dwExtraInfo,
+			TypeMOUSE => Data.mi.dwExtraInfo,
+			_ => 0
+		};
+		set {
+			switch (Type) {
+			case TypeKEY: Data.ki.dwExtraInfo = value; break;
+			case TypeMOUSE: Data.mi.dwExtraInfo = value; break;
+			default: throw new InvalidOperationException ( "Cannot set ExtraInfo for non-keyboard/mouse input." );
+			}
+		}
+	}
+
+	public HWInput ( nint vkChangeCode, IntPtr dataPtr ) {
+		switch ( (VKChange)vkChangeCode ) {
+		case VKChange.KeyDown: Type = Keyboard; Data = new () { ki = new HWInput.KeyboardInput ( dataPtr ) }; break;
+		case VKChange.KeyUp: Type = Keyboard; Data = new () { ki = new HWInput.KeyboardInput ( dataPtr, true ) }; break;
+		case VKChange.MouseMove: Type = Mouse; Data = new () { mi = new HWInput.MouseInput ( dataPtr ) }; break;
+		default: throw new NotSupportedException ( $"Unsupported VKChange code: {vkChangeCode}" );
+		}
+	}
 
 	public HWInput (int type, InputUnion data) { Type = type; Data = data; }
 
@@ -67,6 +118,8 @@ public struct HWInput : IInputLLValues {
 		public const uint keyDownID = (uint)(SendInputFlags.KeyDown | SendInputFlags.Scancode);
 		public const uint keyUpID = (uint)(SendInputFlags.KeyUp | SendInputFlags.Scancode);
 
+		public const int SizeOf = 24;
+
 		CallbackFlags callbackFlags => (CallbackFlags)dwFlags;
 		SendInputFlags sendInputFlags => (SendInputFlags)dwFlags;
 
@@ -80,7 +133,7 @@ public struct HWInput : IInputLLValues {
 			};
 			return new HWInput ( Keyboard, new InputUnion { ki = ki } );
 		}
-		public KeyboardInput (nint ptr ) {
+		public KeyboardInput (nint ptr, bool isKeyUp = false ) {
 			// Read the written data for debugging purposes
 			byte[] data = new byte[Marshal.SizeOf ( this )];
 			Marshal.Copy ( ptr, data, 0, data.Length );
@@ -90,6 +143,12 @@ public struct HWInput : IInputLLValues {
 			dwFlags |= (uint)CallbackFlags.ValidCallbackFlags;
 			time = (uint)Marshal.ReadInt32 ( ptr, 12 );
 			dwExtraInfo = Marshal.ReadIntPtr ( ptr, 16 );
+			if ( isKeyUp ) dwFlags |= (uint)CallbackFlags.KeyUp;
+		}
+		public nint Write () {
+			nint ptr = Marshal.AllocHGlobal ( SizeOf );
+			Write ( ptr );
+			return ptr;
 		}
 		public void Write (nint ptr) {
 			LLInputLogger.Log(1337, 'W', $"Writing KeyboardInput to {ptr:X} with vkCode:{vkCode}, scanCode:{scanCode}, dwFlags:{dwFlags}, time:{time}, dwExtraInfo:{dwExtraInfo}" );
@@ -196,17 +255,6 @@ public struct HWInput : IInputLLValues {
 			Marshal.WriteInt32 ( ptr, 16, (int)time );
 			Marshal.WriteIntPtr ( ptr, 20, dwExtraInfo );
 		}
-	}
-	/// <summary>Obtained info about keyboard event during a hook.</summary>
-	[StructLayout ( LayoutKind.Sequential )]
-	public class KeyboardInfo {
-		public uint vkCode;
-		public uint scanCode;
-		public uint flags;
-		public uint time;
-		public IntPtr dwExtraInfo;
-
-		public override string ToString () => $"wVK:{(KeyCode)vkCode}, wScan:{(KeyCode)scanCode}, dwFlags:{flags}, time:{time}, dwEI *{dwExtraInfo}";
 	}
 
 	/// <summary>Event info, is part of the 'InputUnion', used when simulating keypress.</summary>

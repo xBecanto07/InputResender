@@ -102,7 +102,7 @@ namespace Components.Interfaces {
 		}
 		private bool HookFastCallback ( DictionaryKey key, HInputEventDataHolder inputData ) => HookShouldResend;
 		private void HookCallback ( DictionaryKey key, HInputEventDataHolder inputData ) {
-			var inputCombination = Owner.InputParser.ProcessInput ( inputData );
+			var inputCombination = Owner.InputMerger.ProcessInput ( inputData );
 			Owner.InputProcessor.ProcessInput ( inputCombination );
 		}
 
