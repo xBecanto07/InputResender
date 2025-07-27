@@ -14,7 +14,9 @@ namespace Components.Interfaces {
 		/// <returns></returns>
 		public delegate IntPtr LowLevelKeyboardProc ( int nCode, IntPtr wParam, IntPtr lParam );
 
-		public DLowLevelInput ( CoreBase owner ) : base ( owner ) { }
+		public DLowLevelInput ( CoreBase owner ) : base ( owner ) {
+			inputLLParser = Owner.IsRegistered<CInputLLParser> () ? Owner.Fetch<CInputLLParser> () : new CInputLLParser ( owner );
+		}
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 				(nameof(SetHookEx), typeof(IDictionary<VKChange, Hook>)),
@@ -34,6 +36,7 @@ namespace Components.Interfaces {
 				("remove_" + nameof(OnEvent), typeof(void)),
 			};
 
+		protected CInputLLParser inputLLParser;
 		protected static Dictionary<DictionaryKey, Hook> HookIDDict = new ();
 		protected static DictionaryKeyFactory HookKeyFactory = new DictionaryKeyFactory ();
 
@@ -79,6 +82,7 @@ namespace Components.Interfaces {
 			ErrorList.Clear ();
 		}
 		public abstract nint GetMessageExtraInfoPtr ();
+
 
 		public abstract class DStateInfo : StateInfo {
 			protected DStateInfo ( DLowLevelInput owner ) : base ( owner ) {
@@ -261,8 +265,11 @@ namespace Components.Interfaces {
 				LLInputLogger.Log ( HookID, 'p', $"Processing already in progress, {(Consume ? "Skipping" : "Passing to next")}" );
 				return Consume ? 1 : NextHookCaller ( 43, nCode, wParam, lParam );
 			}
-			if ( extras == 0 ) SetExtraInfo ( nCode, wParam, lParam, hash );
-			extras = hash;
+			if ( extras == 0 ) {
+				LLInputStatusExtra extraS = LLInputStatusExtra.Create ( extras );
+				SetExtraInfo ( nCode, wParam, lParam, extraS.Ptr );
+				extras = extraS.Ptr;
+			}
 			processing = true;
 			nint ret = 1;
 			eventSubID++;
@@ -340,6 +347,8 @@ namespace Components.Interfaces {
 		private nint LLCallback ( int nCode, IntPtr wParam, IntPtr lParam )
 			=> ProcessCallback ( nCode, wParam, lParam, null );
 		public nint ProcessCallback ( int nCode, IntPtr wParam, IntPtr lParam, object source ) {
+			var inputInfo = Owner.Owner.Fetch<CInputLLParser> ()?.Parse ( nCode, wParam, lParam );
+
 			MsgID++;
 			var parseAttempts = LLInput.TryParseHookDataContextfree ( wParam, lParam );
 			nint hash = 0, extras = 0;
@@ -350,11 +359,11 @@ namespace Components.Interfaces {
 					return LLInput.CallNextHook ( HookID, nCode, wParam, lParam );
 				time = attempt.TimeStamp;
 				hash = attempt.GetFullHash ( wParam, lParam );
-				LLInputLogger.AssertLLData ( nCode, wParam, lParam, 'A', tTime: time );
+				//LLInputLogger.AssertLLData ( nCode, wParam, lParam, 'A', tTime: time );
 				if (attempt.ExtraInfo == 0) {
 					extras = hash;
 					attempt.SetExtraInfo ( lParam, hash );
-					LLInputLogger.AssertLLData ( nCode, wParam, lParam, 'B', tTime: time, tExtraInfo: hash );
+					//LLInputLogger.AssertLLData ( nCode, wParam, lParam, 'B', tTime: time, tExtraInfo: hash );
 					if (time != attempt.TimeStamp) LLInputLogger.Log(HookID, 'h', $"Time stamp changed from {time} to {attempt.TimeStamp} for {attempt.Key} (hash={hash})" );
 					if (hash != attempt.GetFullHash ( wParam, lParam ) )
 						LLInputLogger.Log ( HookID, 'h', $"Hash changed from {hash} to {attempt.GetFullHash ( wParam, lParam )} for {attempt.Key}" );
@@ -362,7 +371,7 @@ namespace Components.Interfaces {
 				break;
 			}
 
-			LLInputLogger.AssertLLData ( nCode, wParam, lParam, 'C', tTime: time );
+			//LLInputLogger.AssertLLData ( nCode, wParam, lParam, 'C', tTime: time );
 
 			if ( hash == 0 ) {
 				LLInputLogger.Log ( HookID, 'h', $"Failed to parse {nCode}|{wParam}|{lParam} to HInputData" );
@@ -374,7 +383,7 @@ namespace Components.Interfaces {
 			} else Seen.Add ( hash );
 			LLInputLogger.Log(HookID, 'h', $"Parsed new LL event: {nCode}, {wParam}, {lParam} (MsgID: {MsgID}, hash={hash}, extras={extras}, time={time})" );
 
-			LLInputLogger.AssertLLData ( nCode, wParam, lParam, 'D', tTime: time );
+			//LLInputLogger.AssertLLData ( nCode, wParam, lParam, 'D', tTime: time );
 			Log?.Invoke ( nCode, wParam, lParam );
 			if ( source != null ) LLInputLogger.Log ( HookID, 'h', $"Not notifying other probes about new event, as it is from {source.GetType ()}" );
 			else InputManagementService.NotifyProbes ( this, nCode, wParam, lParam, extras );

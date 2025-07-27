@@ -56,6 +56,45 @@ namespace Components.Interfaces {
 		public override string ToString () => $"{(HookInfo == null ? "NoID" : HookInfo.DeviceID)}.{InputCode} ({(KeyCode)InputCode})[{ValueX.ToShortString ()};{ValueY.ToShortString ()};{ValueZ.ToShortString ()}] Δ[{DeltaX.ToShortString ()};{DeltaY.ToShortString ()};{DeltaZ.ToShortString ()}]";
 	}
 
+	public class LLInputStatusExtra {
+		[StructLayout ( LayoutKind.Sequential )]
+		private class StatusData {
+			public int StructMark;
+			public nint OrigExtraInfo;
+			public uint TimeOfRegistration;
+			public int UID;
+			public byte Holders;
+		}
+
+		static Dictionary<nint, LLInputStatusExtra> Extras = [];
+		static int uidProvider = 42;
+
+		readonly GCHandle handle;
+		readonly StatusData data;
+		public nint Ptr => handle.AddrOfPinnedObject ();
+
+		private LLInputStatusExtra (nint origExtra) {
+			data = new () {
+				StructMark = 0x5ad40fb7,
+				OrigExtraInfo = origExtra,
+				TimeOfRegistration = (uint)(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond),
+				UID = uidProvider++,
+				Holders = 1
+			};
+			handle = GCHandle.Alloc ( data, GCHandleType.Pinned );
+		}
+
+		public static LLInputStatusExtra Create (nint origExtra) {
+			lock( Extras ) {
+				if ( Extras.TryGetValue ( origExtra, out LLInputStatusExtra extra ) )
+					return extra;
+				return new ( origExtra );
+			}
+		}
+		public void Load ( nint ptr ) => Marshal.PtrToStructure ( ptr, this );
+		public void Save ( nint ptr ) => Marshal.StructureToPtr ( this, ptr, false );
+	}
+
 	/// <summary>Low-Level version of HInputEventDataHolder</summary>
 	public abstract class HInputData : DataHolderBase<ComponentBase> {
 		protected HInputData ( ComponentBase owner ) : base ( owner ) {

@@ -72,6 +72,13 @@ public struct HWInput : IInputLLValues {
 		default: throw new InvalidOperationException ( "Cannot update ExtraInfo for non-keyboard/mouse input." );
 		}
 	}
+	public uint DWFlags {
+		get => Type switch {
+			TypeKEY => Data.ki.dwFlags,
+			TypeMOUSE => Data.mi.dwFlags,
+			_ => 0
+		};
+	}
 	public IntPtr ExtraInfo {
 		get => Type switch {
 			TypeKEY => Data.ki.dwExtraInfo,

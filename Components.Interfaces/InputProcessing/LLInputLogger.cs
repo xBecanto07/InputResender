@@ -7,6 +7,8 @@ public static class LLInputLogger {
 	private static HtmlLogWriter logger;
 	private static Dictionary<nint, int> HookIDMapping = [];
 
+	public static CInputLLParser Parser;
+
 	private const string SysCls = "sysMsg";
 	private const string NewHookCls = "newHook";
     private const string SeenCls = "seen";
@@ -23,7 +25,7 @@ public static class LLInputLogger {
 
 	private static int msgID = 123;
 
-	public static Func<int, IntPtr, IntPtr, (ProbeHook.Status, VKChange, KeyCode, uint, nint)> DefaultParser;
+	//public static Func<int, IntPtr, IntPtr, (ProbeHook.Status, VKChange, KeyCode, uint, nint)> DefaultParser;
 
 	static LLInputLogger () {
 		logger = new HtmlLogWriter ();
@@ -93,33 +95,34 @@ public static class LLInputLogger {
 
 	//[System.Diagnostics.Conditional ( "STORE_LL_LOGS" )]
 	public static void AssertLLData ( int nCode, IntPtr wParam, IntPtr lParam, char identifier
-		, ProbeHook.Status? tStatus = null, VKChange? tChange = null, KeyCode? tKey = null, uint? tTime = null, nint? tExtraInfo = null
-		, bool doThrow = false
-		) {
-		(ProbeHook.Status Bstatus, VKChange Bchange, KeyCode Bkey, uint Btime, nint BeID) = DefaultParser ( nCode, wParam, lParam );
-		List<string> strings = [];
-		// Test for discrepancies between expected and actual values
-		if ( tStatus.HasValue && Bstatus != tStatus.Value )
-			strings.Add ( $"Expected status {tStatus}, but got {Bstatus}" );
-		if ( tChange.HasValue && Bchange != tChange.Value )
-			strings.Add ( $"Expected change {tChange}, but got {Bchange}" );
-		if ( tKey.HasValue && Bkey != tKey.Value )
-			strings.Add ( $"Expected key {tKey}, but got {Bkey}" );
-		if ( tTime.HasValue && Btime != tTime.Value )
-			strings.Add ( $"Expected time {tTime}, but got {Btime}" );
-		if ( tExtraInfo.HasValue && BeID != tExtraInfo.Value )
-			strings.Add ( $"Expected extra info {tExtraInfo}, but got {BeID}" );
+		, CInputLLParser.InputEventInfoAssertor expected, bool doThrow = false ) {
+		if ( Parser == null ) return;
+		var info = Parser.Parse ( nCode, wParam, lParam );
+		expected.Assert ( info );
+		////(ProbeHook.Status Bstatus, VKChange Bchange, KeyCode Bkey, uint Btime, nint BeID) = DefaultParser ( nCode, wParam, lParam );
+		//List<string> strings = [];
+		//// Test for discrepancies between expected and actual values
+		//if ( tStatus.HasValue && Bstatus != tStatus.Value )
+		//	strings.Add ( $"Expected status {tStatus}, but got {Bstatus}" );
+		//if ( tChange.HasValue && Bchange != tChange.Value )
+		//	strings.Add ( $"Expected change {tChange}, but got {Bchange}" );
+		//if ( tKey.HasValue && Bkey != tKey.Value )
+		//	strings.Add ( $"Expected key {tKey}, but got {Bkey}" );
+		//if ( tTime.HasValue && Btime != tTime.Value )
+		//	strings.Add ( $"Expected time {tTime}, but got {Btime}" );
+		//if ( tExtraInfo.HasValue && BeID != tExtraInfo.Value )
+		//	strings.Add ( $"Expected extra info {tExtraInfo}, but got {BeID}" );
 
-		// If there are any discrepancies, throw an exception or log the message
-		if ( strings.Count > 0 ) {
-			string msg = $"Asserted LL data: nCode={nCode}, wParam={wParam}, lParam={lParam} => {Bstatus}, {Bchange}, {Bkey}, {Btime}, {BeID} || {string.Join ( " | ", strings )}";
-			if ( doThrow ) throw new InvalidOperationException ( msg.ToString () );
-			else Log ( IntPtr.Zero, 'A', msg.ToString () );
-		} else if ( !doThrow ) Log ( IntPtr.Zero, 'A', $"Asserted LL data: nCode={nCode}, wParam={wParam}, lParam={lParam} => {Bstatus}, {Bchange}, {Bkey}, {Btime}, {BeID}" );
+		//// If there are any discrepancies, throw an exception or log the message
+		//if ( strings.Count > 0 ) {
+		//	string msg = $"Asserted LL data: nCode={nCode}, wParam={wParam}, lParam={lParam} => {Bstatus}, {Bchange}, {Bkey}, {Btime}, {BeID} || {string.Join ( " | ", strings )}";
+		//	if ( doThrow ) throw new InvalidOperationException ( msg.ToString () );
+		//	else Log ( IntPtr.Zero, 'A', msg.ToString () );
+		//} else if ( !doThrow ) Log ( IntPtr.Zero, 'A', $"Asserted LL data: nCode={nCode}, wParam={wParam}, lParam={lParam} => {Bstatus}, {Bchange}, {Bkey}, {Btime}, {BeID}" );
 
-		// Otherwise, log the successful assertion (if throwing status is used, just exit quietly)
-		if ( doThrow ) Log ( IntPtr.Zero, 'A', $"Asserted LL data: nCode={nCode}, wParam={wParam}, lParam={lParam} => {Bstatus}, {Bchange}, {Bkey}, {Btime}, {BeID}" );
-		else Log ( IntPtr.Zero, 'A', $"Asserted LL data: nCode={nCode}, wParam={wParam}, lParam={lParam} => {Bstatus}, {Bchange}, {Bkey}, {Btime}, {BeID}" );
+		//// Otherwise, log the successful assertion (if throwing status is used, just exit quietly)
+		//if ( doThrow ) Log ( IntPtr.Zero, 'A', $"Asserted LL data: nCode={nCode}, wParam={wParam}, lParam={lParam} => {Bstatus}, {Bchange}, {Bkey}, {Btime}, {BeID}" );
+		//else Log ( IntPtr.Zero, 'A', $"Asserted LL data: nCode={nCode}, wParam={wParam}, lParam={lParam} => {Bstatus}, {Bchange}, {Bkey}, {Btime}, {BeID}" );
 	}
 
 	public static nint[] keywordIDs = { 0, 42, 69, 420, 1337, 666, 1234, 7734 };

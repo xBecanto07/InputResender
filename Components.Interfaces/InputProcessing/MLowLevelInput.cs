@@ -13,7 +13,9 @@ namespace Components.Interfaces {
 		int LastID = 1;
 
 		public MLowLevelInput ( CoreBase owner ) : base ( owner ) {
-			HookList = new Dictionary<DictionaryKey, Hook> ();
+			HookList = [];
+			inputLLParser.Register ( new MLLInputStatusExtra.MLLInputStatusParser () );
+			LLInputLogger.Parser ??= inputLLParser;
 		}
 
 		public override int ComponentVersion => 1;
@@ -133,6 +135,32 @@ namespace Components.Interfaces {
 					ret[ID++] = $"{hook.Key} => {hook.Value}";
 				return ret;
 			}
+		}
+	}
+
+
+
+	public class MLLInputStatusExtra : CInputLLParser.InputEventInfo {
+		public override void Dispose () { }
+
+		protected override CInputLLParser.InputEventInfoAssertor CreateAssertor () => new MLLInputStatusExtraAssertor ();
+
+		protected override bool Equals ( CInputLLParser.InputEventInfo other ) => throw new NotImplementedException ();
+
+
+		public class MLLInputStatusParser : CInputLLParser.InputEventParser {
+			public override void Dispose () { }
+
+			public override CInputLLParser.InputEventInfo Parse ( int nCode, nint wParam, nint lParam ) {
+				// TODO: Probably will need some actual logic later
+				return new MLLInputStatusExtra ();
+			}
+		}
+
+
+		public class MLLInputStatusExtraAssertor : CInputLLParser.InputEventInfoAssertor {
+			public override void Assert ( CInputLLParser.InputEventInfo info ) => throw new NotImplementedException ();
+			protected override void FillInner ( CInputLLParser.InputEventInfo info ) => throw new NotImplementedException ();
 		}
 	}
 }

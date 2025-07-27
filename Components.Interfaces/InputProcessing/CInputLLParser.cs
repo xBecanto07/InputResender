@@ -9,6 +9,8 @@ public class CInputLLParser : AContractorBase<CInputLLParser, CoreBase> {
 		Parsers = [];
 	}
 
+	public sealed override CoreBase Owner { get => throw new AccessViolationException ("Access to Owner is not allowed in Contractors"); }
+
 	public override void LoadFrom ( CInputLLParser other ) => throw new NotImplementedException ();
 	public override void SaveTo ( CInputLLParser other ) => throw new NotImplementedException ();
 
@@ -62,6 +64,20 @@ public class CInputLLParser : AContractorBase<CInputLLParser, CoreBase> {
 			ret &= other.CanConsume == CanConsume;
 			ret &= Equals ( other );
 			return ret;
+		}
+
+		public InputEventInfoAssertor AsAssertor () => CreateAssertor ();
+		protected abstract InputEventInfoAssertor CreateAssertor ();
+	}
+	public abstract class InputEventInfoAssertor {
+		public bool? ExpCanConsume, ExpShouldProcess;
+		public abstract void Assert ( InputEventInfo info );
+		protected abstract void FillInner ( InputEventInfo info );
+		public void Fill ( InputEventInfo info ) {
+			ArgumentNullException.ThrowIfNull ( info, nameof ( info ) );
+			ExpCanConsume = info.CanConsume;
+			ExpShouldProcess = info.ShouldProcess;
+			FillInner ( info );
 		}
 	}
 	public abstract class InputEventParser : IDisposable {
