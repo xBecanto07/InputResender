@@ -17,10 +17,6 @@ namespace InputResender.WindowsGUI {
 		const int MaxLog = 256;
 		public static List<(int nCode, VKChange changeCode, HWInput.KeyboardInput inputData)> EventList = new( MaxLog );
 
-		static VWinLowLevelLibs () {
-			LLInputLogger.DefaultParser = ProbeWinHook.Convert_S;
-		}
-
 		private static void Log ( int nCode, IntPtr vkChngCode, IntPtr vkCode ) {
 			var change = (VKChange)vkChngCode;
 			var input = new HWInput.KeyboardInput ( vkCode );
@@ -33,8 +29,8 @@ namespace InputResender.WindowsGUI {
 			mainInstance = this;
 			OwnHooks = new HookGroupCollection ( this );
 			DeletedHookDiscription = [];
-			CInputLLParser inputLLParser = Owner.IsRegistered<CInputLLParser> () ? Owner.Fetch<CInputLLParser> () : new CInputLLParser ( Owner );
 			inputLLParser.Register ( new WinLLInputStatusExtra.WinLLInputStatusParser () );
+			LLInputLogger.Parser ??= inputLLParser;
 		}
 
 		public override int ComponentVersion => 1;
