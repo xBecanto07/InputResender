@@ -218,4 +218,26 @@ public static class MdxExtensions {
 		}
 		return ret;
 	}
+
+	public static bool StartsWith (this string line, string prefix, out string rest) {
+		if ( string.IsNullOrEmpty ( line ) || string.IsNullOrEmpty ( prefix ) ) {
+			rest = line;
+			return false;
+		}
+		if ( line.StartsWith ( prefix, StringComparison.OrdinalIgnoreCase ) ) {
+			rest = line.Substring ( prefix.Length );
+			return true;
+		}
+		rest = line;
+		return false;
+	}
+
+	public static int IndexOf<T> (this IReadOnlyList<T> list, Func<T, bool> predicate) {
+		if (list == null || predicate == null) return -1;
+		int N = list.Count;
+		for (int i = 0; i < N; i++) {
+			if (predicate(list[i])) return i;
+		}
+		return -1;
+	}
 }
