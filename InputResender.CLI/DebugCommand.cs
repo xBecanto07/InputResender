@@ -1,13 +1,16 @@
 ﻿using Components.Library;
 using System;
+using System.Collections.Generic;
 
 namespace InputResender.CLI; 
 public class DebugCommand : ACommand {
 	override public string Description => "Debugging commands";
-	public DebugCommand ( ACommand parent = null ) : base ( parent?.CallName ) {
-		commandNames.Add ( "debug" );
 
-		interCommands.Add ( "throw" );
+	private static List<string> CommandNames = ["debug"];
+	private static List<(string, Type)> InterCommands = [("throw", null)];
+
+	public DebugCommand ( ACommand parent = null )
+		: base ( parent?.CallName, CommandNames, InterCommands ) {;
 	}
 
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {

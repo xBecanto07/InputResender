@@ -1,27 +1,30 @@
 ﻿using Components.Library;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace InputResender.WindowsGUI;
 public class LowLevelInputCommand : ACommand {
 	override public string Description => "Low level hook (Win) access.";
-	override public string Help => $"Usage: {parentCommandHelp} inpll list <Selector> - {Description}\n\tSelector: (events|hooks|errors)";
+	//override public string Help => $"Usage: {parentCommandHelp} inpll list <Selector> - {Description}\n\tSelector: (events|hooks|errors)";
 	protected override bool PrintHelpOnEmpty => true;
 
-	public LowLevelInputCommand ( ACommand parent ) : base ( parent?.CallName ) {
-		commandNames.Add ( "inpll" );
+	private static List<string> CommandNames = ["inpll"];
+	private static List<(string, System.Type)> InterCommands = [("list", null)];
 
-		interCommands.Add ( "list" );
+	public LowLevelInputCommand ( ACommand parent )
+		: base ( parent?.CallName, CommandNames, InterCommands ) {
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
-		if (TryPrintHelp (context.Args, context.ArgID+ 1, () => $"{context[-2]} inpll list <Selector>\n\tSelector: (events|hooks|errors)", out var helpRes ) ) return helpRes;
+		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => CallName + " list <Selector>\n\tSelector: (events|hooks|errors)", out var helpRes ) ) return helpRes;
 
 		VWinLowLevelLibs LLInput = context.CmdProc.Owner.Fetch<VWinLowLevelLibs> ();
 		if ( LLInput == null ) return new CommandResult ( "Low level input library not available." );
 
 		switch ( context.SubAction ) {
 		default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
-		case "list":
+		case "list": {
+			if (TryPrintHelp(context.Args, context.ArgID + 1, () => $"{CallName} list <Selector>\n\tSelector: (events|hooks|errors)", out helpRes)) return helpRes;
 			switch ( context[1, "Selector"] ) {
 			default: return new CommandResult ( $"Invalid selector '{context[1]}'." );
 			case "events":
@@ -35,6 +38,7 @@ public class LowLevelInputCommand : ACommand {
 				LLInput.ErrorList.Clear ();
 				return new CommandResult ( retEr );
 			}
+		}
 		}
 	}
 }

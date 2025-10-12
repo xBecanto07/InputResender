@@ -16,9 +16,9 @@ public class Program {
 			}
 
 			try {
-				string cmd = iter.Current[0] as string;
+				(string cmd, Type t) = ((string, Type))iter.Current[0];
 				GlobalCommandTest testObj = new ( null );
-				testObj.HelpAvailable_P ( cmd );
+				testObj.HelpAvailable_P ( cmd, t );
 				processed++;
 				Console.WriteLine ( $"Processed {processed} command" );
 			} catch { }

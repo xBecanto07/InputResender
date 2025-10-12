@@ -185,7 +185,7 @@ public static class MdxExtensions {
 	public static string PrefixAllLines ( this string text, string prefix, string lineSep = null ) {
 		if ( string.IsNullOrEmpty ( text ) ) return text;
 		if ( string.IsNullOrEmpty ( prefix ) ) return text;
-		if (lineSep == null) {
+		if ( lineSep == null ) {
 			lineSep = Environment.NewLine;
 			text = text.ReplaceLineEndings ();
 		}
@@ -219,7 +219,7 @@ public static class MdxExtensions {
 		return ret;
 	}
 
-	public static bool StartsWith (this string line, string prefix, out string rest) {
+	public static bool StartsWith ( this string line, string prefix, out string rest ) {
 		if ( string.IsNullOrEmpty ( line ) || string.IsNullOrEmpty ( prefix ) ) {
 			rest = line;
 			return false;
@@ -232,12 +232,143 @@ public static class MdxExtensions {
 		return false;
 	}
 
-	public static int IndexOf<T> (this IReadOnlyList<T> list, Func<T, bool> predicate) {
-		if (list == null || predicate == null) return -1;
+	public static int IndexOf<T> ( this IReadOnlyList<T> list, Func<T, bool> predicate ) {
+		if ( list == null || predicate == null ) return -1;
 		int N = list.Count;
-		for (int i = 0; i < N; i++) {
-			if (predicate(list[i])) return i;
+		for ( int i = 0; i < N; i++ ) {
+			if ( predicate ( list[i] ) ) return i;
 		}
 		return -1;
+	}
+
+	public static ICollection<(T, U)> Unwrap<T, U> ( this IDictionary<T, List<U>> dict ) {
+		if ( dict == null ) return null;
+		HashSet<(T, U)> ret = [];
+		foreach ( var item in dict ) {
+			if ( item.Value == null ) continue;
+			foreach ( var v in item.Value ) {
+				ret.Add ( (item.Key, v) );
+			}
+		}
+		return ret;
+	}
+
+
+	private class LineGroup {
+		public List<string> Lines;
+		public int LineCount => Lines == null ? 0 : Lines.Count;
+		public LineGroup ( List<string> lines ) { Lines = lines; }
+		public List<string> Unpack () => Lines;
+		public override string ToString () => $"LG({LineCount} : {(LineCount > 0 ? Lines[0] : "EMPTY")}";
+	}
+	public static List<List<string>>[] SplitToColumns ( this List<List<string>> lineGroups, int cols, int sepLines = 1 ) {
+		if ( lineGroups == null ) return null;
+		var ret = new List<List<string>>[cols];
+		if ( cols <= 1 ) {
+			ret[0] = lineGroups;
+			return ret;
+		}
+
+		var groups = new List<LineGroup>[cols];
+		for ( int i = 0; i < cols; i++ ) groups[i] = [];
+		for ( int i = 0; i < lineGroups.Count; i++ ) {
+			if ( lineGroups[i] == null ) throw new ArgumentException ( $"lineGroups[{i}] is null." );
+			groups[0].Add ( new ( lineGroups[i] ) );
+		}
+
+		SplitColumn ( groups, 0, int.MaxValue, sepLines );
+		foreach ( var group in groups ) {
+			if ( group == null ) continue;
+			ret[Array.IndexOf ( groups, group )] = group.Select ( g => g.Unpack () ).ToList ();
+		}
+		return ret;
+	}
+	private static void SplitColumn (List<LineGroup>[] cols, int startID, int maxLength, int sepLines = 1 ) {
+		if ( cols == null || cols.Length < 2 || startID < 0 || startID + 1 >= cols.Length ) return;
+		int N = cols[0].Count;
+		for (int i = 0; i < N; i++ ) {
+			// Pick out free element
+			LineGroup g = cols[startID].PopLineGroup ();
+
+			int firstSize = cols[startID].Sum ( sepLines );
+			cols[startID + 1].Insert ( 0, g );
+			SplitColumn ( cols, startID + 1, firstSize, sepLines );
+			
+			int nextSize = cols[startID + 1].Sum ( sepLines );
+			if ( nextSize <= firstSize ) continue;
+			// Revert
+			g = cols[startID + 1].PickLineGroup ();
+			cols[startID].Add ( g );
+			break;
+		}
+	}
+	private static LineGroup PopLineGroup ( this List<LineGroup> groups) {
+		LineGroup g = groups[^1];
+		groups.RemoveAt ( groups.Count - 1 );
+		return g;
+	}
+	private static LineGroup PickLineGroup ( this List<LineGroup> groups ) {
+		LineGroup g = groups[0];
+		groups.RemoveAt ( 0 );
+		return g;
+	}
+	private static int Sum (this List<LineGroup> groups, int sepLines = 1 ) {
+		int ret = 0;
+		foreach ( var g in groups ) ret += g.LineCount;
+		if ( groups.Count > 0 ) ret += sepLines * (groups.Count - 1);
+		return ret;
+	}
+
+	public static List<string> BuildColumBlocks ( this List<List<string>>[] lineGroups, string colSep = " | ", string blockSep = "", bool padLeft = false ) {
+		// Don't include final linebreak in the block separator
+		if ( lineGroups == null ) return null;
+		int N = lineGroups.Length;
+		for ( ; N > 0; N-- ) {
+			if ( lineGroups[N - 1] != null && lineGroups[N - 1].Count > 0 ) break;
+		}
+		int[] colLengths = new int[N];
+		List<string>[] Cols = new List<string>[N];
+
+		// Calculate max width of each column and merge groups in single column 
+		for ( int i = 0; i < N; i++ ) {
+			Cols[i] = [];
+			int maxLen = 0;
+			foreach ( var lineGroup in lineGroups[i] ) {
+				bool usseColSep = colSep != null && Cols[i].Count > 0;
+				foreach ( var line in lineGroup ) {
+					int len = line?.Length ?? 0;
+					if ( len > maxLen ) maxLen = line.Length;
+					Cols[i].Add ( line );
+				}
+				bool useSep = lineGroup != lineGroups[i][^1] && blockSep != null;
+				if ( useSep ) Cols[i].AddRange ( blockSep.Split ( '\n' ) );
+			}
+			colLengths[i] = maxLen;
+		}
+
+		int maxLines = Enumerable.Max ( Cols.Select ( c => c.Count ) );
+		for ( int i = 0; i < N; i++ ) {
+			while ( Cols[i].Count < maxLines ) Cols[i].Add ( "" );
+		}
+
+		// Add right padding to each column except the last one, add separator and merge into single lines
+		System.Text.StringBuilder SB = new ();
+		List<string> ret = [];
+		for ( int i = 0; i < maxLines; i++ ) {
+			//ret.Add ( string.Join ( colSep, Cols.Select ( ( cols, i ) => cols[i].PadRight ( colLengths[i] ) ) ) );
+			SB.Clear ();
+			for ( int c = 0; c < N; c++ ) {
+				if ( c > 0 ) SB.Append ( colSep );
+				string line = Cols[c][i];
+				if ( c < N - 1 ) {
+					if ( padLeft ) line = line.PadLeft ( colLengths[c] );
+					else line = line.PadRight ( colLengths[c] );
+				}
+				SB.Append ( line );
+			}
+			ret.Add ( SB.ToString () );
+		}
+
+		return ret;
 	}
 }

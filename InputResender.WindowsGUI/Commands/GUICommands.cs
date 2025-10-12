@@ -1,10 +1,11 @@
 ﻿using Components.Interfaces;
 using Components.Library;
-using System.Threading.Tasks;
-using System.Linq;
-using RetT = Components.Library.ClassCommandResult<InputResender.WindowsGUI.MainScreen>;
-using System.Windows.Forms;
 using InputResender.CLI;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using RetT = Components.Library.ClassCommandResult<InputResender.WindowsGUI.MainScreen>;
 
 namespace InputResender.WindowsGUI.Commands;
 public class GUICommands : ACommand {
@@ -14,12 +15,14 @@ public class GUICommands : ACommand {
 
     override public string Description => "Manages the GUI.";
 
-    public GUICommands ( string parentHelp = null ) : base ( parentHelp ) {
-        commandNames.Add ( "gui" );
+	private static List<string> CommandNames = ["gui"];
+	private static List<(string, System.Type)> InterCommands = [
+		  ("start", null),
+		  ("stop", null),
+	 ];
 
-        interCommands.Add ( "start" );
-        interCommands.Add ( "stop" );
-
+	public GUICommands ( string parentHelp = null )
+      : base ( parentHelp, CommandNames, InterCommands ) {
         requiredPositionals.Add ( 0, false ); // Start/Stop (maybe more later)
     }
 

@@ -10,13 +10,14 @@ public class CoreManagerCommand : ACommand {
 
 	public static string CreateCommand ( Act act ) => $"CreateCore {act.ToString ().ToLower ()}";
 
-	public CoreManagerCommand () : base ( null ) {
-		commandNames.Add ( "core" );
+	private static List<string> CommandNames = ["core"];
+	private static List<(string, Type)> InterCommands = [
+		  ("act", null),
+		  ("typeof", null),
+		  ("list", null),
+	 ];
 
-		interCommands.Add ( "act" );
-		interCommands.Add ( "typeof" );
-		interCommands.Add ( "list" );
-	}
+	public CoreManagerCommand () : base ( null, CommandNames, InterCommands ) {}
 
 	protected override RetT ExecIner ( CommandProcessor.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {

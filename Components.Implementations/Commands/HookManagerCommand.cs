@@ -13,15 +13,19 @@ public class HookManagerCommand : ACommand {
 	public const string INPHOOKCBVarName = "InpHookCB";
 
 	override public string Description => "Input hook manager.";
-    // Cmd example: "hook add print keydown mousemove"
-    public HookManagerCommand ( string parentDsc = null ) : base ( parentDsc ) {
-        commandNames.Add ( "hook" );
-        interCommands.Add ( "manager" );
-        interCommands.Add ( "add" );
-        interCommands.Add ( "remove" );
-        interCommands.Add ( "list" );
-        interCommands.Add ( "debug" );
-    }
+
+   private static List<string> CommandNames = ["hook"];
+   private static List<(string, Type)> InterCommands = [
+        ("manager", null),
+        ("add", null),
+        ("remove", null),
+        ("list", null),
+        ("debug", null)
+    ];
+
+	// Cmd example: "hook add print keydown mousemove"
+	public HookManagerCommand ( string parentDsc = null )
+      : base ( parentDsc, CommandNames, InterCommands ) {}
 
     protected override CommandResult ExecCleanup ( CommandProcessor.CmdContext context ) {
         hookCallback?.Unregister ();

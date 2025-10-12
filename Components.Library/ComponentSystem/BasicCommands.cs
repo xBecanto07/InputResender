@@ -19,31 +19,50 @@ public class BasicCommands : ACommand {
 	private readonly Action Clear;
 	private readonly Action Exit;
 
-	public BasicCommands ( Action<string> print, Action clear, Action exit ) : base ( null ) {
+	private static List<string> CommandNames = [
+		"safemode",
+		"help",
+		"print",
+		"info",
+		"clear",
+		"exit",
+		"loadall",
+		"argParse",
+		"loglevel",
+		"argerrorlvl",
+		];
+	private static List<(string, Type)> InterCommands = [];
+
+	public BasicCommands ( Action<string> print, Action clear, Action exit )
+		: base ( null, CommandNames, InterCommands ) {
 		Print = print;
 		Clear = clear;
 		Exit = exit;
-
-		commandNames.Add ( "safemode" );
-		commandNames.Add ( "help" );
-		commandNames.Add ( "print" );
-		commandNames.Add ( "info" );
-		commandNames.Add ( "clear" );
-		commandNames.Add ( "exit" );
-		commandNames.Add ( "loadall" );
-		commandNames.Add ( "argParse" );
-		commandNames.Add ( "loglevel" );
-		commandNames.Add ( "argerrorlvl" );
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		// Remember that these are individual commands, so ArgID will be -1 compared to 'norma' subcommand.
 		switch ( context.SubAction ) {
-		case "help": return new CommandResult ( context.CmdProc.Help () );
-		case "print": Print ( context[1, "Text"] ); return new CommandResult ( context[1] );
-		case "info": return new CommandResult ( "InputResender v0.1" );
-		case "clear": Clear (); return new CommandResult ( "clear" );
-		case "exit": Exit (); return new CommandResult ( "exit" );
+		case "help": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "help\n - Print list of all registered commands.", out var helpRes ) ) return helpRes;
+			return new CommandResult ( context.CmdProc.Help () );
+		}
+		case "print": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "print <Text>\n - Print given text.", out var helpRes ) ) return helpRes;
+			Print ( context[1, "Text"] ); return new CommandResult ( context[1] );
+		}
+		case "info": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "info\n - Show info about this application.", out var helpRes ) ) return helpRes;
+			return new CommandResult ( "InputResender v0.1" );
+		}
+		case "clear": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "clear\n - Clear the screen.", out var helpRes ) ) return helpRes;
+			Clear (); return new CommandResult ( "clear" );
+		}
+		case "exit": {
+			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "exit\n - Exit the program.", out var helpRes ) ) return helpRes;
+			Exit (); return new CommandResult ( "exit" );
+		}
 		case "safemode": {
 			if (TryPrintHelp ( context.Args, context.ArgID + 1, () => "safemode <(on|t|1)|(off|f|0)>\n - Enable or disable safe mode.", out var helpRes ) ) return helpRes;
 			string val = context[1, "Value"];

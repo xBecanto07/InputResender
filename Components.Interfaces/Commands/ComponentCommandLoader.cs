@@ -2,12 +2,14 @@
 
 namespace Components.Interfaces.Commands;
 public class ComponentCommandLoader : ACommandLoader {
-	protected override string CmdGroupName => "dcomponent";
+	public ComponentCommandLoader () : base ( "dcomponent" ) { }
 
-	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => new Func<ACommand>[] {
-		() => new NetworkManagerCommand (),
-		() => new PasswordManagerCommand (),
-		() => new TargetManagerCommand (),
-		() => new HookCallbackManagerCommand (),
+	private static Dictionary<Type, Func<ACommand>> NewCommandList = new () {
+		  { typeof(NetworkManagerCommand ), () => new NetworkManagerCommand () },
+		  { typeof(PasswordManagerCommand ), () => new PasswordManagerCommand () },
+		  { typeof(TargetManagerCommand ), () => new TargetManagerCommand () },
+		  { typeof(HookCallbackManagerCommand ), () => new HookCallbackManagerCommand () },
 	};
+
+	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => NewCommandList.Values;
 }
