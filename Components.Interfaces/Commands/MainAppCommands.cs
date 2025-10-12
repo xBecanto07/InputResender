@@ -8,13 +8,14 @@ namespace Components.Interfaces;
 public class PasswordManagerCommand : ACommand {
 	public override string Description => "Password management";
 
-	public PasswordManagerCommand ( ACommand parent = null ) : base ( parent?.CallName ) {
-		commandNames.Add ( "password" );
-		commandNames.Add ( "pw" );
+	private static List<string> CommandNames = ["password", "pw"];
+	private static List<(string, Type)> InterCommands = [
+		  ("add", null),
+		  ("print", null),
+	 ];
 
-		interCommands.Add ( "add" );
-		interCommands.Add ( "print" );
-	}
+	public PasswordManagerCommand ( ACommand parent = null )
+		: base ( parent?.CallName, CommandNames, InterCommands ) {}
 
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		if (TryPrintHelp(context.Args, context.ArgID + 1, () => context.SubAction switch {
@@ -40,12 +41,12 @@ public class PasswordManagerCommand : ACommand {
 public class TargetManagerCommand : ACommand {
 	protected INetPoint TargetEP;
 	public override string Description => "Target management";
-	public TargetManagerCommand ( ACommand parent = null ) : base ( parent?.CallName ) {
-		commandNames.Add ( "target" );
-		commandNames.Add ( "tEP" );
 
-		interCommands.Add ( "set" );
-	}
+	private static List<string> CommandNames = ["target", "tEP"];
+	private static List<(string, System.Type)> InterCommands = [("set", null)];
+
+	public TargetManagerCommand ( ACommand parent = null )
+		: base ( parent?.CallName, CommandNames, InterCommands ) { }
 
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		if (TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
@@ -94,13 +95,16 @@ public class TargetManagerCommand : ACommand {
 public class HookCallbackManagerCommand : ACommand {
 	public const string CBVarName = "HookCallback";
 	public override string Description => "Input hook callback selector";
-	public HookCallbackManagerCommand ( ACommand parent = null ) : base ( parent?.CallName ) {
-		commandNames.Add ( "hookcb" );
 
-		interCommands.Add ( "list" );
-		interCommands.Add ( "set" );
-		interCommands.Add ( "active" );
-	}
+	private static List<string> CommandNames = ["hookcb"];
+	private static List<(string, System.Type)> InterCommands = [
+		  ("list", null),
+		  ("set", null),
+		  ("active", null),
+	 ];
+
+	public HookCallbackManagerCommand ( ACommand parent = null )
+		: base ( parent?.CallName, CommandNames, InterCommands ) { }
 
 	readonly Action<DictionaryKey, HInputEventDataHolder>[] PossibleCallbacks = new[] {
 		PrintCB

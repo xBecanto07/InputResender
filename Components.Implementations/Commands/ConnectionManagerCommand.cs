@@ -12,14 +12,17 @@ public class ConnectionManagerCommand : ACommand {
 	override public string Description => "Connection manager.";
 	private CommandProcessor.CmdContext lastContext;
 
-	public ConnectionManagerCommand ( string parent = null ) : base ( parent ) {
-		commandNames.Add ( "conns" );
+	private static List<string> CommandNames = ["conns"];
+	private static List<(string, Type)> InterCommands = [
+		  ("list", null),
+		  ("send", null),
+		  ("close", null),
+		  ("callback", null),
+		  ("force", null)
+	 ];
 
-		interCommands.Add ( "list" );
-		interCommands.Add ( "send" );
-		interCommands.Add ( "close" );
-		interCommands.Add ( "callback" );
-	}
+	public ConnectionManagerCommand ( string parent = null )
+		: base ( parent, CommandNames, InterCommands ) {}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
@@ -27,11 +30,18 @@ public class ConnectionManagerCommand : ACommand {
 			"send" => $"{context.ParentAction} send <Target> <Data>: Send data to target\n\tTarget: Remote EP of any existing connection\n\tData: Data to send",
 			"close" => $"{context.ParentAction} close <Target>: Close connection\n\tTarget: Remote EP of any existing connection",
 			"callback" => $"{context.ParentAction} callback <Action>: Set callback for connection\n\tAction: {string.Join ( "|", Enum.GetNames<CBSel> () )}",
+			"force" => $"{context.ParentAction} force <Action>: Force action on some/all connections or the network manager component\n\tAction: init",
 			_ => $"Unknown action '{context.SubAction}'."
 		}, out var helpRes ) ) return helpRes;
+
 		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
-		if ( core.Fetch<DPacketSender> () is not VPacketSender sender )
-			return new CommandResult ( "No packet sender available." );
+		if ( core.Fetch<DPacketSender> () is not VPacketSender sender ) {
+			if (context.SubAction == "force" && context.Args.String(context.ArgID + 1, null) == "init") {
+				new VPacketSender ( core );
+				return new CommandResult ( "Packet sender initialized." );
+			} else
+				return new CommandResult ( "No packet sender available." );
+		}
 		if ( sender == null ) return new CommandResult ( "No packet sender available." );
 
 		switch ( context.SubAction ) {

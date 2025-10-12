@@ -2,6 +2,7 @@
 using Components.Library;
 using InputResender.WindowsGUI.Commands;
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 
 namespace InputResender.WindowsGUI; 
@@ -55,13 +56,17 @@ public partial class ComponentVisualizer : Form {
 
 		public override string Description => "Manages visualizer of active core";
 
-		public ComponentVisualizerCommands ( string parentHelp = null ) : base ( parentHelp ) {
-			commandNames.Add ( "visualizer" );
+		private static List<string> CommandNames = ["visualizer"];
+		private static List<(string, System.Type)> InterCommands = [
+			  ("start", null),
+			  ("stop", null),
+			  ("update", null),
+			  ("status", null),
+		 ];
+
+		public ComponentVisualizerCommands ( string parentHelp = null )
+			: base (parentHelp, CommandNames, InterCommands ) {
 			requiredPositionals.Add ( 0, false );
-			interCommands.Add ( "start" );
-			interCommands.Add ( "stop" );
-			interCommands.Add ( "update" );
-			interCommands.Add ( "status" );
 		}
 
 		protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {

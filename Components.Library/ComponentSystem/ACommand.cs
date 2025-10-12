@@ -10,11 +10,11 @@ public abstract class ACommand {
 	public int RequiredArgC => RequiredUnnamedArgs + requiredSwitches.Count + requiredPositionals.Count;
 
 	protected readonly string parentCommandHelp;
-	protected readonly HashSet<string> commandNames = new ();
+	private readonly HashSet<string> commandNames = new ();
 	protected readonly HashSet<string> requiredSwitches = new ();
 	protected readonly Dictionary<int, bool> requiredPositionals = new ();
-	protected readonly Dictionary<string, ACommand> subCommands = new ();
-	protected readonly HashSet<string> interCommands = new ();
+	private readonly Dictionary<string, ACommand> subCommands = new ();
+	private readonly HashSet<string> interCommands = new ();
 	// InterCommand is only registered string switch that 'should' change behaviour inside the command. But SubCommand will switch to another command (i.e. different Object
 	public abstract string Description { get; }
 	public virtual string CallName { get => BasicCallName ( false ); }
@@ -22,8 +22,23 @@ public abstract class ACommand {
 	protected virtual bool PrintHelpOnEmpty { get; } = false;
 	protected virtual int ArgsOffset => 0;
 
-	protected string BasicCallName ( bool includeAlts ) =>
-		(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First () + (includeAlts && commandNames.Count > 1 ? $"[.|{string.Join ( "|", commandNames.Skip ( 1 ) )}]" : string.Empty);
+	//protected string BasicCallName ( bool includeAlts ) =>
+	//	(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First () + (includeAlts && commandNames.Count > 1 ? $"[.|{string.Join ( "|", commandNames.Skip ( 1 ) )}]" : string.Empty);
+	protected string BasicCallName ( bool includeAlts ) {
+		System.Text.StringBuilder SB = new ();
+		if ( !string.IsNullOrEmpty ( parentCommandHelp ) )
+			SB.Append ( parentCommandHelp ).Append ( ' ' );
+		if (commandNames.Count == 0)
+			throw new InvalidOperationException($"Command '{Description}' <{GetType().FullName}> has no command names defined.");
+		SB.Append ( commandNames.First () );
+		if ( includeAlts && commandNames.Count > 1 ) {
+			SB.Append ( "[.|" );
+			SB.Append ( string.Join ( "|", commandNames.Skip ( 1 ) ) );
+			SB.Append ( ']' );
+		}
+		return SB.ToString ();
+	}
+
 	protected string BasicHelp () {
 		System.Text.StringBuilder SB = new ( "Usage: " );
 		SB.Append ( BasicCallName ( true ) );
@@ -49,20 +64,53 @@ public abstract class ACommand {
 	}
 
 	/// <summary>Used to access help of parent command. If null, it's considered the root command. When not command 'history' is not known, it is recommended to provide constructor to your command accepting string parameter and passing it to base constructor.</summary>
-	public ACommand ( string parentHelp ) => parentCommandHelp = parentHelp ?? string.Empty;
+	public ACommand ( string parentHelp
+		, IReadOnlyList<string> cmdNames
+		, IReadOnlyList<(string, Type)> interCmds
+		, params (string subCmd, ACommand cmd)[] subCmdInstances
+		) {
+		parentCommandHelp = parentHelp ?? string.Empty;
+		if ( cmdNames == null || cmdNames.Count == 0 ) throw new ArgumentException ( "At least one command name must be provided.", nameof ( cmdNames ) );
+		ArgumentNullException.ThrowIfNull ( interCmds, nameof ( interCmds ) );
+
+		foreach ( string name in cmdNames ) {
+			if ( string.IsNullOrWhiteSpace ( name ) ) throw new ArgumentException ( "Command name cannot be null or whitespace.", nameof ( cmdNames ) );
+			commandNames.Add ( name );
+		}
+		foreach ( var (name, _) in interCmds ) {
+			if ( string.IsNullOrWhiteSpace ( name ) ) throw new ArgumentException ( "Inter command name cannot be null or whitespace.", nameof ( interCmds ) );
+			interCommands.Add ( name );
+		}
+	}
 
 	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd ) {
-		if ( owner == null ) throw new ArgumentNullException ( nameof ( owner ) );
+		ArgumentNullException.ThrowIfNull ( owner );
 		foreach ( string name in nwCmd.commandNames )
 			RegisterSubCommand ( owner, nwCmd, name );
 	}
 	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd, string name ) {
-		if ( owner == null ) throw new ArgumentNullException ( nameof ( owner ) );
-		if ( string.IsNullOrEmpty ( name ) ) name = nwCmd.commandNames.First ();
-		if ( owner.subCommands.ContainsKey ( name ) ) owner.subCommands[name] = nwCmd;
-		else {
+		ArgumentNullException.ThrowIfNull ( owner );
+		if ( string.IsNullOrEmpty ( name ) )
+			name = nwCmd.commandNames.First ();
+		owner.interCommands.Remove ( name );
+
+		if ( owner.subCommands.ContainsKey ( name ) ) {
+			owner.subCommands[name] = nwCmd;
+		} else {
 			if ( nwCmd == null ) return;
 			owner.subCommands.Add ( name, nwCmd );
+		}
+	}
+	protected void RegisterSubCommand (ACommand nwCmd, string name ) {
+		if ( string.IsNullOrEmpty ( name ) )
+			name = nwCmd.commandNames.First ();
+		interCommands.Remove ( name );
+
+		if ( subCommands.ContainsKey ( name ) ) {
+			subCommands[name] = nwCmd;
+		} else {
+			if ( nwCmd == null ) return;
+			subCommands.Add ( name, nwCmd );
 		}
 	}
 

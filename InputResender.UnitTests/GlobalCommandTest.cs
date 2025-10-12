@@ -1,19 +1,184 @@
-﻿using Components.Library;
+﻿using Components.Implementations;
+using Components.Interfaces.Commands;
+using Components.Library;
 using Components.LibraryTests;
 using FluentAssertions;
 using InputResender.CLI;
+using InputResender.Commands;
 using InputResender.UnitTests.IntegrationTests;
+using InputResender.WindowsGUI;
+using InputResender.WindowsGUI.Commands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Xunit;
-using SBld = System.Text.StringBuilder;
 using Outputter = Xunit.Abstractions.ITestOutputHelper;
-using InputResender.WindowsGUI.Commands;
+using SBld = System.Text.StringBuilder;
 
 [assembly: TestFramework ( "InputResender.UnitTests.ParallelXunitRunner", "InputResender.UnitTests" )]
 namespace InputResender.UnitTests;
+public class GlobalCommandListTest {
+	Outputter Output;
+
+	public GlobalCommandListTest ( Outputter output ) => Output = output;
+
+	[Fact]
+	public void CommandsCanBeCorrectlyDetected () {
+		GlobalCommandList CommandList = new ();
+		// Check potential correctness of CommandList data and check existance of some known commands and loaders at random (to ensure the reflection actually worked, not a full check that all commands are present).
+
+		// Also should test that callname of subcommand is same as its registered callname in the parent.
+
+		var L = CommandList.Loaders.Keys.Should ();
+		L.NotBeNull ();
+		L.NotBeEmpty ();
+		L.OnlyHaveUniqueItems ();
+		L.OnlyContain ( t => t != null );
+		L.OnlyContain ( t => !t.IsAbstract );
+		L.OnlyContain ( t => t.IsSubclassOf ( typeof ( ACommandLoader ) ) );
+		L.Contain ( GlobalCommandList.LoadersExamples );
+
+		FluentAssertions.Collections.GenericDictionaryAssertions<IDictionary<Type, List<Type>>, Type, List<Type>> F = CommandList.Loaders.Should ();
+		F.NotBeNull ();
+		F.NotBeEmpty ();
+		F.OnlyHaveUniqueItems ( t => t.Key );
+		F.OnlyContain ( t => t.Value != null );
+		F.ContainKeys ( CommandList.Loaders.Keys );
+		F.OnlyHaveUniqueListValues ();
+		var Fi = F.Subject.Values.SelectMany ( v => v ).Should ();
+		Fi.OnlyContain ( t => t != null );
+		Fi.OnlyContain ( t => !t.IsAbstract );
+		Fi.OnlyContain ( t => t.IsSubclassOf ( typeof ( ACommand ) ) );
+
+		var T = CommandList.AllCallNames.Keys.Should ();
+		T.NotBeNull ();
+		T.NotBeEmpty ();
+		T.OnlyContain ( t => t != null );
+		T.OnlyContain ( t => !t.IsAbstract );
+		T.OnlyContain ( t => t.IsSubclassOf ( typeof ( ACommand ) ) );
+		T.OnlyContain ( t => !t.IsSubclassOf ( typeof ( ACommandLoader ) ) );
+		T.OnlyHaveUniqueItems ();
+		T.Contain ( GlobalCommandList.CommandTypeExamples );
+
+		var N = CommandList.AllCallNames.Should ();
+		N.NotBeNull ();
+		N.NotBeEmpty ();
+		N.OnlyHaveUniqueItems ( t => t.Key );
+		N.OnlyContain ( t => t.Value != null );
+		N.ContainKeys ( CommandList.AllCallNames.Keys );
+		N.OnlyHaveUniqueListValues ();
+		var U = N.Subject.Values.SelectMany ( v => v ).Should ();
+		U.OnlyContain ( t => !string.IsNullOrWhiteSpace ( t ) );
+
+		var C = CommandList.CommandList.Should ();
+		C.NotBeNull ();
+		C.NotBeEmpty ();
+		C.OnlyHaveUniqueItems ( t => t.Key );
+		C.OnlyContain ( t => t.Value != null );
+		C.ContainKeys ( CommandList.AllBaseCommandTypes );
+		C.OnlyHaveUniqueListValues ();
+		var A = C.Subject.Values.SelectMany ( v => v ).Should ();
+		A.OnlyContain ( t => !string.IsNullOrWhiteSpace ( t ) );
+
+		foreach ( (Type type, string cmd) in GlobalCommandList.CommandsExamples ) {
+			CommandList.CommandList.Should ().ContainKey ( type )
+				.WhoseValue.Contains ( cmd );
+		}
+
+		// Test some specific commands with special properties
+		AssertLoaderContainsCommand ( typeof ( FactoryCommandsLoader ), typeof ( DebugCommand ) );
+		AssertLoaderContainsCommand ( typeof ( FactoryCommandsLoader ), typeof ( InputCommandsLoader ) );
+		AssertLoaderContainsCommand ( typeof ( InputCommandsLoader ), typeof ( InputSimulatorCommand ) );
+		AssertLoaderContainsCommand ( typeof ( TopLevelLoader ), typeof ( GUICommands ) );
+		AssertLoaderContainsCommand ( typeof ( TopLevelLoader ), typeof ( LowLevelInputCommand ) );
+		AssertSpecificCallname ( typeof ( BasicCommands ), "safemode" );
+		AssertSpecificCallname ( typeof ( Components.Library.ComponentSystem.ContextVarCommands ), "context" );
+		AssertSpecificCallname ( typeof ( Components.Interfaces.Commands.SeClavRunnerCommand ), "seclav" );
+		AssertSpecificCallname ( typeof ( Components.Interfaces.Commands.SeClavModuleManagerCommand ), "seclav module" );
+		AssertSpecificCallname ( typeof ( Components.Implementations.CoreCreatorCommand ), "core create" );
+		AssertSpecificCallname ( typeof ( InputResender.WindowsGUI.LowLevelInputCommand ), "hook inpll" );
+
+		AssertSpecificCommands ( typeof ( CoreManagerCommand )
+			, ["core", "core act", "core typeof", "core list"]
+			, typeof ( CoreCreatorCommand ) );
+		AssertSpecificCommands ( typeof ( CoreCreatorCommand )
+			, ["core new", "core create", "core new comp", "core create comp"]
+			, typeof ( CoreManagerCommand ) );
+
+		void AssertSpecificCallname (Type cmdType, string callName)
+			=> CommandList.AllCallNames
+			.Should ().ContainKey ( cmdType )
+			.WhoseValue.Contains ( callName );
+		void AssertLoaderContainsCommand (Type loaderType, Type cmdType)
+			=> CommandList.Loaders
+			.Should ().ContainKey ( loaderType )
+			.WhoseValue.Contains ( cmdType );
+		void AssertSpecificCommand (Type cmdType, string cmd)
+			=> CommandList.CommandList
+			.Should ().ContainKey ( cmdType )
+			.WhoseValue.Contains ( cmd );
+		void AssertNotSpecificCommand (Type cmdType, string cmd)
+			=> CommandList.CommandList
+			.Should ().ContainKey ( cmdType )
+			.WhoseValue.All ( c => c != cmd );
+		void AssertSpecificCommands (Type ownerT, string[] cmds, params Type[] notOwner) {
+			foreach ( var cmd in cmds )
+				AssertSpecificCommand ( ownerT, cmd );
+			foreach ( var notT in notOwner )
+				foreach ( var cmd in cmds )
+					AssertNotSpecificCommand ( notT, cmd );
+		}
+
+		if ( Output != null ) {
+			System.Text.StringBuilder SB = new ();
+			SB.AppendLine ( $"Detected {CommandList.AllCallNames.Keys.Count} commands in {CommandList.Loaders.Keys.Count} loaders." );
+			SB.AppendLine ( " -- LOADERS -- ");
+
+			List<List<string>> infoBlocks = [];
+			foreach ( var loader in CommandList.Loaders ) {
+				List<string> info = [$" - {loader.Key.Name}:"];
+				for ( int i = 0; i < loader.Value.Count; i++ ) {
+					var cmdT = loader.Value[i];
+					string cmdInfo = $" . . {cmdT.Name}";
+					if ( CommandList.AllBaseCommandTypes.Contains ( cmdT ) ) cmdInfo += "*";
+					cmdInfo += " : ";
+					cmdInfo += string.Join ( ", ", CommandList.AllCallNames.GetValueOrDefault ( cmdT ) ?? ["NONE"] );
+					info.Add ( cmdInfo );
+				}
+				infoBlocks.Add ( info );
+			}
+			var columns = infoBlocks.SplitToColumns ( 2, 1 );
+			var blocks = columns.BuildColumBlocks ( "\t| ", "\n" );
+			foreach ( var block in blocks ) SB.AppendLine ( block );
+
+			SB.AppendLine ( "\n -- COMMANDS -- " );
+			//foreach ( var cmd in CommandList.CommandList ) {
+			//	SB.Append ( $"\n - {cmd.Key.Name}:" );
+			//	if ( CommandList.AllBaseCommandTypes.Contains ( cmd.Key ) ) SB.Append ( " *" );
+
+			//	foreach (var cmdS in cmd.Value ) SB.Append ( $"\n   - {cmdS}" );
+			//}
+
+			infoBlocks.Clear ();
+			foreach ( var cmd in CommandList.CommandList ) {
+				List<string> info = [$" - {cmd.Key.Name}:"];
+				if ( CommandList.AllBaseCommandTypes.Contains ( cmd.Key ) ) info[0] += "*";
+				for ( int i = 0; i < cmd.Value.Count; i++ ) {
+					var cmdS = cmd.Value[i];
+					info.Add ( $" . . {cmdS}" );
+				}
+				infoBlocks.Add ( info );
+			}
+			columns = infoBlocks.SplitToColumns ( 3, 1 );
+			blocks = columns.BuildColumBlocks ( "\t| ", "\n" );
+			foreach ( var block in blocks ) SB.AppendLine ( block );
+
+			Output.WriteLine ( SB.ToString () );
+		}
+	}
+}
+
 public class GlobalCommandTest : BaseIntegrationTest {
 	static readonly GlobalCommandList CommandList = new GlobalCommandList ();
 	public Outputter Output;
@@ -63,8 +228,9 @@ public class GlobalCommandTest : BaseIntegrationTest {
 
 	[Fact]
 	public void AllCommandsAreTested () {
+		// This test gathers all implementations of 'ACommand' automatically using reflection.
 		List<string> missing = new ();
-		foreach ( var cmdCls in CommandList.AllCommandTypes )
+		foreach ( var cmdCls in CommandList.AllCallNames.Keys )
 			if ( !CommandList.CommandList.ContainsKey ( cmdCls ) ) missing.Add ( $" - {cmdCls}" );
 		if ( missing.Any () ) PrintProblematicTests ( "are not in the list of tested commands" );
 
@@ -81,9 +247,9 @@ public class GlobalCommandTest : BaseIntegrationTest {
 
 	[Fact]
 	public void AllCommandsCanBeLoaded () {
-		List<Type> loaded = [typeof ( FactoryCommandsLoader ), typeof ( InputCommandsLoader ), typeof ( BasicCommands ), typeof(TopLevelLoader)];
-		List<Type> waiting = CommandList.AllCommandTypes.Select ( t => t ).ToList ();
-		waiting.AddRange ( CommandList.AllLoaders );
+		List<Type> loaded = [typeof ( FactoryCommandsLoader ), typeof ( BasicCommands ), typeof(TopLevelLoader)];
+		List<Type> waiting = CommandList.AllCallNames.Keys.Select ( t => t ).ToList ();
+		waiting.AddRange ( CommandList.Loaders.Keys );
 		foreach ( var T in loaded ) waiting.Remove ( T );
 
 		while ( waiting.Any () ) {
@@ -99,7 +265,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 
 				}
 			}
-			if ( !changed ) Assert.Fail ( "Following commands can never be loaded:" + string.Join ( '\n', waiting.Select ( T => $" - {T}" ) ) );
+			if ( !changed ) Assert.Fail ( "Following commands can never be loaded:\n" + string.Join ( '\n', waiting.Select ( T => $" - {T}" ) ) );
 		}
 	}
 
@@ -123,7 +289,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 
 	[Theory]
 	[MemberData ( nameof ( CommandIterator ) )]
-	public void AllCommandsInHelp_P (string command) {
+	public void AllCommandsInHelp_P (string command, Type owner) {
 		var res = cliWrapper.ProcessLine ( "help" );
 		res.Should ().NotBeNull ().And.NotBeOfType<ErrorCommandResult> ();
 		string h = res.Message;
@@ -131,7 +297,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 		string callname = command.Split ( ' ', StringSplitOptions.RemoveEmptyEntries )[0];
 		callname.Should ().NotBeNullOrWhiteSpace ().And
 			.Subject.Length.Should ().BeGreaterThan ( 1 );
-		h.Should ().ContainAny ( $"{callname} ", $"{callname}[.|", $"|{callname}|", $"|{callname}]", $"{callname}: " );
+		h.Should ().ContainAny ( [$"{callname} ", $"{callname}[.|", $"|{callname}|", $"|{callname}]", $"{callname}: "], $"variant of command call name '{callname}' from '{owner.Name}' should be present in help list" );
 	}
 
 	static void AssertSubcommandHelp (string helpMsg) {
@@ -169,7 +335,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 
 	[Theory]
 	[MemberData ( nameof ( CommandIterator ) )]
-	public void HelpAvailable_P ( string command ) {
+	public void HelpAvailable_P ( string command, Type owner ) {
 		string helpMsg = null;
 		command += ' ';
 		foreach ( string hs in ACommand.HelpSwitches ) {
@@ -190,7 +356,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 	public static IEnumerable<object[]> CommandIterator () {
 		foreach ( var comm in CommandList.CommandList ) {
 			foreach ( var cmd in comm.Value ) {
-				yield return [cmd];
+				yield return [cmd, comm.Key];
 			}
 		}
 	}

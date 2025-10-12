@@ -7,14 +7,16 @@ namespace Components.Interfaces.Commands;
 public class InputSimulatorCommand : ACommand {
 	public override string Description => "Can simulate user hardware input";
 
-	public InputSimulatorCommand ( string parentDsc = null ) : base ( parentDsc ) {
-		commandNames.Add ( "sim" );
+	private static List<string> CommandNames = ["sim"];
+	private static List<(string, Type)> InterCommands = [
+		  ("mousemove", null),
+		  ("keydown", null),
+		  ("keyup", null),
+		  ("keypress", null),
+	 ];
 
-		interCommands.Add ( "mousemove" );
-		interCommands.Add ( "keydown" );
-		interCommands.Add ( "keyup" );
-		interCommands.Add ( "keypress" );
-	}
+	public InputSimulatorCommand ( string parentDsc = null )
+		: base ( parentDsc, CommandNames, InterCommands ) {}
 
 	/*public static HKeyboardEventDataHolder KeyPress ( ComponentBase owner, KeyCode key, VKChange press, int deviceID = 1 ) {
 	HHookInfo hookInfo = new HHookInfo ( owner, deviceID, press );

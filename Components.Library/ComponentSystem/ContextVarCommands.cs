@@ -6,14 +6,17 @@ using System.Threading.Tasks;
 
 namespace Components.Library.ComponentSystem;
 public class ContextVarCommands : ACommand {
+	private static List<string> CommandNames = ["context"];
+	private static List<(string, Type)> InterCommands = [
+		  ("set", null),
+		  ("get", null),
+		  ("reset", null),
+		  ("add", null),
+	 ];
+
 	override public string Description => "Context variable access commands.";
-	public ContextVarCommands ( string parentDsc = null ) : base ( parentDsc ) {
-		commandNames.Add ( "context" );
-		interCommands.Add ( "set" );
-		interCommands.Add ( "get" );
-		interCommands.Add ( "reset" );
-		interCommands.Add ( "add" );
-	}
+	public ContextVarCommands ( string parentDsc = null )
+		: base ( parentDsc, CommandNames, InterCommands ) {}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		switch ( context.SubAction ) {

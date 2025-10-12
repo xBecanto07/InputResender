@@ -182,6 +182,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 				if ( console != null ) console.WriteLine ( s );
 			} );
 		}
+		/// <summary>Creates a new context with increased ArgID by offset. Other values are copied from current context.</summary>
 		public readonly CmdContext Sub (int offset = 1) => new ( CmdProc, Line, ArgID + offset, Console, Args );
 	}
 }

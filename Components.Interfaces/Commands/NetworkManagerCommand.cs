@@ -9,13 +9,20 @@ public class NetworkManagerCommand : ACommand {
 	public enum Act { HostList, Connect, Disconnect }
 	override public string Description => "Manages network connections.";
 
-	public NetworkManagerCommand () : base ( null ) {
-		commandNames.Add ( "network" );
+	private static List<string> CommandNames = ["network"];
+	private static List<(string, Type)> InterCommands = [
+		  ("hostlist", typeof(ListHostsNetworkCommand)),
+		  ("conn", typeof(NetworkConnsManagerCommand)),
+		  ("callback", typeof(NetworkCallbacks)),
+		  ("info", typeof(EndPointInfoCommand)),
+	 ];
 
-		subCommands.Add ( "hostlist", new ListHostsNetworkCommand ( this ) );
-		subCommands.Add ( "conn", new NetworkConnsManagerCommand ( this ) );
-		subCommands.Add ( "callback", new NetworkCallbacks ( this ) );
-		subCommands.Add ( "info", new EndPointInfoCommand ( this ) );
+	public NetworkManagerCommand ( string parentDsc = null )
+		: base ( parentDsc, CommandNames, InterCommands ) {
+		RegisterSubCommand ( this, new ListHostsNetworkCommand ( this ), "hostlist" );
+		RegisterSubCommand ( this, new NetworkConnsManagerCommand ( this ), "conn" );
+		RegisterSubCommand ( this, new NetworkCallbacks ( this ), "callback" );
+		RegisterSubCommand ( this, new EndPointInfoCommand ( this ), "info" );
 	}
 
 	public static string CreateCommand ( Act act ) => $"NetworkManager {act.ToString ().ToLower ()}";
@@ -24,9 +31,11 @@ public class NetworkManagerCommand : ACommand {
 public class ListHostsNetworkCommand : ACommand {
 	override public string Description => "Lists available local hosts.";
 
-	public ListHostsNetworkCommand ( NetworkManagerCommand parentHelp ) : base ( parentHelp.CallName ) {
-		commandNames.Add ( "hostlist" );
-	}
+	private static List<string> CommandNames = ["hostlist"];
+	private static List<(string, Type)> InterCommands = [];
+
+	public ListHostsNetworkCommand ( NetworkManagerCommand parentHelp )
+		: base ( parentHelp.CallName, CommandNames, InterCommands ) {}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "network hostlist: Lists available local hosts", out var helpRes ) ) return helpRes;
@@ -52,12 +61,14 @@ public class ListHostsNetworkCommand : ACommand {
 public class NetworkConnsManagerCommand : ACommand {
 	public override string Description => "Manages network connections.";
 
-	public NetworkConnsManagerCommand ( NetworkManagerCommand parent ) : base ( parent.CallName ) {
-		commandNames.Add ( "conn" );
+	private static List<string> CommandNames = ["conn"];
+	private static List<(string, Type)> InterCommands = [
+		("list", null),
+		("send", null)
+		];
 
-		interCommands.Add ( "list" );
-		interCommands.Add ( "send" );
-	}
+	public NetworkConnsManagerCommand ( NetworkManagerCommand parent )
+		: base ( parent.CallName, CommandNames, InterCommands ) {}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
@@ -94,13 +105,15 @@ public class NetworkCallbacks : ACommand {
 
 	override public string Description => "Manages network callbacks.";
 
-	public NetworkCallbacks ( NetworkManagerCommand parent ) : base ( parent.CallName ) {
-		commandNames.Add ( "callback" );
+	private static List<string> CommandNames = ["callback"];
+	private static List<(string, Type)> InterCommands = [
+		("list", null),
+		("recv", null),
+		("newconn", null)
+		];
 
-		interCommands.Add ( "list" );
-		interCommands.Add ( "recv" );
-		interCommands.Add ( "newconn" );
-	}
+	public NetworkCallbacks ( NetworkManagerCommand parent )
+		: base ( parent.CallName, CommandNames, InterCommands ) {}
 
 	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		if (TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
@@ -186,9 +199,12 @@ public class NetworkCallbacks : ACommand {
 
 public class EndPointInfoCommand : ACommand {
 	public override string Description => "Gets information about a specific endpoint.";
-	public EndPointInfoCommand (NetworkManagerCommand parentHelp) : base (parentHelp.CallName) {
-		commandNames.Add ( "info" );
-	}
+
+	private static List<string> CommandNames = ["info"];
+	private static List<(string, Type)> InterCommands = [];
+
+	public EndPointInfoCommand ( NetworkManagerCommand parentHelp )
+		: base ( parentHelp.CallName, CommandNames, InterCommands ) { }
 
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {

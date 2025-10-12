@@ -2,10 +2,11 @@
 
 public abstract class ACommandLoader : ACommand {
 	public const string BaseLoadCmdName = "load-cmd";
-	protected abstract string CmdGroupName { get; }
+	private string CmdGroupName { get; init; }
 	public override string Description => $"Dynamically add '{CmdGroupName}' commands to the command processor";
-	public override string Help => $"{parentCommandHelp} {commandNames.First ()}";
-	public ACommandLoader () : base ( null ) => commandNames.Add ( BaseLoadCmdName + '-' + CmdGroupName );
+	public override string Help => $"{parentCommandHelp} {CallName}";
+	public ACommandLoader (string cmdGroupName)
+		: base ( null, [BaseLoadCmdName + '-' + cmdGroupName], [] ) => CmdGroupName = BaseLoadCmdName + '-' + CmdGroupName;
 
 	protected abstract IReadOnlyCollection<Func<ACommand>> NewCommands { get; }
 	protected virtual IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => null;

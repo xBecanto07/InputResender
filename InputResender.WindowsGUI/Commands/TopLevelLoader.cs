@@ -7,18 +7,20 @@ using System.Collections.Generic;
 namespace InputResender.WindowsGUI.Commands;
 public class TopLevelLoader : ACommandLoader {
 	readonly ConsoleManager consoleManager;
-	public TopLevelLoader (ConsoleManager console = null) { consoleManager = console; }
+	public TopLevelLoader (ConsoleManager console = null) : base ("TopLevel") { consoleManager = console; }
 
-	protected override string CmdGroupName => "TopLevel";
-	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => [
-		() => new GUICommands (),
-		() => new ComponentVisualizer.ComponentVisualizerCommands (),
-		() => new WindowsCommands ( consoleManager ),
-	];
-	protected override IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => new List<(string, Func<ACommand, ACommand>)> {
-		( "hook", ( ACommand parent ) => {
+	private static Dictionary<Type, Func<ACommand>> NewCommandList (TopLevelLoader self) => new () {
+		  { typeof(GUICommands), () => new GUICommands ()},
+		  { typeof(ComponentVisualizer.ComponentVisualizerCommands), () => new ComponentVisualizer.ComponentVisualizerCommands ()},
+		  { typeof ( WindowsCommands ), () => new WindowsCommands ( self.consoleManager )},
+	};
+	private static Dictionary<Type, (string, Func<ACommand, ACommand>)> NewSubCommandList = new () {
+		{ typeof (LowLevelInputCommand), ("hook", ( ACommand parent ) => {
 			RegisterSubCommand ( parent, new LowLevelInputCommand ( parent ) );
 			return null;
-		})
+		}) },
 	};
+
+	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => NewCommandList ( this ).Values;
+	protected override IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => NewSubCommandList.Values;
 }

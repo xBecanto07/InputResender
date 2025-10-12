@@ -9,11 +9,11 @@ public class Config {
 	private static string homePath = AppDomain.CurrentDomain.BaseDirectory;
 	private static string savePath = Path.Combine ( HomePath, "config.xml" );
 	private readonly static Dictionary<string, string[]> autoCommands = new () {
-		{"initCmds", new string[] { "loadall", "clear", "safemode on", "core new", "core own", "loglevel all", "network callback recv print", "network callback newconn print", "hook manager start" } }
+		{"initCmds", new string[] { "loadall", "clear", "safemode on", "core new", "core own", "conns force init", "loglevel all", "network callback recv print", "network callback newconn print", "hook manager start" } }
 	};
 	private static string autostartName = "initCmds";
 	private static bool printAutoCommands = true;
-	private static int maxOnelinerLength = 90;
+	private static int maxOnelinerLength = 125;
 	private static PrintFormat responsePrintFormat = PrintFormat.Normal;
 
 	public enum PrintFormat { None, Batch, ErrOnly, Normal, Full }
@@ -38,6 +38,14 @@ public class Config {
 	private static void SetHomePath ( string path = null ) {
 
 		homePath = path;
+	}
+
+
+	public static string LoadFileContent(string relPath) {
+		if (string.IsNullOrEmpty(relPath)) return null;
+		string fullPath = Path.IsPathRooted(relPath) ? relPath : Path.Combine(HomePath, relPath);
+		if (!File.Exists(fullPath)) return null;
+		return File.ReadAllText(fullPath);
 	}
 
 

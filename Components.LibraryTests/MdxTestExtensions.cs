@@ -1,6 +1,8 @@
 ﻿using FluentAssertions;
 using FluentAssertions.Primitives;
-using System;
+using FluentAssertions.Collections;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -24,5 +26,22 @@ public static class MdxTestExtensions {
 			allCaptures.Should ().Contain ( val );
 		}
 		return str;
+	}
+
+	public static GenericDictionaryAssertions<IDictionary<T, List<U>>, T, List<U>> OnlyHaveUniqueListValues<T, U> (
+		this GenericDictionaryAssertions<IDictionary<T, List<U>>, T, List<U>> dict
+		) {
+		List<string> Errors = [];
+		Dictionary<U, T> reviewed = new ();
+		foreach ( var kv in dict.Subject ) {
+			foreach ( var item in kv.Value ) {
+				if ( reviewed.ContainsKey ( item ) )
+					Errors.Add ( $"Value <{item}> is not unique, found in keys <{reviewed[item]}> and <{kv.Key}>." );
+				else reviewed[item] = kv.Key;
+			}
+		}
+		if ( Errors.Any () )
+			Assert.Fail ( $"Dictionary has non-unique list values:\n{string.Join ( '\n', Errors )}" );
+		return dict;
 	}
 }

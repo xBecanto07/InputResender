@@ -2,6 +2,7 @@
 using Components.Library;
 using InputResender.Commands;
 using InputResender.WindowsGUI;
+using System.Collections.Generic;
 using System.Windows.Forms;
 
 namespace InputResender.OSDependent.Windows; 
@@ -11,12 +12,14 @@ public class WindowsCommands : ACommand {
 	override public string Description => "Offers access to Windows specific functionalities";
 	protected override bool PrintHelpOnEmpty => true;
 
-	public WindowsCommands ( ConsoleManager console ) : base ( null ) {
-		consoleManager = console;
-		commandNames.Add ( "windows" );
+	private static List<string> CommandNames = ["windows"];
+	private static List<(string, System.Type)> InterCommands = [
+		  ("load", null),
+		  ("msgs", null),
+	 ];
 
-		interCommands.Add ( "load" );
-		interCommands.Add ( "msgs" );
+	public WindowsCommands ( ConsoleManager console ) : base ( null, CommandNames, InterCommands ) {
+		consoleManager = console;
 	}
 
 	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {

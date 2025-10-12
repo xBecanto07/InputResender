@@ -25,7 +25,7 @@ public class PushDownAutomatonTest {
 		RunMachineAccepted ( pda, "baaaa" ); // Accepts 'b' at the start, but must end with 'a'
 		RunMachineAccepted ( pda, string.Empty ); // Accepts empty string since initial state is also final
 
-		RunMachineRejected ( pda, null, string.Empty ); // Null input is treated as invalid
+		RunMachineRejected ( pda, null, null ); // Null input is treated as invalid
 		RunMachineRejected ( pda, "aab", string.Empty ); // Rejects something that ends with 'b'
 		RunMachineRejected ( pda, "aabx", "x" ); // Rejects invalid character at the end (without even processing it, no transition matches)
 		RunMachineRejected ( pda, "b", string.Empty ); // Rejects single 'b'
@@ -39,7 +39,7 @@ public class PushDownAutomatonTest {
 	}
 	private static void RunMachineRejected ( PushDownAutomaton pda, string input, string expLeft ) {
 		pda.Process ( ref input ).Should ().BeFalse ();
-		input.Should ().NotBeEmpty ();
+		if ( expLeft != string.Empty ) input.Should ().NotBeEmpty ();
 		input.Should ().Be ( expLeft );
 	}
 }

@@ -15,6 +15,7 @@ internal class PushDownAutomaton {
 	public PushDownAutomaton ( int startState ) {
 		if ( startState < 0 ) throw new ArgumentOutOfRangeException ( nameof ( startState ), "Start state must be non-negative." );
 		StartState = startState;
+		transitions = [];
 		transitions[StartState] = [];
 		finalStates = [];
 	}
@@ -36,6 +37,11 @@ internal class PushDownAutomaton {
 	}
 
 	public bool Process ( ref string line ) {
+		if ( line == null ) {
+			// Treat null as special case of invalid input. NULL ≠ ϵ
+			
+			return false;
+		}
 		Dictionary<int, object> tmps = [];
 		int currentState = StartState;
 
@@ -43,15 +49,20 @@ internal class PushDownAutomaton {
 			if ( !transitions.TryGetValue ( currentState, out var stateTransitions ) )
 				throw new DataMisalignedException ( $"Entered undefined state {currentState}." );
 			
+			bool transitioned = false;
 			foreach ( var (to, transition) in stateTransitions ) {
 				string lineCpy = line;
 				if ( transition ( ref lineCpy, tmps.GetValueOrDefault ( currentState ), out object temp ) ) {
 					tmps[currentState] = temp;
 					currentState = to;
 					line = lineCpy;
+					transitioned = true;
 					break;
 				}
 			}
+
+			// No transition, reject
+			if ( !transitioned ) return false;
 		}
 
 		return finalStates.Contains ( currentState );

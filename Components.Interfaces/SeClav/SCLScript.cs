@@ -1,6 +1,39 @@
 ﻿using Components.Library;
 
 namespace SeClav;
+public class SCLScriptHolder {
+	// This class is simply a public wrapper around ISCLDebugInfo to allow passing it around without exposing the interface itself.
+	// As a public it behaves as empty object. Internal code can access the actual script and debug info.
+
+	private ISCLDebugInfo debugInfo;
+
+	internal ISCLParsedScript ParsedScript => debugInfo.Script;
+	internal ISCLDebugInfo DebugInfo => debugInfo;
+	public IReadOnlyList<(string, Exception)> Errors;
+	private List<(string, Exception)> ErrorList;
+
+	internal SCLScriptHolder ( string code, System.Func<string, DModuleLoader.IModuleInfo> moduleLoader ) {
+		ErrorList = [];
+		Errors = ErrorList.AsReadOnly ();
+		if ( string.IsNullOrEmpty ( code ) ) throw new ArgumentNullException ( nameof ( code ) );
+		SCLParsing parser = new ( moduleLoader );
+		var lines = code.Split ( new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None );
+
+		foreach ( var line in lines ) {
+			var trimmed = line.Trim ();
+			if ( string.IsNullOrEmpty ( trimmed ) || trimmed.StartsWith ( "#" ) ) continue; // Skip empty lines and comments
+
+			try {
+				parser.ProcessLine ( trimmed );
+			} catch ( Exception ex ) {
+				ErrorList.Add ( ($"Error processing line '{line}': {ex.Message}", ex) );
+			}
+		}
+
+		debugInfo = parser.GetResultWithDebugInfo ();
+	}
+}
+
 internal interface ISCLParsedScript {
 	IReadOnlyList<DataTypeDefinition> DataTypes { get; }
 	IReadOnlyList<ICommand> Commands { get; }
