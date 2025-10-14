@@ -31,6 +31,7 @@ internal class GlobalCommandList {
 		typeof( NetworkConnsManagerCommand ),
 		typeof( NetworkCallbacks ),
 		typeof( EndPointInfoCommand ),
+		typeof( PipelineCommand ),
 		typeof( SeClavRunnerCommand ),
 		typeof( SeClavModuleManagerCommand ),
 		typeof( BasicCommands ),

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 
 namespace InputResender.CLI; 
 public class Config {
+	private static bool SkipAutoSave = false;
 	private static string homePath = AppDomain.CurrentDomain.BaseDirectory;
 	private static string savePath = Path.Combine ( HomePath, "config.xml" );
 	private readonly static Dictionary<string, string[]> autoCommands = new () {
@@ -77,6 +78,8 @@ public class Config {
 	}
 
 	public static void Load ( string path = null ) {
+		bool oldSkipAutoSave = SkipAutoSave;
+		SkipAutoSave = true;
 		if ( string.IsNullOrEmpty ( path ) ) path = Path.Combine ( homePath, "config.xml" );
 
 		if ( File.Exists ( path ) ) {

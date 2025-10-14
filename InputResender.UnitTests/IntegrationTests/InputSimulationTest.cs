@@ -23,7 +23,7 @@ namespace InputResender.UnitTests.IntegrationTests;
 
 public class WindowsInputSimulationTest : InputSimulationTest {
 	public WindowsInputSimulationTest ( ITestOutputHelper output ) : base ( output ) { }
-	protected override string[] InitCmds => ["windows load --force", "windows msgs start"];
+	protected override string[] InitCmds => ["hook manager start", "windows load --force", "windows msgs start"];
 }
 
 [Collection ( "WinInputTests" )]

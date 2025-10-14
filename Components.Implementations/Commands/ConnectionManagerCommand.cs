@@ -56,14 +56,14 @@ public class ConnectionManagerCommand : ACommand {
 		}
 		case "send": {
 			byte[] data = System.Text.Encoding.UTF8.GetBytes ( context[2, "Data"] );
-			var conn = FindConn ( sender, context.Args, context.ArgID, out CommandResult errMsg );
+			var conn = FindConn ( sender, context, context.ArgID, out CommandResult errMsg );
 			if ( errMsg != null ) return errMsg;
 
 			if ( !conn.Send ( new HMessageHolder ( HMessageHolder.MsgFlags.None, data ) ) ) return new CommandResult ( $"Failed to send data to '{conn}'." );
 			return new CommandResult ( $"Sent {data.Length} bytes to '{conn.TargetEP}'." );
 		}
 		case "close": {
-			var conn = FindConn ( sender, context.Args, context.ArgID, out CommandResult errMsg );
+			var conn = FindConn ( sender, context, context.ArgID, out CommandResult errMsg );
 			if ( errMsg != null ) return errMsg;
 			if ( conn == null ) return new ( "Unexpected error while finding connection to use" );
 
@@ -104,32 +104,41 @@ public class ConnectionManagerCommand : ACommand {
 		}
 	}
 
-	protected NetworkConnection FindConn ( VPacketSender sender, ArgParser args, int argID, out CommandResult errMsg ) {
-		string target = args.String ( argID + 1, "Target" );
-		if ( string.IsNullOrEmpty ( target ) ) {
-			errMsg = new CommandResult ( "No target specified." );
-			return null;
-		}
-
-		if ( target.StartsWith ( '#' ) ) {
-			if ( !int.TryParse ( target.Substring ( 1 ), out int index ) ) {
-				errMsg = new CommandResult ( $"Invalid index '{target}'." );
-				return null;
-			}
-			if ( index < 0 || index >= sender.ActiveConns.Count ) {
-				errMsg = new CommandResult ( $"Index out of range." );
-				return null;
-			}
-			target = sender.ActiveConns.ElementAt ( index ).Key.ToString ();
-		}
-
-		var ret = sender.ActiveConns.FirstOrDefault ( x => x.Key.FullNetworkPath == target, new ( null, null ) );
-		if ( ret.Key == null ) {
-			errMsg = new CommandResult ( $"Target '{target}' not found." );
-			return null;
-		} else {
+	protected NetworkConnection FindConn ( VPacketSender sender, CommandProcessor.CmdContext context, int argID, out CommandResult errMsg ) {
+		try {
+			(int _, var ret) = FindElement ( context, argID + 1, sender.ActiveConns.Keys, (id, x) => x.FullNetworkPath == id, "Target" );
 			errMsg = null;
-			return ret.Value;
+			return sender.ActiveConns[ret];
+		} catch ( Exception ex ) {
+			errMsg = new CommandResult ( ex.Message );
+			return null;
 		}
+
+		//string target = args.String ( argID + 1, "Target" );
+		//if ( string.IsNullOrEmpty ( target ) ) {
+		//	errMsg = new CommandResult ( "No target specified." );
+		//	return null;
+		//}
+
+		//if ( target.StartsWith ( '#' ) ) {
+		//	if ( !int.TryParse ( target.Substring ( 1 ), out int index ) ) {
+		//		errMsg = new CommandResult ( $"Invalid index '{target}'." );
+		//		return null;
+		//	}
+		//	if ( index < 0 || index >= sender.ActiveConns.Count ) {
+		//		errMsg = new CommandResult ( $"Index out of range." );
+		//		return null;
+		//	}
+		//	target = sender.ActiveConns.ElementAt ( index ).Key.ToString ();
+		//}
+
+		//var ret = sender.ActiveConns.FirstOrDefault ( x => x.Key.FullNetworkPath == target, new ( null, null ) );
+		//if ( ret.Key == null ) {
+		//	errMsg = new CommandResult ( $"Target '{target}' not found." );
+		//	return null;
+		//} else {
+		//	errMsg = null;
+		//	return ret.Value;
+		//}
 	}
 }
