@@ -182,6 +182,52 @@ public abstract class ACommand {
 	}
 
 	protected static string EnumPar<T> ( string paramName, string pre = "/n/t" ) where T : struct, Enum => $"\n\t{paramName}: {{{string.Join ( "|", Enum.GetNames<T> () )}}}";
+
+	//protected static T FindElement<T> ( string ID, List<T> list, bool shouldThrow = true ) => FindElement ( ID, list, ( id, x ) => x.ToString () == id, shouldThrow );
+	protected static (int id, T obj) FindElement<T> ( CommandProcessor.CmdContext context, int index, IEnumerable<T> list, Func<string, T, bool> selector, string throwName = null ) {
+		bool shouldThrow = throwName != null;
+		throwName ??= "ID";
+		string ID = context.Args.String ( index, throwName, 1, shouldThrow );
+		if ( string.IsNullOrWhiteSpace ( ID ) ) {
+			if ( shouldThrow ) throw new ArgumentException ( "ID cannot be null or whitespace.", nameof ( ID ) );
+			return (-1, default);
+		}
+		if (ID.StartsWith('#')) {
+			if ( int.TryParse ( ID[1..], out int idx ) ) {
+				var arr = list.ToArray ();
+				if ( idx < 0 || idx >= arr.Length ) {
+					if ( shouldThrow ) throw new ArgumentOutOfRangeException ( nameof ( ID ), $"Index '{idx}' is out of range. Must be between 0 and {arr.Length - 1}." );
+					return (-1, default);
+				}
+				return (idx, arr[idx]);
+			} else {
+				if ( shouldThrow ) throw new ArgumentException ( "ID is not a valid index.", nameof ( ID ) );
+				return (-1, default);
+			}
+		} else {
+			int i = 0;
+			foreach ( var item in list ) {
+				if ( selector ( ID, item ) ) return (i, item);
+				i++;
+			}
+		}
+		return (-1, default);
+	}
+
+	protected T Fetch<T> ( CommandProcessor.CmdContext context, CoreBase core = null ) where T : ComponentBase
+		=> Fetch<CoreBase, T> ( context, core );
+	protected T Fetch<Core, T> ( CommandProcessor.CmdContext context, Core core = null ) where T : ComponentBase where Core : CoreBase {
+		core ??= GetCore<Core> ( context );
+		var comp = core.Fetch<T> ();
+		if ( comp == null ) throw new Exception ( $"No component of type '{typeof(T).Name}' available in core." );
+		return comp;
+	}
+	protected CoreBase GetCore ( CommandProcessor.CmdContext context ) => GetCore<CoreBase> ( context );
+	protected Core GetCore<Core> ( CommandProcessor.CmdContext context ) where Core : CoreBase {
+		var core = context.CmdProc.GetVar<Core> ( CoreManagerCommand.ActiveCoreVarName );
+		if ( core == null ) throw new Exception ( "No active core available." );
+		return core;
+	}
 }
 
 

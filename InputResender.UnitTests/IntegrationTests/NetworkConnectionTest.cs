@@ -26,7 +26,7 @@ public class NetworkConnectionTest {
 	}
 
 	public static BaseIntegrationTest InitTestObj ( ITestOutputHelper output, string objName, List<string> errorList ) {
-		BaseIntegrationTest ret = new ( objName + ":: ", output, BaseIntegrationTest.InitCmdsList ( "core new comp packetSender" ) );
+		BaseIntegrationTest ret = new ( objName + ":: ", output, BaseIntegrationTest.InitCmdsList ( "core new comp packetSender", "hook manager start" ) );
 		var core = ret.cliWrapper.CmdProc.Owner;
 		core.Name = $"{objName} ({core.Name})";
 		if ( errorList != null )

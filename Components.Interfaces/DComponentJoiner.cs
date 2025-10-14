@@ -21,7 +21,8 @@ public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 
 	protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => [
 		(nameof(RegisterJoiner), typeof(void)),
-		(nameof(RegisterPipeline), typeof(void)),
+		(nameof(RegisterPipeline), typeof(object)),
+		(nameof(UnregisterPipeline), typeof(void)),
 		(nameof(Send), typeof(int)),
 		];
 
@@ -31,7 +32,8 @@ public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 	/// <summary>Register a joiner function that will process A's output via component B</summary>
 	public abstract void RegisterJoiner ( Type tA, Type tB, string dsc, Func<DComponentJoiner, object, (bool, object)> joiner, bool force = false );
 
-	public abstract void RegisterPipeline ( params ComponentSelector[] types );
+	public abstract object RegisterPipeline ( params ComponentSelector[] types );
+	public abstract void UnregisterPipeline ( object pipelineId );
 	public abstract int Send ( ComponentBase origin, Type target, object data );
 	public static void TryRegisterJoiner<CA, CB, DT> ( DComponentJoiner compJoiner, Func<DComponentJoiner, CB, DT, (bool, object)> joiner, string dsc = null ) where CA : ComponentBase where CB : ComponentBase {
 		ArgumentNullException.ThrowIfNull ( compJoiner, nameof ( compJoiner ) );
@@ -87,12 +89,21 @@ public class VComponentJoiner : DComponentJoiner {
 		} else Joiners.Add ( key, new () { (joiner, dsc) } );
 	}
 
-	public override void RegisterPipeline ( params ComponentSelector[] CIs ) {
+	public override object RegisterPipeline ( params ComponentSelector[] CIs ) {
 		ArgumentNullException.ThrowIfNull ( CIs, nameof ( CIs ) );
 		ArgumentOutOfRangeException.ThrowIfLessThan ( CIs.Length, 2, nameof ( CIs ) );
 
 		string dsc = string.Join ( " -> ", CIs.Select ( x => x.ToString () ) );
 		Links.Add ( CIs[0], ([.. CIs], dsc) );
+		Note ( $"Registered pipeline: {dsc}" );
+		return CIs[0];
+	}
+
+	public override void UnregisterPipeline ( object pipelineId ) {
+		if ( pipelineId is not ComponentSelector CI )
+			throw new ArgumentException ( "Invalid pipeline ID.", nameof ( pipelineId ) );
+		if ( Links.Remove ( CI ) ) Note ( $"Unregistered pipeline starting with {CI}" );
+		else throw new KeyNotFoundException ( "Pipeline ID not found." );
 	}
 
 	public override int Send ( ComponentBase origin, Type target, object data ) {

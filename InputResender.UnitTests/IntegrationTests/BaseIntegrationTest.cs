@@ -14,9 +14,8 @@ using Components.Implementations;
 namespace InputResender.UnitTests.IntegrationTests;
 public class BaseIntegrationTest : IDisposable {
 	public static string[] InitCmdsList (params string[] extras) {
-		List<string> ret = new () { "loadall", "safemode on", "core new", "core own", "hook manager start" };
-		ret.AddRange ( extras );
-		return ret.ToArray ();
+		List<string> ret = ["loadall", "safemode on", "core new", "core own", .. extras]; //, "hook manager start" };
+		return [.. ret];
 	}
 	public static readonly string[] GeneralInitCmds = InitCmdsList ();
 

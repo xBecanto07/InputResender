@@ -61,6 +61,7 @@ namespace Components.Library {
 
 			public static Func<ComponentInfo, bool> ByType<T> () where T : ComponentBase => ByType ( typeof ( T ) );
 			public static Func<ComponentInfo, bool> ByType ( Type t ) => t == null ? null : ( comp ) => comp.TypeTree.Contains ( t );
+			public static Func<ComponentInfo, bool> ByType ( string name ) => name == null ? null : ( comp ) => comp.TypeTree.Any ( ( t ) => t.Name.EndsWith ( name ) );
 			public static Func<ComponentInfo, bool> ByName ( string name ) => name == null ? null : ( comp ) => comp.Name == name;
 			public static Func<ComponentInfo, bool> BySubGroupID ( DictionaryKey subGroupID ) => subGroupID == default ? null : ( comp ) => comp.GroupID == subGroupID;
 			public static Func<ComponentInfo, bool> ByVariantName ( string variantName ) => variantName == null ? null : ( comp ) => comp.VariantName == variantName;
@@ -160,13 +161,16 @@ namespace Components.Library {
 			, string name = null
 			, DictionaryKey subGroupID = default
 			, string variantName = null
-			, Type acceptedType = null )
+			, Type acceptedType = null
+			, string typeName = null
+			)
 			=> new ComponentGroup ( this
 			, ComponentGroup.ByType ( t )
 			, ComponentGroup.ByName ( name )
 			, ComponentGroup.BySubGroupID ( subGroupID )
 			, ComponentGroup.ByVariantName ( variantName )
 			, ComponentGroup.ByAcceptedType ( acceptedType )
+			, ComponentGroup.ByType ( typeName )
 			).Get ();
 
 
@@ -215,7 +219,7 @@ namespace Components.Library {
 		public string VariantName;
 		public Type ComponentType;
 
-		public ComponentSelector ( CoreBase core = null, DictionaryKey? id = null, string variantName = null, Type componentType = null ) {
+		public ComponentSelector ( CoreBase core = null, DictionaryKey? id = null, string variantName = null, Type componentType = null, string componentTypeName = null ) {
 			ID = id;
 			VariantName = variantName;
 			ComponentType = componentType;
@@ -239,7 +243,7 @@ namespace Components.Library {
 				} else if ( VariantName != null ) {
 					if ( core.Fetch ( variantName: VariantName ) == null )
 						throw new Exception ( $"No component variant with name {VariantName} was found!" );
-				}
+				} else throw new ArgumentException ( "At least one of ID, VariantName or ComponentType must be provided!" );
 			}
 		}
 
