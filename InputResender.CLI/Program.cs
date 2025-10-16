@@ -9,7 +9,8 @@ public static class Program {
 	public static CliWrapper StartMain ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
 		CliWrapper cliWrapper = new ( console );
 		ArgParser parser = new ( string.Join ( " ", args ), console.WriteLine );
-		Config.Load ( parser.String ( "cfg", null ) );
+		if ( !Config.Load ( parser.String ( "cfg", null ) ) )
+			Config.Save (); // Couldn't load configuration, save the current one
 
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
 		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => throw new NotImplementedException () ) );
