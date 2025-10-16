@@ -77,6 +77,14 @@ public class VInputReader_KeyboardHook : DInputReader {
 		return released;
 	}
 
+	public override void Clear () {
+		var LL = LowLevelComponent;
+		foreach (var hookRef in HookSet)
+			LL.UnhookHookEx ( hookRef.Value.Item2.hook );
+		HookSet.Clear ();
+		delayedRunner.Stop ();
+	}
+
 	public override string PrintHookInfo ( DictionaryKey key ) {
 		if ( !HookSet.TryGetValue ( key, out var hookRef ) )
 			if ( !DeletedHooks.TryGetValue ( key, out hookRef ) ) return null;

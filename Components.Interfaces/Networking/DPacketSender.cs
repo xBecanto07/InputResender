@@ -43,6 +43,7 @@ namespace Components.Interfaces {
 		/// <summary>List of all recv handlers. Will be iterated from newest to oldest. (NetPacket data, was procesed)=>CallbackResult</summary>
 		public abstract event OnReceiveHandler OnReceive;
 		public abstract event Action<NetworkConnection> OnNewConn;
+		public override void Clear () => Destroy ();
 		public abstract void Destroy ();
 		public abstract bool IsEPConnected ( INetPoint ep );
 		public abstract string GetEPInfo ( INetPoint ep );

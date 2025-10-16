@@ -16,6 +16,8 @@ public class FactoryCommandsLoader : ACommandLoader {
 		{ typeof(InputCommandsLoader), () => new InputCommandsLoader () },
 		{ typeof(SeClavCommandLoader), () => new SeClavCommandLoader () },
 		{ typeof(DebugCommand), () => new DebugCommand () },
+		{ typeof(PWDCommand), () => new PWDCommand () },
+		{ typeof(AutoCmdsCommand), () => new AutoCmdsCommand () },
 	};
 	private static Dictionary<Type, (string, Func<ACommand, ACommand>)> NewSubCommandList = new () {
 		{ typeof (CoreCreatorCommand), ("core", ( ACommand parent ) => {

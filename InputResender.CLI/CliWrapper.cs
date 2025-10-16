@@ -16,6 +16,11 @@ public class CliWrapper {
 	public CliWrapper ( ConsoleManager console ) {
 		Console = console ?? throw new ArgumentNullException ( nameof ( console ) );
 		CmdProc = new ( Console.WriteLine );
+		Console.OnIdle += FlushDelayedMessages;
+	}
+
+	private void FlushDelayedMessages () {
+		CmdProc?.Owner?.FlushDelayedMsgs ( Console.WriteLine );
 	}
 
 	public CommandResult ProcessLineBlocking () => ProcessLine ( Console.ReadLineBlocking );
@@ -34,7 +39,7 @@ public class CliWrapper {
 	}
 
 	public CommandResult ProcessLine ( string line, bool printLine = true ) {
-		return ProcessLine ( line, printLine, () => CmdProc.ProcessLine ( line, VerboseMode, Console ) );
+		return ProcessLine ( line, printLine, (s) => CmdProc.ProcessLine ( s, VerboseMode, Console ) );
 
 		/*// Should line=="" be handled extra here?
 		if ( line == null ) throw new ArgumentNullException ( nameof ( line ) );
@@ -48,7 +53,7 @@ public class CliWrapper {
 
 	public CommandResult ProcessLine<T> (string line, out T result, bool printLine = true) where T : CommandResult {
 		T resT = null;
-		var res = ProcessLine (line, printLine, () => CmdProc.ProcessLine (line, out resT, VerboseMode, Console));
+		var res = ProcessLine (line, printLine, (s) => CmdProc.ProcessLine (s, out resT, VerboseMode, Console));
 		result = resT;
 		return res;
 
@@ -61,19 +66,23 @@ public class CliWrapper {
 		if ( Config.ResponsePrintFormat != Config.PrintFormat.None ) Program.PrintResult ( res, Console, Config.MaxOnelinerLength );
 		return res;*/
 	}
-	private CommandResult ProcessLine (string line, bool printLine, Func<CommandResult> processFcn) {
+	private CommandResult ProcessLine (string line, bool printLine, Func<string, CommandResult> processFcn) {
 		// Should line=="" be handled extra here?
-		if ( line == ConsoleManager.EOF ) return null;
+		if ( line == ConsoleManager.EOF ) {
+			processFcn ( "exit" ); // To ensure any cleanup is done properly
+			return null;
+		}
 		if ( line == null ) throw new ArgumentNullException ( nameof ( line ) );
 
 		if ( printLine ) Console.WriteLine ( PrintStart ? $"$> {line}" : line );
-		var res = processFcn ();
+		var res = processFcn ( line );
 		CmdProc?.Owner?.FlushDelayedMsgs ( Console.WriteLine );
 		if ( Config.ResponsePrintFormat != Config.PrintFormat.None ) Program.PrintResult ( res, Console, Config.MaxOnelinerLength );
 		return res;
 	}
 
 	public void Stop () {
+		Console.OnIdle -= FlushDelayedMessages;
 		throw new NotImplementedException ();
 		// Current workflow is: ConsoleManager is listening for 'exit' line, returning EOF when receiving it. This than should be captured and propagated further up the call chain.
 		// This isn't great solution but works for now (when 'exit' entered via console).

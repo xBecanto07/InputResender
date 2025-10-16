@@ -117,8 +117,9 @@ public abstract class ACommand {
 	public virtual CommandResult Execute ( CommandProcessor.CmdContext context ) {
 		var localContext = context.Sub ( ArgsOffset );
 		// empty string should never reach this point, but better to catch any wrongly defined commands
-		if ( localContext.Args.ArgC < localContext.ArgID ) return new CommandResult ( new Exception ( "Not enough arguments provided." ) );
-		if ( HelpSwitches.Contains ( localContext[0] ) )
+		int extraArgs = localContext.Args.ArgC - localContext.ArgID;
+		if ( extraArgs < 0 ) return new CommandResult ( new Exception ( "Not enough arguments provided." ) );
+		if ( (extraArgs == 0 && PrintHelpOnEmpty) || HelpSwitches.Contains ( localContext[0] ) )
 			return new CommandResult ( Help );
 		//if ( context[0] == "clear" ) return ExecCleanup ( context );
 

@@ -20,6 +20,9 @@ namespace Components.Library {
 			commands.AddRange ( cmds );
 			SupportedCommands = commands;
 		}
+
+		public virtual void Clear () { }
+
 		protected abstract IReadOnlyList<(string opCode, Type opType)> AddCommands ();
 		protected virtual void ChangeOwner ( CoreBase newOwner ) {
 			Owner?.Unregister ( this );
