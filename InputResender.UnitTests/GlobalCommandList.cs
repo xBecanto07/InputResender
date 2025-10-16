@@ -39,6 +39,8 @@ internal class GlobalCommandList {
 		typeof( CoreManagerCommand ),
 		typeof( DebugCommand ),
 		typeof( FactoryCommandsLoader ),
+		typeof( PWDCommand ),
+		typeof( AutoCmdsCommand ),
 		typeof( InputCommandsLoader ),
 		typeof( SeClavCommandLoader ),
 		typeof( LowLevelInputCommand ),

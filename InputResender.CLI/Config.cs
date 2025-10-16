@@ -20,6 +20,7 @@ public static class Config {
 
 	public enum PrintFormat { None, Batch, ErrOnly, Normal, Full }
 
+	public static HashSet<string> ValidAutostartNames { get => autoCommands.Keys.ToHashSet (); }
 	public static string AutostartName { get => autostartName; set { autostartName = value; Save (); } }
 	public static string HomePath {
 		get => homePath; set {
@@ -55,7 +56,8 @@ public static class Config {
 
 	public static IReadOnlyCollection<string> FetchAutoCommands ( string key ) {
 		if ( string.IsNullOrEmpty ( key ) ) return Array.Empty<string> ();
-		if ( !autoCommands.TryGetValue ( key, out string[] ret ) ) return Array.Empty<string> ();
+		if ( !autoCommands.TryGetValue ( key, out string[] ret ) )
+			return Array.Empty<string> ();
 		string[] ret2 = new string[ret.Length];
 		ret.CopyTo ( ret2, 0 );
 		return ret2;

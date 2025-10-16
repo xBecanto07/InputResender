@@ -155,6 +155,13 @@ namespace Components.Library {
 			Components.Remove ( info.GlobalID );
 		}
 
+		public void Close () {
+			foreach ( var component in Components ) {
+				component.Value.Component.Clear ();
+			}
+			Components.Clear ();
+		}
+
 		public T Fetch<T> ( DictionaryKey subGroupID = default, string variantName = null, Type acceptedType = null ) where T : ComponentBase => Fetch ( typeof ( T ), null, subGroupID, variantName, acceptedType ) as T;
 		public ComponentBase Fetch (
 			Type t = null

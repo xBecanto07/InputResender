@@ -13,7 +13,7 @@ public static class Program {
 			Config.Save (); // Couldn't load configuration, save the current one
 
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
-		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => throw new NotImplementedException () ) );
+		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => { /* Cleanup is done after main loop */ } ) );
 		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
 		cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader () );
 		if ( TLLoader != null ) cliWrapper.CmdProc.AddCommand ( TLLoader );
@@ -35,6 +35,8 @@ public static class Program {
 			var res = cliWrapper.ProcessLineBlocking ();
 			if ( res == null ) break;
 		}
+
+		cliWrapper.CmdProc.Owner.Close ();
 
 		console.WriteLine ( "Program closed." );
 	}
