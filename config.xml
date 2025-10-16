@@ -1,5 +1,5 @@
 <Config>
-  <HomePath>C:\Maldus\Projects\InputResender\InputResender.CLI\bin\Debug\net7.0\</HomePath>
+  <HomePath>C:\Maldus\Projects\InputResender</HomePath>
   <AutostartName>initCmds</AutostartName>
   <PrintAutoCommands>T</PrintAutoCommands>
   <MaxOnelinerLength>125</MaxOnelinerLength>
@@ -16,6 +16,11 @@
       <C7>network callback recv print</C7>
       <C8>network callback newconn print</C8>
       <C9>hook manager start</C9>
+      <C10>pipeline new Sender DInputProcessor DDataSigner DPacketSender</C10>
+      <C11>pipeline new Recver DPacketSender DDataSigner DInputSimulator</C11>
+      <C12>pipeline new InputProcess DInputReader DInputMerger DInputProcessor</C12>
+      <C13>hook add Print Keydown KeyUp</C13>
+      <C14>sim keypress R</C14>
     </initCmds>
   </AutoCommands>
 </Config>

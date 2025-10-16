@@ -7,6 +7,8 @@ namespace Components.Interfaces.Commands;
 public class InputSimulatorCommand : ACommand {
 	public override string Description => "Can simulate user hardware input";
 
+	private HHookInfo virtualKeyboardHook = null; // Bad naming, HHookInfo is just a 'input event context' 😉
+
 	private static List<string> CommandNames = ["sim"];
 	private static List<(string, Type)> InterCommands = [
 		  ("mousemove", null),
@@ -49,17 +51,34 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		DHookManager hookManager = core.Fetch<DHookManager> ();
 		if ( hookManager == null ) throw new Exception ( "No HookManager registered in core" );
 
+
 		switch (context.SubAction) {
 		case "keydown": {
-			int sent = Simulate ( context, 1, sim, true, false );
+			var hook = hookManager.GetHook ( 0, VKChange.KeyDown );
+			if ( hook == null ) {
+				virtualKeyboardHook ??= new ( sim, 0, VKChange.KeyDown );
+				// TODO: Management of 'virtual hooks' i.e. input contexts should be done in DInputSimulator
+				hook = virtualKeyboardHook;
+			}
+			int sent = Simulate ( context, 1, sim, true, false, hook );
 			return new CommandResult ( $"Sent {sent} key down events." );
 		}
 		case "keyup": {
-			int sent = Simulate ( context, 1, sim, false, true );
+			var hook = hookManager.GetHook ( 0, VKChange.KeyUp );
+			if ( hook == null ) {
+				virtualKeyboardHook ??= new ( sim, 0, VKChange.KeyUp );
+				hook = virtualKeyboardHook;
+			}
+			int sent = Simulate ( context, 1, sim, false, true, hook );
 			return new CommandResult ( $"Sent {sent} key up events." );
 		}
 		case "keypress": {
-			int sent = Simulate ( context, 1, sim, true, true );
+			var hook = hookManager.GetHook ( 0, VKChange.KeyDown );
+			if ( hook == null || !hook.ChangeMask.Contains ( VKChange.KeyUp ) ) {
+				virtualKeyboardHook ??= new ( sim, 0, VKChange.KeyDown, VKChange.KeyUp );
+				hook = virtualKeyboardHook;
+			}
+			int sent = Simulate ( context, 1, sim, true, true, hook );
 			return new CommandResult ( $"Sent {sent} keyboard input (keypress) events." );
 		}
 		case "mousemove": {
@@ -78,13 +97,13 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		}
 	}
 
-	int Simulate ( CommandProcessor.CmdContext context, int offset, DInputSimulator sim, bool keyDown, bool keyUp) {
+	int Simulate ( CommandProcessor.CmdContext context, int offset, DInputSimulator sim, bool keyDown, bool keyUp, HHookInfo hInfo) {
 		List<KeyCode> keys = GetKeysFromArgs ( context, offset );
 
 		List<HInputEventDataHolder> events = [];
 		for ( int i = 0; i < keys.Count; i++ ) {
-			if ( keyDown ) events.Add ( HInputEventDataHolder.KeyDown ( sim, null, keys[i] ) );
-			if ( keyUp ) events.Add ( HInputEventDataHolder.KeyUp ( sim, null, keys[i] ) );
+			if ( keyDown ) events.Add ( HInputEventDataHolder.KeyDown ( sim, hInfo, keys[i] ) );
+			if ( keyUp ) events.Add ( HInputEventDataHolder.KeyUp ( sim, hInfo, keys[i] ) );
 		}
 
 		sim.AllowRecapture = true;

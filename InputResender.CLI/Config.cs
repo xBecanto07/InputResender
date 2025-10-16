@@ -5,8 +5,9 @@ using System.Linq;
 using System.Collections.Generic;
 
 namespace InputResender.CLI; 
-public class Config {
+public static class Config {
 	private static bool SkipAutoSave = false;
+	private static List<string> AdditionalPaths = [];
 	private static string homePath = AppDomain.CurrentDomain.BaseDirectory;
 	private static string savePath = Path.Combine ( HomePath, "config.xml" );
 	private readonly static Dictionary<string, string[]> autoCommands = new () {
@@ -20,8 +21,34 @@ public class Config {
 	public enum PrintFormat { None, Batch, ErrOnly, Normal, Full }
 
 	public static string AutostartName { get => autostartName; set { autostartName = value; Save (); } }
-	public static string HomePath { get => homePath; set { homePath = value; Save (); } }
-	public static string SavePath { get => savePath; set { savePath = value; Save (); } }
+	public static string HomePath {
+		get => homePath; set {
+			if ( string.IsNullOrEmpty ( value ) )
+				throw new ArgumentException ( "HomePath cannot be empty." );
+			if ( File.Exists ( value ) ) value = Path.GetDirectoryName ( value );
+			if ( !Directory.Exists ( value ) )
+				throw new ArgumentException ( "HomePath must be an existing directory or a valid file path." );
+			homePath = value;
+			savePath = Path.Combine ( HomePath, "config.xml" );
+			Save ();
+		}
+	}
+	public static string SavePath {
+		get => savePath; set {
+			if ( string.IsNullOrEmpty ( value ) )
+				throw new ArgumentException ( "SavePath cannot be empty." );
+			if ( Directory.Exists ( value ) )
+				value = Path.Combine ( value, "config.xml" );
+			else if ( !File.Exists ( value ) ) {
+				string dir = Path.GetDirectoryName ( value );
+				if ( !Directory.Exists ( dir ) )
+					throw new ArgumentException ( "SavePath must be an existing file path or a valid directory." );
+			} else if ( Path.GetExtension ( value ) != ".xml" )
+				throw new ArgumentException ( "SavePath must have .xml extension." );
+			savePath = value;
+			Save ();
+		}
+	}
 	public static bool PrintAutoCommands { get => printAutoCommands; set { printAutoCommands = value; Save (); } }
 	public static int MaxOnelinerLength { get => maxOnelinerLength; set { maxOnelinerLength = value; Save (); } }
 	public static PrintFormat ResponsePrintFormat { get => responsePrintFormat; set { responsePrintFormat = value; Save (); } }
@@ -36,11 +63,6 @@ public class Config {
 	public static void AddAutoCommand ( string key, IEnumerable<string> commands ) =>
 		autoCommands[key] = commands.ToArray ();
 
-	private static void SetHomePath ( string path = null ) {
-
-		homePath = path;
-	}
-
 
 	public static string LoadFileContent(string relPath) {
 		if (string.IsNullOrEmpty(relPath)) return null;
@@ -51,6 +73,7 @@ public class Config {
 
 
 	public static void Save () {
+		if ( SkipAutoSave ) return;
 		if ( string.IsNullOrEmpty ( SavePath ) ) return;
 
 		XmlDocument doc = new ();
@@ -77,33 +100,36 @@ public class Config {
 		doc.Save ( SavePath );
 	}
 
-	public static void Load ( string path = null ) {
+	public static bool Load ( string path = null ) {
 		bool oldSkipAutoSave = SkipAutoSave;
 		SkipAutoSave = true;
-		if ( string.IsNullOrEmpty ( path ) ) path = Path.Combine ( homePath, "config.xml" );
+		if ( string.IsNullOrEmpty ( path ) ) path = Path.Combine ( HomePath, "config.xml" );
 
-		if ( File.Exists ( path ) ) {
-			if ( Path.GetExtension ( path ) != ".xml" )
-				throw new ArgumentException ( "Invalid file extension." );
-			homePath = path;
-		} else if ( Directory.Exists ( path ) ) {
-			homePath = path;
-			path = Path.Combine ( homePath, "config.xml" );
-		}
-		SavePath = path;
+		HomePath = path;
 
-		if (!File.Exists ( homePath ) ) {
+		if (!File.Exists ( SavePath ) ) {
 			// Create default config
-			Save ();
-			return;
+			//Save (); Moving this to higher level
+			SkipAutoSave = oldSkipAutoSave;
+			return true;
 		} else {
 			XmlDocument doc = new ();
-			doc.Load ( homePath );
+			doc.Load ( SavePath );
 			XmlElement root = doc.DocumentElement;
 			if ( root.Name != "Config" ) throw new ArgumentException ( "Invalid root element." );
 			foreach ( XmlNode node in root.ChildNodes ) {
 				switch ( node.Name ) {
-				case "HomePath": homePath = node.InnerText; break;
+				case "HomePath":
+					// If HomePath is different than current (but has valid config file) switch to loading that config (recursively). Otherwise store this path as alternative path (will be used when searching for extra files)
+					if ( node.InnerText == HomePath || node.InnerText == SavePath )
+						break;
+					HomePath = node.InnerText;
+					if ( Load ( HomePath ) ) {
+						SkipAutoSave = oldSkipAutoSave;
+						return true;
+					}
+					AdditionalPaths.Add ( HomePath );
+					break;
 				case "AutostartName": autostartName = node.InnerText; break;
 				case "PrintAutoCommands": PrintAutoCommands = node.InnerText == "T"; break;
 				case "MaxOnelinerLength": if ( int.TryParse ( node.InnerText, out int maxOnelinerLength ) ) MaxOnelinerLength = maxOnelinerLength; break;
@@ -122,6 +148,8 @@ public class Config {
 					break;
 				}
 			}
+			SkipAutoSave = oldSkipAutoSave;
+			return true;
 		}
 	}
 }

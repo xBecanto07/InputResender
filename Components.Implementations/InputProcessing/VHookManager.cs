@@ -66,9 +66,9 @@ public class VHookManager : DHookManager {
 	}
 
 	public override HHookInfo GetHook ( DeviceID device, VKChange vKChange ) {
-		if ( !ActiveHooks.ContainsKey ( device ) ) return null;
-		var dev = ActiveHooks[device];
-		//foreach ( var hook in dev.HookList ) if ( hook.Item2 == vKChange ) return hook;
+		if ( !ActiveHooks.TryGetValue ( device, out HookGroup dev ) ) return null;
+		var hookID = dev[vKChange];
+		if ( hookID != DictionaryKey.Empty && OwnedHooks.TryGetValue ( hookID, out var hookInfo ) ) return hookInfo;
 		return null;
 	}
 
@@ -135,7 +135,7 @@ public class VHookManager : DHookManager {
 			return removed;
 		}
 
-		public HashSet<DictionaryKey> this[VKChange vkChange] => throw new NotImplementedException ();
+		public DictionaryKey this[VKChange vkChange] => hookDict.GetValueOrDefault ( vkChange, DictionaryKey.Empty );
 
 		public IReadOnlyCollection<DictionaryKey> AllUniqueHooks => allHooks.ToList ().AsReadOnly ();
 
