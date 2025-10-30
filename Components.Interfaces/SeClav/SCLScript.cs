@@ -42,6 +42,7 @@ internal interface ISCLParsedScript {
 	IReadOnlyList<DModuleLoader.IModuleInfo> Modules { get; }
 	IReadOnlyList<int> VariableTypes { get; }
 	IReadOnlyList<int> ResultTypes { get; }
+	IReadOnlyDictionary<int, Func<IDataType>> Getters { get; }
 }
 
 internal interface ISCLDebugInfo {

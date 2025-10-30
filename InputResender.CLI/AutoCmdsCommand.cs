@@ -24,20 +24,24 @@ public class AutoCmdsCommand : ACommand {
 		}, out var helpRes ) ) return helpRes;
 		switch ( context.SubAction ) {
 		case "list": {
+			context.Args.RegisterSwitch ( 'c', "compact" );
 			var ACnames = Config.ValidAutostartNames.ToArray ();
 			if ( ACnames.Length == 0 )
 				return new CommandResult ( "No automatic commands configured." );
 			System.Text.StringBuilder sb = new ();
+			bool verbose = !context.Args.Present ( "--compact" );
 			sb.AppendLine ( "Automatic command groups:" );
 			for ( int i = 0; i < ACnames.Length; i++ ) {
 				sb.AppendLine ( $"[{i}] {ACnames[i]}:" );
-				var cmds = Config.FetchAutoCommands ( ACnames[i] ).ToList ();
-				if ( cmds == null || cmds.Count == 0 ) {
-					sb.AppendLine ( "\t<No commands>" );
-					continue;
-				}
-				for ( int j = 0; j < cmds.Count; j++ ) {
-					sb.AppendLine ( $"\t#{j,2} |> {cmds[j]}" );
+				if ( verbose ) {
+					var cmds = Config.FetchAutoCommands ( ACnames[i] ).ToList ();
+					if ( cmds == null || cmds.Count == 0 ) {
+						sb.AppendLine ( "\t<No commands>" );
+						continue;
+					}
+					for ( int j = 0; j < cmds.Count; j++ ) {
+						sb.AppendLine ( $"\t#{j,2} |> {cmds[j]}" );
+					}
 				}
 			}
 			return new CommandResult ( sb.ToString () );

@@ -1,0 +1,32 @@
+# Input Processor
+@using sclMain, KeyInput, Pipeline
+
+@method ConditionalSend
+@pipeInput DInputMerger
+@pipeOutputOpt PProc DInputProcessor
+@pipeOutputOpt PSend DPacketSender
+@keyInEvent key
+@keyStatus kStat Caps
+@run ConditionalSend
+mask M = IsActive Caps
+out PProc key | out PSend key &M
+@end ConditionalSend
+
+#@method Tapper
+#@pipeInput DInputMerger
+#@pipeOutputOpt PProc DInputProcessor
+#@pipeOutputOpt PSend DPacketSender
+#@config Key[5] K A S D F Space
+#@keyInBinary keys K.1 K.2 K.3 K.4 K.5
+#@keyStatus kStat Caps
+#@keyOn Stable | FirstRelease
+#@config binMap<key> Mapping {
+#	00001=None	00010=None	00011=None
+#}
+#@static binMap status
+#@run Tapper
+#addLeft keys status
+#Key res = Mapping[keys]
+#mask M = IsActive Caps
+#out PProc res | out PSend res &M
+#@end Tapper

@@ -18,6 +18,7 @@ public abstract class DModuleLoader : ComponentBase<CoreBase> {
 		string Description { get; }
 		IReadOnlySet<ICommand> Commands { get; }
 		IReadOnlySet<DataTypeDefinition> DataTypes { get; }
+		IReadOnlyDictionary<string, Action<SCLParsingContext, ArgParser>> PraeDirectives { get; }
 	}
 
 	public abstract class DStateInfo : StateInfo {

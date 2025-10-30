@@ -1,4 +1,6 @@
-﻿using SeClav;
+﻿using Components.Library;
+using FluentAssertions.Equivalency;
+using SeClav;
 using SeClav.DataTypes;
 using System;
 using System.Collections.Generic;
@@ -205,13 +207,22 @@ internal class SCL_TestModule : DModuleLoader.IModuleInfo {
 	public string Name => "TestModule";
 	public string Description => "Module for testing purposes";
 
+	public DataTypeDefinition IntTypeDef => IntDef;
+	public DataTypeDefinition StrTypeDef => StrDef;
+
+	private readonly DataTypeDefinition IntDef = new TestValueIntDef ();
+	private readonly DataTypeDefinition StrDef = new TestValueStringDef ();
+
 	public IReadOnlySet<ICommand> Commands => new HashSet<ICommand> () {
 		new AssertEqual (), new AddInts (),
 		new ConcatStrs (), new AppendIntToString (),
 	};
 
 	public IReadOnlySet<DataTypeDefinition> DataTypes => new HashSet<DataTypeDefinition> () {
-		new TestValueIntDef (),
-		new TestValueStringDef (),
+		IntDef, StrDef,
 	};
+
+	// Prae-directives are provided by tests themselves as needed
+	public IReadOnlyDictionary<string, Action<SCLParsingContext, ArgParser>> PraeDirectives => GetPraeDirectives;
+	internal Dictionary<string, Action<SCLParsingContext, ArgParser>> GetPraeDirectives = [];
 }

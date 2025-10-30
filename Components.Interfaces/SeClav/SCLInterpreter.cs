@@ -24,6 +24,15 @@ internal class SCLRuntime : ISCLRuntime {
 				throw new IndexOutOfRangeException ( $"Result type index {t} is out of range <0|{script.DataTypes.Count}>." );
 			return script.DataTypes[t].Default;
 		} ).ToList ().AsReadOnly ();
+
+		foreach ( var (id, getter) in script.Getters) {
+			if ( id < 0 || id >= Variables.Count )
+				throw new IndexOutOfRangeException ( $"Getter ID {id} is out of range <0|{Variables.Count}>." );
+			var val = getter ();
+			if (val.Definition != Variables[id].Definition )
+				throw new InvalidOperationException ( $"Getter for variable ID {id} returned type {val.Definition.Name}({val.Definition.Owner}), expected {Variables[id].Definition.Name}({Variables[id].Definition.Owner})." );
+			Variables[id].Assign ( val );
+		}
 	}
 
 	public IDataType SafeGetVar ( SIdVal varID ) {
