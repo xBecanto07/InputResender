@@ -86,7 +86,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 	/// <summary>Processes a line and returns the result. If it's of expected type, output reference is also set to the same result, now with proper type. Retuned and outputed references will be the same only if the result is of expected type.</summary>
 	public CommandResult ProcessLine<T> ( string line, out T result, bool verbose = false, ConsoleManager console = null ) where T : CommandResult {
 		result = null;
-		CommandResult tmpRes = ProcessLine ( line );
+		CommandResult tmpRes = ProcessLine ( line, verbose, console );
 
 		if ( tmpRes == null ) return new ErrorCommandResult ( null, new Exception ( "No result." ) );
 		if ( tmpRes is not T tResult ) return new ErrorCommandResult ( tmpRes,

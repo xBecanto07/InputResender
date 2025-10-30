@@ -64,4 +64,49 @@ public class SCLIntegrationTests {
 		var (_, Var) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "myVar" );
 		Var.Value.Should ().Be ( "Expected: 40+2=42" );
 	}
+
+	[Fact]
+	public void PraeDirectiveIsCalled () {
+		bool wasCalled = false;
+		testModule.GetPraeDirectives.Add("test_prae", ( ctx, parser ) => {
+			wasCalled = true;
+		} );
+		parser.ProcessLine ( "@test_prae" );
+		wasCalled.Should ().BeTrue ();
+
+		// Prae-directive shouldn't be called again during script execution
+		wasCalled = false;
+		RunScript ( parser );
+		wasCalled.Should ().BeFalse ();
+	}
+
+	[Fact]
+	public void PraeRegisterVariableBasic () {
+		testModule.GetPraeDirectives.Add ("register_var", ( ctx, _ ) => {
+			ctx.RegisterVariable ("praeVar", () => new TestValueInt ( testModule.IntTypeDef, 123 ) );
+		} );
+		parser.ProcessLine ( "@register_var" );
+		parser.ProcessLine ( "TestString result = APPEND_INT_TO_STR \"Value is: \" praeVar" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, praeVar) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "praeVar" );
+		praeVar.Value.Should ().Be ( 123 );
+		var (_, resultVar) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "result" );
+		resultVar.Value.Should ().Be ( "Value is: 123" );
+	}
+
+	[Fact]
+	public void PraeRegisterVariableViaArgs () {
+		testModule.GetPraeDirectives.Add ( "register_var", ( ctx, parser ) => {
+			string varName = parser.String ( 0, "Variable Name", shouldThrow: true );
+			int varValue = parser.Int ( 1, "Variable Value", shouldThrow: true ).Value;
+			ctx.RegisterVariable ( varName, () => new TestValueInt ( testModule.IntTypeDef, varValue ) );
+		} );
+		parser.ProcessLine ( "@register_var dynamicVar 456" );
+		parser.ProcessLine ( "TestString result = APPEND_INT_TO_STR \"Value is: \" dynamicVar" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, dynamicVar) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "dynamicVar" );
+		dynamicVar.Value.Should ().Be ( 456 );
+		var (_, resultVar) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "result" );
+		resultVar.Value.Should ().Be ( "Value is: 456" );
+	}
 }

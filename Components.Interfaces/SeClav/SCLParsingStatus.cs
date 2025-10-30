@@ -5,8 +5,17 @@ using TOpCode = SeClav.SId<SeClav.OpCodeTag>;
 using TDst = SeClav.SId<SeClav.DstTag>;
 using TArg = SeClav.SId<SeClav.ArgTag>;
 using TExtraArgs = SeClav.SId<SeClav.ExtraArgsTag>;
+using SCLContextInner = SeClav.SCLParsingStatus.SCLParsingContextInner;
 
 namespace SeClav;
+public class SCLParsingContext {
+	private readonly SCLContextInner Inner;
+
+	internal SCLParsingContext ( SCLContextInner inner ) => Inner = inner;
+
+	public void RegisterVariable ( string Name, Func<IDataType> getter ) => Inner.RegisterVariable ( Name, getter );
+}
+
 internal class SCLParsingStatus {
 	internal class SCLParsedScript : ISCLParsedScript {
 		public IReadOnlyList<DataTypeDefinition> DataTypes { get; }
@@ -16,6 +25,7 @@ internal class SCLParsingStatus {
 		public IReadOnlyList<DModuleLoader.IModuleInfo> Modules { get; }
 		public IReadOnlyList<int> VariableTypes { get; }
 		public IReadOnlyList<int> ResultTypes { get; }
+		public IReadOnlyDictionary<int, Func<IDataType>> Getters { get; }
 
 		public SCLParsedScript ( SCLParsingStatus parsingStatus ) {
 			// Also could have/extract from status some disassembly info (closer discussion in diary)
@@ -32,6 +42,7 @@ internal class SCLParsingStatus {
 			Constants = parsingStatus.constants.ToList ().AsReadOnly ();
 			VariableTypes = parsingStatus.variables.Select ( v => v.dataType ).ToList ().AsReadOnly ();
 			ResultTypes = parsingStatus.results.Select ( r => parsingStatus.dataTypes.IndexOf ( r.Definition ) ).ToList ().AsReadOnly ();
+			Getters = new Dictionary<int, Func<IDataType>> ( parsingStatus.getters );
 			//Variables = parser.variables.Select ( v => DataTypes[v.dataType].Default ).ToList ().AsReadOnly ();
 		}
 	}
@@ -54,6 +65,32 @@ internal class SCLParsingStatus {
 	}
 
 
+
+	/// <summary>A gateway for other methods (like Components) to access some internal data of SCLParsingStatus. Mostly to register meta methods.</summary>
+	internal class SCLParsingContextInner {
+		readonly SCLParsingStatus Status;
+
+		public SCLParsingContextInner ( SCLParsingStatus status ) {
+			Status = status;
+		}
+
+		public void RegisterVariable (string Name, Func<IDataType> getter) {
+			ArgumentNullException.ThrowIfNull ( Name );
+			ArgumentNullException.ThrowIfNull ( getter );
+			if ( Status.variables.Any ( v => v.name == Name ) )
+				throw new InvalidOperationException ( $"Variable '{Name}' is already defined." );
+			int varID = Status.variables.Count;
+			var defVal = getter ();
+			int dataTypeID = Status.GetDataTypeID ( defVal.Definition );
+			Status.variables.Add ( ( dataTypeID, Name ) );
+			Status.getters[varID] = getter;
+			Status.UpdateMemoryInfo ();
+		}
+	}
+
+
+
+
 	readonly List<DataTypeDefinition> dataTypes = [];
 	readonly List<ICommand> commands = [];
 	readonly List<CmdCall> commandIndices = [];
@@ -61,6 +98,8 @@ internal class SCLParsingStatus {
 	readonly List<DModuleLoader.IModuleInfo> modules = [];
 	readonly List<IDataType> constants = [];
 	readonly List<IDataType> results = []; // FIXME: This should only be <int> as we don't yet know the value, only the data type
+	readonly Dictionary<int, Func<IDataType>> getters = [];
+	//readonly List<Action<SCLParsedScript>> OnLoad = [];
 
 	readonly Dictionary<string, DataTypeDefinition> dataTypeMap = [];
 	readonly Dictionary<string, ICommand> commandMap = [];
@@ -69,6 +108,7 @@ internal class SCLParsingStatus {
 	public IReadOnlyDictionary<string, string> GetMemoryInfoRef () => MemoryInfo;
 
 	public SCLParsedScript GetResult () => new SCLParsedScript ( this );
+	public SCLParsingContext GetContext () => new SCLParsingContext ( new SCLContextInner ( this ) );
 
 	public SCLParsingStatus () {
 		dataTypeMap["void"] = new SCLT_Void ();
@@ -91,6 +131,17 @@ internal class SCLParsingStatus {
 				throw new InvalidOperationException ( $"Data type '{dt.Name}' is already defined." );
 			dataTypeMap[dt.Name] = dt;
 		}
+	}
+
+	public bool TryRunPraeDirective ( string name, ArgParser args) {
+		ArgumentNullException.ThrowIfNull ( name );
+		foreach ( var module in modules ) {
+			if ( module.PraeDirectives.TryGetValue ( name, out var action ) ) {
+				action ( GetContext (), args );
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public (int dataType, string name) GetVarInfo ( TDst varID ) {
