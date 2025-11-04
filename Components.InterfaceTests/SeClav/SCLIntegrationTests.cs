@@ -109,4 +109,29 @@ public class SCLIntegrationTests {
 		var (_, resultVar) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "result" );
 		resultVar.Value.Should ().Be ( "Value is: 456" );
 	}
+
+	[Fact]
+	public void SetResetReadFlags () {
+		parser.ProcessLine ( "TestInt flagVar = READ_FLAGS" );
+		parser.ProcessLine ( "SET_FLAG 7" );
+		parser.ProcessLine ( "TestInt afterSet = READ_FLAGS" );
+		parser.ProcessLine ( "RESET_FLAG 7" );
+		parser.ProcessLine ( "TestInt afterReset = READ_FLAGS" );
+		parser.ProcessLine ( "SET_FLAG 1" );
+		parser.ProcessLine ( "SET_FLAG 2" );
+		parser.ProcessLine ( "SET_FLAG 3" );
+		parser.ProcessLine ( "SET_FLAG 7" );
+		parser.ProcessLine ( "RESET_FLAG 3" );
+		parser.ProcessLine ( "RESET_FLAG 9" );
+		parser.ProcessLine ( "TestInt finalFlags = READ_FLAGS" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, flagVar) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "flagVar" );
+		var (_, afterSet) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "afterSet" );
+		var (_, afterReset) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "afterReset" );
+		var (_, finalFlags) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "finalFlags" );
+		flagVar.Value.Should ().Be ( 0 );
+		afterSet.Value.Should ().Be ( 1 << 7 );
+		afterReset.Value.Should ().Be ( 0 );
+		finalFlags.Value.Should ().Be ( ( 1 << 1 ) | ( 1 << 2 ) | ( 1 << 7 ) );
+	}
 }

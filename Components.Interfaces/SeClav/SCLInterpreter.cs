@@ -7,6 +7,7 @@ internal class SCLRuntime : ISCLRuntime {
 	public ISCLParsedScript Script;
 	public IReadOnlyList<IDataType> Variables;
 	public IReadOnlyList<IDataType> Results;
+	private ISCLRuntime.SCLFlags flags;
 
 	private const int VarIdMask = SCLInterpreter.VarIdMask;
 	private const int VarIdShift = SCLInterpreter.VarIdShift;
@@ -104,6 +105,10 @@ internal class SCLRuntime : ISCLRuntime {
 		memInfo["Results"] = $"{Results.Count} results : {string.Join ( " | ", Results.Select ( ( r, i ) => $"R{i}={r}" ) )}";
 		memInfo["Constants"] = $"{Script.Constants.Count} constants : {string.Join ( " | ", Script.Constants.Select ( ( c, i ) => $"C{i}={c}" ) )}";
 	}
+
+	public ISCLRuntime.SCLFlags GetFlags () => flags;
+	public void SetFlag ( ISCLRuntime.SCLFlags value ) => flags |= value;
+	public void ResetFlag ( ISCLRuntime.SCLFlags value ) => flags &= ~value;
 }
 
 internal class SCLRunner : ICommand {

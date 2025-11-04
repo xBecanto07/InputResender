@@ -106,7 +106,9 @@ internal class SCLParsing {
 		string originalLine = line;
 		string token = GetIdentifier ( ref line );
 		if ( string.IsNullOrEmpty ( token ) ) return false;
-		TArg sId = Status.GetVarID ( token );
+		//TArg sId = Status.GetVarID ( token );
+		if ( !Status.TryGetVarID ( token, out TArg sId ) )
+			return false;
 		return TryParseAssignment ( SCLInterpreter.CrDst ( sId ), ref line );
 	}
 
