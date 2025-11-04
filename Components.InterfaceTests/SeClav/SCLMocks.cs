@@ -203,6 +203,74 @@ internal class ConcatStrs : ICommand {
 	}
 }
 
+internal class SetFlag : ICommand {
+	public string CmdCode => "SET_FLAG";
+	public string CommonName => "Set Flag";
+	public string Description => "Sets a runtime flag.";
+	public int ArgC => 1;
+	public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => [
+		("flag", new TestValueIntDef (), "Flag value to set")
+	];
+	public DataTypeDefinition ReturnType => new SCLT_Void ();
+	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
+		var flag = runtime.GetVar ( args[0] ) as TestValueInt;
+		runtime.SetFlag ( ( ISCLRuntime.SCLFlags )flag.Value );
+		return new SCLT_Void ().Default;
+	}
+	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
+		SIdVal flagID = args[0];
+		IDataType flagOffset = runtime.SafeGetVar ( flagID );
+		if ( flagOffset is not TestValueInt vf )
+			throw new InvalidOperationException ( $"Expected integer for argument 'flag', got '{flagOffset.Definition.Name}'." );
+		progress.Add ( $" . Set flag to {vf.Value}" );
+		runtime.SetFlag ( (ISCLRuntime.SCLFlags)(1 << vf.Value) );
+		return new SCLT_Void ().Default;
+	}
+}
+
+internal class ResetFlag : ICommand {
+	public string CmdCode => "RESET_FLAG";
+	public string CommonName => "Reset Flag";
+	public string Description => "Resets a runtime flag.";
+	public int ArgC => 1;
+	public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => [
+		("flag", new TestValueIntDef (), "Flag value to reset")
+	];
+	public DataTypeDefinition ReturnType => new SCLT_Void ();
+	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
+		var flag = runtime.GetVar ( args[0] ) as TestValueInt;
+		runtime.ResetFlag ( ( ISCLRuntime.SCLFlags )flag.Value );
+		return new SCLT_Void ().Default;
+	}
+	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
+		SIdVal flagID = args[0];
+		IDataType flagOffset = runtime.SafeGetVar ( flagID );
+		if ( flagOffset is not TestValueInt vf )
+			throw new InvalidOperationException ( $"Expected integer for argument 'flag', got '{flagOffset.Definition.Name}'." );
+		progress.Add ( $" . Reset flag to {vf.Value}" );
+		runtime.ResetFlag ( ( ISCLRuntime.SCLFlags )( 1 << vf.Value ) );
+		return new SCLT_Void ().Default;
+	}
+}
+
+internal class ReadFlags : ICommand {
+	public string CmdCode => "READ_FLAGS";
+	public string CommonName => "Read Flags";
+	public string Description => "Reads the current runtime flags.";
+	public int ArgC => 0;
+	public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => [];
+	public DataTypeDefinition ReturnType => new TestValueIntDef ();
+	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
+		int flags = ( int )runtime.GetFlags ();
+		return new TestValueInt ( ReturnType, flags );
+	}
+	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
+		int flags = ( int )runtime.GetFlags ();
+		progress.Add ( $" . Current flags: {flags}" );
+		return new TestValueInt ( ReturnType, flags );
+	}
+}
+
 internal class SCL_TestModule : DModuleLoader.IModuleInfo {
 	public string Name => "TestModule";
 	public string Description => "Module for testing purposes";
@@ -214,8 +282,8 @@ internal class SCL_TestModule : DModuleLoader.IModuleInfo {
 	private readonly DataTypeDefinition StrDef = new TestValueStringDef ();
 
 	public IReadOnlySet<ICommand> Commands => new HashSet<ICommand> () {
-		new AssertEqual (), new AddInts (),
-		new ConcatStrs (), new AppendIntToString (),
+		new AssertEqual (), new AddInts (), new ConcatStrs (), new AppendIntToString (),
+		new SetFlag (), new ResetFlag (), new ReadFlags (),
 	};
 
 	public IReadOnlySet<DataTypeDefinition> DataTypes => new HashSet<DataTypeDefinition> () {

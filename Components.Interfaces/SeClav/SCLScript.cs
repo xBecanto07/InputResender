@@ -83,10 +83,17 @@ public interface IDataType {
 }
 
 public interface ISCLRuntime {
+	[Flags]
+	public enum SCLFlags : ushort {
+		Condition = 1,
+	}
 	IDataType GetVar ( SIdVal varID );
 	void SetVar ( SIdVal varID, IDataType value );
 	IDataType SafeGetVar ( SIdVal varID );
 	void SafeSetVar ( SIdVal varID, IDataType value );
+	SCLFlags GetFlags ();
+	void SetFlag ( SCLFlags value );
+	void ResetFlag ( SCLFlags value );
 
 	void UpdateMemoryInfo ( ref Dictionary<string, string> memInfo );
 }
@@ -98,6 +105,7 @@ public interface ICommand {
 	int ArgC { get; }
 	// The AssemblyX86 style of dst, src1, src2, ... is recommended
 	IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args { get; }
+	//IReadOnlyList<(int after, string split)> guiders { get; }
 	DataTypeDefinition ReturnType { get; }
 	IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args );
 	/// <summary>A 'debug' version. Should perform extra checks to catch and specify errors more easily.</summary>
@@ -166,7 +174,6 @@ internal struct CmdCall {
 		arg2 = N > 1 ? args[1].Generic : new SIdVal ( 0, 0 );
 		arg3 = N > 2 ? args[2].Generic : new SIdVal ( 0, 0 );
 		arg4 = N > 3 ? args[3].Generic : new SIdVal ( 0, 0 );
-		arg5 = N > 4 ? args[4].Generic : new SIdVal ( 0, 0 );
 		extraArgs = new SIdVal ( 0, 0 );
 	}
 
