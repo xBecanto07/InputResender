@@ -11,19 +11,26 @@ internal class SCLParsing {
 	private readonly System.Func<string, DModuleLoader.IModuleInfo> ModuleLoader;
 	private readonly SCLParsingStatus Status;
 	readonly TOpCode AssignOpCode;
-	private List<string> Log;
-	public bool EnableLogging = true;
+	private readonly List<string> Log = [];
+	public Action<string> Logger;
+	public bool EnableLogging;
 	public readonly IReadOnlyDictionary<string, string> MemoryInfo;
 
-	public SCLParsing ( System.Func<string, DModuleLoader.IModuleInfo> moduleLoader ) {
+	public SCLParsing ( System.Func<string, DModuleLoader.IModuleInfo> moduleLoader, Action<string> logger = null, bool enableLogging = true ) {
 		ArgumentNullException.ThrowIfNull ( moduleLoader );
-		Log = ["SCL parser started"];
+		Logger = logger;
+		EnableLogging = enableLogging;
+		if ( EnableLogging ) LogAdd ( "SCL parser started" );
 		ModuleLoader = moduleLoader;
 		Status = new ();
 		AssignOpCode = Status.RegisterCustomCmd ( new CmdAssignment () );
 		MemoryInfo = Status.GetMemoryInfoRef ();
 	}
 
+	private void LogAdd ( string message ) {
+		Log.Add ( message );
+		Logger?.Invoke ( message );
+	}
 
 	public ISCLParsedScript GetResult () => new SCLParsingStatus.SCLParsedScript ( Status );
 	public ISCLDebugInfo GetResultWithDebugInfo () => new SCLParsingStatus.SCLDebugInfo ( Status, Log );
@@ -48,7 +55,7 @@ internal class SCLParsing {
 	*/
 
 	public void ProcessLine ( string line ) {
-		if ( EnableLogging ) Log.Add ( $"Processing line: {line}" );
+		if ( EnableLogging ) LogAdd ( $"Processing line: {line}" );
 		string originalLine = line;
 		line = line.Trim ();
 		int commentIndex = line.IndexOf ( '#' );
@@ -56,6 +63,7 @@ internal class SCLParsing {
 			line = line[..commentIndex].TrimEnd ();
 
 		if ( string.IsNullOrEmpty ( line ) ) return;
+		if ( TryParseMacro ( line ) ) return;
 		if ( TryParsePrae ( line ) ) return;
 		if ( TryParseUsing ( line ) ) return;
 		if ( TryParseDataType ( line ) ) return;
@@ -64,12 +72,123 @@ internal class SCLParsing {
 		throw new InvalidOperationException ( $"Could not parse line: '{originalLine}'." );
 	}
 
+	private static (int guiderID, string arg)[] ProcessMacro ( IMacro macro, string line ) {
+		if ( macro.guiders.Count == 0 )
+			return [(-1, line)]; // No guiders, return the whole line as a single part
+
+		List<(int guiderID, string arg)> parts = [];
+		int lastPos = 0;
+		if ( macro.UnorderedGuiders ) {
+			string[] splitters = macro.guiders.Select ( g => g.split ).ToArray ();
+			while ( true ) {
+				int nearestPos = -1;
+				int nearestGuiderID = -1;
+				string nearestSplitter = null;
+				for ( int i = 0; i < splitters.Length; i++ ) {
+					int pos = line.IndexOf ( splitters[i], lastPos );
+					if ( pos < 0 ) continue;
+					if ( nearestPos < 0 || pos < nearestPos ) {
+						nearestPos = pos;
+						nearestGuiderID = i;
+						nearestSplitter = splitters[i];
+					}
+				}
+				if ( nearestPos < 0 ) break;
+				string part = line[lastPos..nearestPos];
+				parts.Add ( (nearestGuiderID, part) );
+				lastPos = nearestPos + nearestSplitter.Length;
+			}
+			if ( lastPos < line.Length ) {
+				string part = line[lastPos..];
+				parts.Add ( (-1, part) );
+			}
+		} else {
+			List<string> args = [.. line.Split ( [' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries )];
+			for ( int i = 0; i < macro.guiders.Count; i++ ) {
+				var guider = macro.guiders[i];
+				int pos = Math.Abs ( guider.after ) - 1;
+				bool canRepeat = guider.after < 0;
+
+				if ( pos >= args.Count ) {
+					if ( canRepeat ) continue;
+					throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' expects at least {guider.after + 1} arguments, but only {args.Count} were provided." );
+				}
+				int sepPos = (args[pos]?.IndexOf ( guider.split )).GetValueOrDefault ( -1 );
+				bool nextStarts = sepPos < 0 && (args.Count > pos + 1) && args[pos + 1].StartsWith ( guider.split );
+				if ( sepPos < 0 && !nextStarts ) {
+					if ( canRepeat ) continue;
+					else throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' expects argument {pos + 1} to start with '{guider.split}', but got '{args[pos]}'." );
+				}
+
+				string part = string.Join ( ' ', args[lastPos..pos] );
+				if ( nextStarts ) {
+					if ( part.Length == 0 || part.EndsWith ( ' ' ) ) part += args[pos];
+					else part += ' ' + args[pos];
+					pos++;
+					sepPos = 0;
+				} else {
+					if ( sepPos > 0 ) part += args[lastPos][..sepPos];
+				}
+				args[pos] = args[pos][(sepPos + guider.split.Length)..]; // Remove the guider split from the argument
+				if ( string.IsNullOrWhiteSpace ( args[pos] ) )
+					args.RemoveAt ( pos ); // Remove the current argument, as it is fully consumed
+
+				for ( int j = 0; j < macro.guiders.Count; j++ ) {
+					if ( guider.split.Contains ( macro.guiders[j].split ) ) continue;
+					if ( part.Contains ( macro.guiders[j].split ) )
+						throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' guider split '{macro.guiders[j].split}' found inside argument for guider split '{guider.split}'." );
+				}
+
+				parts.Add ( (i, part) );
+
+				if ( canRepeat ) {
+					for ( int j = pos - 1; j >= lastPos; j-- )
+						args.RemoveAt ( j );
+					i--;
+				} else
+					lastPos = pos;
+			}
+			if ( lastPos < args.Count ) {
+				string part = string.Join ( ' ', args[lastPos..] );
+				parts.Add ( (-1, part) );
+			}
+		}
+
+		if ( macro.SelectRight ) {
+			var copy = parts.ToArray ();
+			parts.Clear ();
+			if ( !string.IsNullOrWhiteSpace ( copy[0].arg ) )
+				parts.Add ( (-1, copy[0].arg) );
+			// Hopefully this simple trick will work: Simply combine previous guider ID with next part.
+			// This should convert left-selecting guiders to right-selecting ones.
+			for ( int i = 1; i < copy.Length; i++ )
+				parts.Add ( (copy[i - 1].guiderID, copy[i].arg) );
+		}
+		return parts.ToArray ();
+	}
+
+	private bool TryParseMacro  (string line) {
+		string originalLine = line;
+		string token = GetIdentifier ( ref line );
+		if ( string.IsNullOrEmpty ( token ) ) return false;
+		IMacro macro = Status.TryGetMacro ( token );
+		if ( macro == null ) return false;
+
+		var parts = ProcessMacro ( macro, line );
+		string[] rewrittenLines = macro.RewriteByGuiders ( parts );
+		if ( rewrittenLines == null ) // Macro rejected the input
+			throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' could not process the input line ({originalLine})." );
+		foreach ( string rewrittenLine in rewrittenLines )
+			ProcessLine ( rewrittenLine );
+		return true;
+	}
+
 	private bool TryParseUsing (string line) {
 		string originalLine = line;
 		if ( !line.StartsWith ( "@using ", out string moduleName ) ) return false;
 		var module = ModuleLoader ( moduleName );
 		if ( module == null ) throw new InvalidOperationException ( $"Module '{moduleName}' not found." );
-		if ( EnableLogging ) Log.Add ( $"Module '{moduleName}' loaded: {module.Description}, {module.Commands.Count} commands, {module.DataTypes.Count} data types." );
+		if ( EnableLogging ) LogAdd ( $"Module '{moduleName}' loaded: {module.Description}, {module.Commands.Count} commands, {module.DataTypes.Count} data types." );
 		Status.RegisterModule ( module );
 		return true;
 	}
@@ -96,7 +215,7 @@ internal class SCLParsing {
 		//TArg varID = ParseVariableName ( typeDef, ref line );
 		TArg varID = Status.RegisterVariable ( typeDef, GetIdentifier ( ref line ) );
 
-		if ( EnableLogging ) Log.Add ( $"Defining variable '{Status.GetVarInfo ( SCLInterpreter.CrDst ( varID ) ).name}' of type '{dataType.Name}'." );
+		if ( EnableLogging ) LogAdd ( $"Defining variable '{Status.GetVarInfo ( SCLInterpreter.CrDst ( varID ) ).name}' of type '{dataType.Name}'." );
 
 		TryParseAssignment ( SCLInterpreter.CrDst ( varID ), ref line );
 		return true;
@@ -122,7 +241,7 @@ internal class SCLParsing {
 		if ( dataType.TryParse ( ref line, out IDataType result ) ) {
 			TArg constID = Status.AddConstant ( result );
 			Status.PushCommand ( new ( AssignOpCode, varID, new TArg ( varID.Generic ), constID ) );
-			if ( EnableLogging ) Log.Add ( $"Assigning constant value to variable '{Status.GetVarInfo ( varID ).name}'." );
+			if ( EnableLogging ) LogAdd ( $"Assigning constant value to variable '{Status.GetVarInfo ( varID ).name}'." );
 			return true;
 		}
 
@@ -133,7 +252,7 @@ internal class SCLParsing {
 		try {
 			TArg srcVar = Status.GetVarID ( token );
 			Status.PushCommand ( new ( AssignOpCode, varID, new TArg ( varID.Generic ), srcVar ) );
-			if ( EnableLogging ) Log.Add ( $"Assigning variable '{Status.GetVarInfo ( srcVar ).name}' to variable '{Status.GetVarInfo ( varID ).name}'." );
+			if ( EnableLogging ) LogAdd ( $"Assigning variable '{Status.GetVarInfo ( srcVar ).name}' to variable '{Status.GetVarInfo ( varID ).name}'." );
 			return true;
 		} catch { }
 
@@ -246,7 +365,7 @@ internal class SCLParsing {
 			dst ?? SCLInterpreter.CrDst ( 0 ),
 			args
 			);
-		if ( EnableLogging ) Log.Add ( $"Command '{cmd.CmdCode}' parsed with {N} argument(s)." );
+		if ( EnableLogging ) LogAdd ( $"Command '{cmd.CmdCode}' parsed with {N} argument(s)." );
 		Status.PushCommand ( call );
 	}
 
@@ -259,6 +378,7 @@ internal class SCLParsing {
 		if ( string.IsNullOrEmpty ( line ) ) return null;
 		for ( int i = 0; i < line.Length; i++ ) {
 			if ( char.IsLetter ( line[i] ) || line[i] == '_' ) continue;
+			if ( i > 0 && ( char.IsDigit ( line[i] ) ) ) continue;
 			if ( i == 0 ) return null;
 			string ret = line[..i];
 			line = line[i..].TrimStart ();

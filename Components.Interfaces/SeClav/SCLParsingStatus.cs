@@ -103,6 +103,7 @@ internal class SCLParsingStatus {
 
 	readonly Dictionary<string, DataTypeDefinition> dataTypeMap = [];
 	readonly Dictionary<string, ICommand> commandMap = [];
+	readonly Dictionary<string, IMacro> mappers = [];
 
 	readonly Dictionary<string, string> MemoryInfo = [];
 	public IReadOnlyDictionary<string, string> GetMemoryInfoRef () => MemoryInfo;
@@ -130,6 +131,11 @@ internal class SCLParsingStatus {
 			if ( dataTypeMap.ContainsKey ( dt.Name ) )
 				throw new InvalidOperationException ( $"Data type '{dt.Name}' is already defined." );
 			dataTypeMap[dt.Name] = dt;
+		}
+		foreach ( var macro in module.Macros ) {
+			if ( mappers.ContainsKey ( macro.CmdCode ) )
+				throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' is already defined." );
+			mappers[macro.CmdCode] = macro;
 		}
 	}
 
@@ -161,6 +167,12 @@ internal class SCLParsingStatus {
 			throw new InvalidOperationException ( $"Command '{cmd.CmdCode}' is already registered." );
 		commands.Add ( cmd );
 		return SCLInterpreter.CrOpCode ( commands.Count - 1 );
+	}
+
+	public IMacro TryGetMacro (string cmd) {
+		ArgumentNullException.ThrowIfNull ( cmd );
+		if ( !mappers.TryGetValue ( cmd, out IMacro macro ) ) return null;
+		return macro;
 	}
 
 	public ICommand TryGetCommand ( string cmd ) {

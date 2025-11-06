@@ -271,6 +271,109 @@ internal class ReadFlags : ICommand {
 	}
 }
 
+internal class SetResetMultipleFlags : IMacro {
+	public string CmdCode => "SET_RESET_FLAGS";
+	public string CommonName => "Set/Reset Multiple Flags";
+	public string Description => "Sets and resets multiple runtime flags based on input.";
+	public bool SelectRight => true;
+	public bool UnorderedGuiders => true;
+	public IReadOnlyList<(int after, string split)> guiders => [(-1, "-"), (-1, "+")];
+
+	public string[] RewriteByGuiders ( (int guiderID, string arg)[] parts ) {
+		SetFlag setter = new ();
+		ResetFlag resetter = new ();
+		List<string> rewritten = [];
+		foreach ( var part in parts ) {
+			switch(part.guiderID) {
+			case 0: // 1st guider, i.e. RESET_FLAG
+				rewritten.Add ( resetter.CmdCode + " " + part.arg );
+				break;
+			case 1: // 2nd guider, i.e. SET_FLAG
+				rewritten.Add ( setter.CmdCode + " " + part.arg );
+				break;
+			default: throw new IndexOutOfRangeException ($"Guider (#{part.guiderID}, '{part.arg}') is not supported.");
+			}
+		}
+		return [.. rewritten];
+	}
+}
+
+internal class JoinStrings : IMacro {
+	public string CmdCode => "JOIN_STRINGS";
+	public string CommonName => "Join Strings";
+	public string Description => "Joins multiple strings into one.";
+	public bool SelectRight => false;
+	public bool UnorderedGuiders => false;
+	public IReadOnlyList<(int after, string split)> guiders => [(1, "="), (-2, "|")];
+	// ⮤ Allow limitless number of strings separated by commas
+	public string[] RewriteByGuiders ( (int guiderID, string arg)[] parts ) {
+		// Just a reminder, this is only a test method, doesn't need to be user-friendly command
+		// This specific macro would provide bad result for strings containing the separator inside i.e. '|'.
+		ConcatStrs concater = new ();
+		List<string> rewritten = [];
+		// Define target variable:
+		if ( parts.Length < 3 ) throw new InvalidOperationException ( "JOIN_STRINGS macro requires at least two string arguments to join." ); // Variable name + at least two strings
+
+		if ( parts[0].guiderID != 0 )
+			throw new InvalidOperationException ( "JOIN_STRINGS macro requires variable name before '='." );
+		if ( parts[1].guiderID != 1 || parts[2].guiderID != 1 )
+			throw new InvalidOperationException ( "JOIN_STRINGS macro requires remaining arguments to be strings separated by ','." );
+		rewritten.Add($"{concater.ReturnType.Name} {parts[0].arg} = {concater.CmdCode} \"{parts[1].arg}\" \"{parts[2].arg}\"");
+
+		for ( int i = 3; i < parts.Length; i++ ) {
+			if ( parts[i].guiderID != 1 ) throw new InvalidOperationException ( "JOIN_STRINGS macro requires remaining arguments to be strings separated by ','." );
+			rewritten.Add ( $"{parts[0].arg} = {concater.CmdCode} {parts[0].arg} \"{parts[i].arg}\"" );
+		}
+		return [.. rewritten];
+	}
+}
+
+internal class AddOrAppend : IMacro {
+	public string CmdCode => "ADD_OR_APPEND";
+	public string CommonName => "Add or Append";
+	public string Description => "Adds two integers or appends two strings based on input types.";
+	public bool SelectRight => true;
+	public bool UnorderedGuiders => false;
+	public IReadOnlyList<(int after, string split)> guiders => [(1, "->"), (-2, "."), (2, "."), (-3, "+")];
+	public string[] RewriteByGuiders ( (int guiderID, string arg)[] parts ) {
+		if ( parts.Length < 3 )
+			throw new InvalidOperationException ( "ADD_OR_APPEND macro requires at least two arguments." );
+		ConcatStrs concater = new ();
+		AddInts adder = new ();
+		AppendIntToString appI2S = new ();
+		List<string> rewritten = [];
+
+		if ( parts.Length < 4 ) throw new InvalidOperationException ( "JOIN_STRINGS macro requires at least 4 arguments: target variable, initial stringA, initial stringB, integer to append." );
+		if ( parts[0].guiderID != 0 )
+			throw new InvalidOperationException ( "JOIN_STRINGS macro requires variable name after '->'." );
+		if ( parts[1].guiderID != 1 || parts[2].guiderID != 1 )
+			throw new InvalidOperationException ( "JOIN_STRINGS macro requires first two arguments to be strings separated by '.'." );
+
+		rewritten.Add($"{concater.ReturnType.Name} {parts[0].arg} = {concater.CmdCode} \"{parts[1].arg}\" \"{parts[2].arg}\"");
+		int argID = 3;
+		while ( argID < parts.Length && parts[argID].guiderID == 1 ) {
+			rewritten.Add ( $"{parts[0].arg} = {concater.CmdCode} {parts[0].arg} \"{parts[argID++].arg}\"" );
+			argID++;
+		}
+
+		if ( argID >= parts.Length )
+			throw new InvalidOperationException ( "ADD_OR_APPEND macro requires at least one integer to append after strings." );
+		if ( parts[argID].guiderID != 2 )
+			throw new InvalidOperationException ( "ADD_OR_APPEND macro requires integer arguments to be appended after '+'." );
+
+
+		rewritten.Add ( $"{adder.ReturnType.Name} {parts[0].arg}_I_tmp = {parts[argID].arg}" );
+		argID++;
+		while ( argID < parts.Length ) {
+			if ( parts[argID].guiderID != 2 )
+				throw new InvalidOperationException ( "ADD_OR_APPEND macro requires integer arguments to be appended after '+'." );
+			rewritten.Add ( $"{parts[0].arg}_I_tmp = {adder.CmdCode} {parts[0].arg}_I_tmp {parts[argID++].arg}" );
+		}
+		rewritten.Add ( $"{parts[0].arg} = {appI2S.CmdCode} {parts[0].arg} {parts[0].arg}_I_tmp" );
+		return [.. rewritten];
+	}
+}
+
 internal class SCL_TestModule : DModuleLoader.IModuleInfo {
 	public string Name => "TestModule";
 	public string Description => "Module for testing purposes";
@@ -284,6 +387,10 @@ internal class SCL_TestModule : DModuleLoader.IModuleInfo {
 	public IReadOnlySet<ICommand> Commands => new HashSet<ICommand> () {
 		new AssertEqual (), new AddInts (), new ConcatStrs (), new AppendIntToString (),
 		new SetFlag (), new ResetFlag (), new ReadFlags (),
+	};
+
+	public IReadOnlySet<IMacro> Macros => new HashSet<IMacro> () {
+		new SetResetMultipleFlags (), new JoinStrings (),
 	};
 
 	public IReadOnlySet<DataTypeDefinition> DataTypes => new HashSet<DataTypeDefinition> () {

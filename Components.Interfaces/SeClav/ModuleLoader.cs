@@ -17,6 +17,7 @@ public abstract class DModuleLoader : ComponentBase<CoreBase> {
 		string Name { get; }
 		string Description { get; }
 		IReadOnlySet<ICommand> Commands { get; }
+		IReadOnlySet<IMacro> Macros { get; }
 		IReadOnlySet<DataTypeDefinition> DataTypes { get; }
 		IReadOnlyDictionary<string, Action<SCLParsingContext, ArgParser>> PraeDirectives { get; }
 	}

@@ -98,18 +98,26 @@ public interface ISCLRuntime {
 	void UpdateMemoryInfo ( ref Dictionary<string, string> memInfo );
 }
 
-public interface ICommand {
+public interface ICommandGen {
 	string CmdCode { get; }
 	string CommonName { get; }
 	string Description { get; }
+}
+public interface ICommand : ICommandGen {
 	int ArgC { get; }
 	// The AssemblyX86 style of dst, src1, src2, ... is recommended
 	IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args { get; }
-	//IReadOnlyList<(int after, string split)> guiders { get; }
 	DataTypeDefinition ReturnType { get; }
 	IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args );
 	/// <summary>A 'debug' version. Should perform extra checks to catch and specify errors more easily.</summary>
 	IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress );
+}
+public interface IMacro : ICommandGen {
+	bool SelectRight { get; } // If true, a guider starts a 'part' instead of ending it
+	bool UnorderedGuiders { get; } // If true, guider parts can be in any order
+	IReadOnlyList<(int after, string split)> guiders { get; }
+	/// <summary>Allow to rewrite textual command based on (guiderID, argument) into separete multiline commands</summary>
+	string[] RewriteByGuiders ( (int guiderID, string arg)[] parts );
 }
 
 public struct SIdVal {
