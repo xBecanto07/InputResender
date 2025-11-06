@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using Xunit;
 using FluentAssertions;
 using SeClav;
+using Xunit.Abstractions;
 
 namespace Components.InterfaceTests.SeClav; 
 public class SCLIntegrationTests {
 	readonly SCL_TestModule testModule;
 	readonly SCLParsing parser;
+	readonly ITestOutputHelper Output;
 
-	public SCLIntegrationTests () {
+	public SCLIntegrationTests (ITestOutputHelper output) {
+		Output = output;
 		testModule = new ();
-		parser = new SCLParsing ( name => name == testModule.Name ? testModule : null );
+		parser = new SCLParsing ( name => name == testModule.Name ? testModule : null, logger: msg => Output.WriteLine ( msg ), enableLogging: true );
 		parser.ProcessLine ( "@using " + testModule.Name );
 	}
 
@@ -133,5 +136,45 @@ public class SCLIntegrationTests {
 		afterSet.Value.Should ().Be ( 1 << 7 );
 		afterReset.Value.Should ().Be ( 0 );
 		finalFlags.Value.Should ().Be ( ( 1 << 1 ) | ( 1 << 2 ) | ( 1 << 7 ) );
+	}
+
+	[Fact]
+	public void MultiSetReset_RightGuiders () {
+		parser.ProcessLine ( "SET_RESET_FLAGS + 1 + 2 + 6" );
+		parser.ProcessLine ( "TestInt flagVar1 = READ_FLAGS" );
+		parser.ProcessLine ( "SET_RESET_FLAGS - 1 - 6 + 5 + 7" );
+		parser.ProcessLine ( "TestInt flagVar2 = READ_FLAGS" );
+		parser.ProcessLine ( "SET_RESET_FLAGS - 5 + 4 - 7" ); // Can be unordered
+		parser.ProcessLine ( "TestInt flagVar3 = READ_FLAGS" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, flagVar1) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "flagVar1" );
+		var (_, flagVar2) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "flagVar2" );
+		var (_, flagVar3) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "flagVar3" );
+		flagVar1.Value.Should ().Be ( (1 << 1) | (1 << 2) | (1 << 6) );
+		flagVar2.Value.Should ().Be ( (1 << 2) | (1 << 5) | (1 << 7) );
+		flagVar3.Value.Should ().Be ( (1 << 2) | (1 << 4) );
+	}
+
+	[Fact]
+	public void MultiConcat_LeftGuider () {
+		parser.ProcessLine ( "JOIN_STRINGS concatResult = Flags: | 1|,2|,6|" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, concatResult) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "concatResult" );
+		concatResult.Value.Should ().Be ( "Flags:1,2,6" );
+	}
+
+	[Fact]
+	public void UseInvalidGuider_LeftGuider () {
+		Action parse = () => parser.ProcessLine ( "Join_strings result = Values: < 1<,2<,3<" );
+		parse.Should ().Throw<InvalidOperationException> ();
+
+		parse = () => parser.ProcessLine ( "Join strings result2 = Values: | 1|,2|,6=asdf" );
+		parse.Should ().Throw<InvalidOperationException> ();
+	}
+
+	[Fact]
+	public void UseInvalidGuider_RightGuider () {
+		Action parse = () => parser.ProcessLine ( "ADD_OR_APPEND -> result a . s . d . 40 + 2" );
+		parse.Should ().Throw<InvalidOperationException> ();
 	}
 }
