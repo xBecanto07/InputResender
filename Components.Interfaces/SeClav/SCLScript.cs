@@ -85,7 +85,13 @@ public interface IDataType {
 public interface ISCLRuntime {
 	[Flags]
 	public enum SCLFlags : ushort {
-		Condition = 1,
+		Empty = 0,
+		None = 1,
+		If = 2,
+		Else = 4,
+		Equal = 8,
+		Larger = 16,
+		Smaller = 32,
 	}
 	IDataType GetVar ( SIdVal varID );
 	void SetVar ( SIdVal varID, IDataType value );
@@ -96,6 +102,11 @@ public interface ISCLRuntime {
 	void ResetFlag ( SCLFlags value );
 
 	void UpdateMemoryInfo ( ref Dictionary<string, string> memInfo );
+
+	static void SetOrReset (ISCLRuntime runtime, SCLFlags flag, bool set ) {
+		if ( set ) runtime.SetFlag ( flag );
+		else runtime.ResetFlag ( flag );
+	}
 }
 
 public interface ICommandGen {
@@ -157,7 +168,7 @@ internal struct CmdCall {
 	public readonly SIdVal arg2;
 	public readonly SIdVal arg3;
 	public readonly SIdVal arg4;
-	public readonly SIdVal arg5;
+	public readonly ushort flags;
 	public readonly SIdVal extraArgs; // Currently unused, reserved for future use
 
 	public const int MaxDirectArgs = 5;
@@ -167,16 +178,16 @@ internal struct CmdCall {
 			1 => arg2,
 			2 => arg3,
 			3 => arg4,
-			4 => arg5,
 			_ => throw new IndexOutOfRangeException ( "CmdCall only supports up to 5 direct arguments." )
 		};
 	}
 
-	public CmdCall ( SId<OpCodeTag> opCode, SId<DstTag> target, params SId<ArgTag>[] args ) {
-		if ( args.Length > 5 ) throw new NotSupportedException ( "Cannot directly assign more than 5 arguments per call. Please use index into shared pool of extra arguments." );
+	public CmdCall ( SId<OpCodeTag> opCode, SId<DstTag> target, ushort flagReq, params SId<ArgTag>[] args ) {
+		if ( args.Length > 4 ) throw new NotSupportedException ( "Cannot directly assign more than 4 arguments per call. Please use index into shared pool of extra arguments." );
 		if ( opCode.ValueId < 0 || opCode.ValueId > ushort.MaxValue ) throw new NotSupportedException ( "OpCode must be a positive number between 0 and 65535." );
 		this.opCode = opCode.Generic;
 		dst = target.Generic;
+		flags = flagReq;
 		int N = args.Length;
 		arg1 = N > 0 ? args[0].Generic : new SIdVal ( 0, 0 );
 		arg2 = N > 1 ? args[1].Generic : new SIdVal ( 0, 0 );

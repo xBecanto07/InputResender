@@ -177,4 +177,54 @@ public class SCLIntegrationTests {
 		Action parse = () => parser.ProcessLine ( "ADD_OR_APPEND -> result a . s . d . 40 + 2" );
 		parse.Should ().Throw<InvalidOperationException> ();
 	}
+
+	[Fact]
+	public void ConditionalCommand_FlagBased () {
+		parser.ProcessLine("SET_FLAG 7");
+		parser.ProcessLine ( "TestInt flagVar1 = READ_FLAGS" );
+		parser.ProcessLine ( "?5 SET_FLAG 2" );
+		parser.ProcessLine ( "TestInt flagVar2 = READ_FLAGS" );
+		parser.ProcessLine ( "?7 SET_FLAG 2" );
+		parser.ProcessLine ( "TestInt flagVar3 = READ_FLAGS" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, flagVar1) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "flagVar1" );
+		var (_, flagVar2) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "flagVar2" );
+		var (_, flagVar3) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "flagVar3" );
+		flagVar1.Value.Should ().Be ( 1 << 7 );
+		flagVar2.Value.Should ().Be ( 1 << 7 );
+		flagVar3.Value.Should ().Be ( (1 << 7) | (1 << 2) );
+	}
+
+	[Fact]
+	public void ConditionalAssigmentSkipped_FlagBased () {
+		parser.ProcessLine ( "SET_FLAG 7" );
+		parser.ProcessLine ( "TestInt val = 5" );
+		parser.ProcessLine ( "?5 val = 3" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "val" );
+		val.Value.Should ().Be ( 5 );
+	}
+
+	[Fact]
+	public void ConditionalAssigmentProcessed_FlagBased () {
+		parser.ProcessLine ( "SET_FLAG 7" );
+		parser.ProcessLine ( "TestInt val = 5" );
+		parser.ProcessLine ( "?7 val = 3" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "val" );
+		val.Value.Should ().Be ( 3 );
+	}
+
+	[Fact]
+	public void ConditionalAssigment_CommandBased () {
+		parser.ProcessLine ( "TestInt val = 8" );
+		parser.ProcessLine ( "COMPARE_INT val 6" ); // val > 6
+		parser.ProcessLine ( "?N val = 0" );
+		parser.ProcessLine ( "?= val = 1" );
+		parser.ProcessLine ( "?> val = 2" );
+		parser.ProcessLine ( "?< val = 3" );
+		var assertionRuntime = RunScript ( parser );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "val" );
+		val.Value.Should ().Be ( 2 );
+	}
 }

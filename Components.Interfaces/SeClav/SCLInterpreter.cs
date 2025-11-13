@@ -143,6 +143,11 @@ internal class SCLRunner : ICommand {
 					throw new IndexOutOfRangeException ( $"Program Counter (PC) is out of range: {PC}." );
 				CmdCall cmdIndices = Script.CommandIndices[PC];
 				var cmd = Script.Commands[cmdIndices.opCode.ValueId];
+				if ( TestFlags ( runtime, cmdIndices.flags ) == false ) {
+					progress.Add ( $"PC={PC}: Skipping {cmd.CmdCode} due to flags {cmdIndices.flags}." );
+					PC++;
+					continue;
+				}
 
 				argIDs.Clear ();
 				for ( int i = 0; i < cmd.ArgC; i++ ) {
@@ -151,8 +156,7 @@ internal class SCLRunner : ICommand {
 						1 => cmdIndices.arg2,
 						2 => cmdIndices.arg3,
 						3 => cmdIndices.arg4,
-						4 => cmdIndices.arg5,
-						_ => throw new NotSupportedException ( $"Command {cmd.CmdCode} has more than 5 arguments, which is not supported yet." )
+						_ => throw new NotSupportedException ( $"Command {cmd.CmdCode} has more than 4 arguments, which is not supported yet." )
 					};
 					argIDs.Add ( argID );
 				}
@@ -167,6 +171,15 @@ internal class SCLRunner : ICommand {
 			}
 			return null;
 		} catch ( Exception ex ) { throw; }
+	}
+
+	private bool TestFlags ( ISCLRuntime runtime, ushort flagReq ) {
+		int flagStatus = ((ushort)runtime.GetFlags ()) | 1;
+		// Check for '0' isn't currently implemented!
+		int mask = 1 << (flagReq & 0x0F);
+		mask |= 1 << ((flagReq >> 5) & 0x0F);
+		mask |= 1 << ((flagReq >> 10) & 0x0F);
+		return ( flagStatus & mask ) == mask;
 	}
 }
 

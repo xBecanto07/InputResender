@@ -72,6 +72,36 @@ internal class SCLParsing {
 		throw new InvalidOperationException ( $"Could not parse line: '{originalLine}'." );
 	}
 
+	private ushort GetFlag (ref string line) {
+		int flagReq = 0;
+		if (line.StartsWith('?')) {
+			line = line[1..];
+			for (int i = 0; i < 3 && line.Length > 0; i++) {
+				if ( line[0] == ' ' ) break;
+				int linePos = line[0] switch {
+					// Numerical
+					'0' => throw new InvalidOperationException ( $"Testing for '0' flag is not allowed!" ),
+								  '1' => 1, '2' => 2, '3' => 3,
+					'4' => 4, '5' => 5, '6' => 6, '7' => 7,
+					'8' => 8, '9' => 9, 'A' => 10, 'B' => 11,
+					'C' => 12, 'D' => 13, 'E' => 14, 'F' => 15,
+					// Aliases
+					'N' => 0, // NONE
+					'!' => 1, // IF
+					'~' => 2, // ELSE
+					'=' => 3, // EQUAL
+					'>' => 4, // LARGER
+					'<' => 5, // SMALLER
+					_ => throw new InvalidOperationException ( $"Invalid flag character '{line[0]}' in command flags." )
+				};
+				flagReq |= linePos << (i * 5); // 4bit + sign bit per flag
+				line = line[1..];
+			}
+			line = line.Trim ();
+		}
+		return (ushort)flagReq;
+	}
+
 	private static (int guiderID, string arg)[] ProcessMacro ( IMacro macro, string line ) {
 		if ( macro.guiders.Count == 0 )
 			return [(-1, line)]; // No guiders, return the whole line as a single part
@@ -217,21 +247,27 @@ internal class SCLParsing {
 
 		if ( EnableLogging ) LogAdd ( $"Defining variable '{Status.GetVarInfo ( SCLInterpreter.CrDst ( varID ) ).name}' of type '{dataType.Name}'." );
 
-		TryParseAssignment ( SCLInterpreter.CrDst ( varID ), ref line );
+		ushort flags = GetFlag ( ref line );
+		if (flags != 0) 
+			throw new InvalidOperationException ( $"Defining variable '{Status.GetVarInfo ( SCLInterpreter.CrDst ( varID ) ).name}' does not support conditional execution." );
+
+		TryParseAssignment ( SCLInterpreter.CrDst ( varID ), ref line, flags );
 		return true;
 	}
 
 	private bool TryParseAssignment (  string line ) {
 		string originalLine = line;
+		ushort flags = GetFlag ( ref line );
 		string token = GetIdentifier ( ref line );
 		if ( string.IsNullOrEmpty ( token ) ) return false;
 		//TArg sId = Status.GetVarID ( token );
 		if ( !Status.TryGetVarID ( token, out TArg sId ) )
 			return false;
-		return TryParseAssignment ( SCLInterpreter.CrDst ( sId ), ref line );
+
+		return TryParseAssignment ( SCLInterpreter.CrDst ( sId ), ref line, flags );
 	}
 
-	private bool TryParseAssignment ( TDst varID, ref string line ) {
+	private bool TryParseAssignment ( TDst varID, ref string line, ushort flagReq ) {
 		string originalLine = line;
 		if ( !line.StartsWith ( '=' ) ) return false;
 		line = line[1..].TrimStart ();
@@ -240,7 +276,7 @@ internal class SCLParsing {
 		var dataType = Status.GetTypeOfVar ( varID );
 		if ( dataType.TryParse ( ref line, out IDataType result ) ) {
 			TArg constID = Status.AddConstant ( result );
-			Status.PushCommand ( new ( AssignOpCode, varID, new TArg ( varID.Generic ), constID ) );
+			Status.PushCommand ( new ( AssignOpCode, varID, flagReq, new TArg ( varID.Generic ), constID ) );
 			if ( EnableLogging ) LogAdd ( $"Assigning constant value to variable '{Status.GetVarInfo ( varID ).name}'." );
 			return true;
 		}
@@ -251,7 +287,7 @@ internal class SCLParsing {
 		// Try to assign from existing variable
 		try {
 			TArg srcVar = Status.GetVarID ( token );
-			Status.PushCommand ( new ( AssignOpCode, varID, new TArg ( varID.Generic ), srcVar ) );
+			Status.PushCommand ( new ( AssignOpCode, varID, flagReq, new TArg ( varID.Generic ), srcVar ) );
 			if ( EnableLogging ) LogAdd ( $"Assigning variable '{Status.GetVarInfo ( srcVar ).name}' to variable '{Status.GetVarInfo ( varID ).name}'." );
 			return true;
 		} catch { }
@@ -274,10 +310,13 @@ internal class SCLParsing {
 	/// <summary>Tries to parse next token/line as a command. It <paramref name="dst"/> is specified and the command has a return type, the result is stored in <paramref name="dst"/>. If <paramref name="dst"/> is null, the return value is ignored.</summary>
 	private bool TryParseCommand ( ref string line, TDst? dst, string token = null ) {
 		string originalLine = line;
+
+		ushort flagReq = GetFlag ( ref line );
+
 		ICommand cmd = TryParseCommandInner ( ref line, token );
 		if ( cmd == null ) return false;
 
-		ParseCommand ( cmd, line, dst );
+		ParseCommand ( cmd, line, dst, flagReq );
 		return true;
 	}
 	/// <summary>Tries to parse next token/line as a command. If successful (i.e. token is a valid command) and the command has a return type, the result is either stored in <paramref name="dst"/> (if specified) or a new temporary variable is created to hold the result (and <paramref name="dst"/> is set to that variable).</summary>
@@ -288,7 +327,8 @@ internal class SCLParsing {
 		if ( cmd == null ) return false;
 
 		if ( cmd.ReturnType != null ) dst = Status.RegisterResult ( cmd.ReturnType );
-		ParseCommand ( cmd, line, dst );
+		ushort flags = GetFlag ( ref line );
+		ParseCommand ( cmd, line, dst, flags );
 		return true;
 	}
 	private ICommand TryParseCommandInner (ref string line, string token = null ) {
@@ -302,7 +342,7 @@ internal class SCLParsing {
 
 
 
-	private void ParseCommand ( ICommand cmd, string line, TDst? dst ) {
+	private void ParseCommand ( ICommand cmd, string line, TDst? dst, ushort flagReq ) {
 		string originalLine = line;
 		if ( cmd.ReturnType == null && dst != null )
 			throw new InvalidOperationException ( $"Command '{cmd.CmdCode}' does not return a value, but result ID {dst.Value} is specified." );
@@ -363,6 +403,7 @@ internal class SCLParsing {
 		CmdCall call = new (
 			SCLInterpreter.CrOpCode ( Status.GetCommandID ( cmd ) ),
 			dst ?? SCLInterpreter.CrDst ( 0 ),
+			flagReq,
 			args
 			);
 		if ( EnableLogging ) LogAdd ( $"Command '{cmd.CmdCode}' parsed with {N} argument(s)." );
