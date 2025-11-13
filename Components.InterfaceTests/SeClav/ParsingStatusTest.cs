@@ -280,7 +280,7 @@ public class ParsingStatusTest {
 		SId<ArgTag> arg1 = status.RegisterVariable ( testType, "arg1" );
 		SId<ArgTag> arg2 = status.RegisterVariable ( testType, "arg2" );
 
-		var call = new CmdCall ( cmdID, dstID, arg1, arg2 );
+		var call = new CmdCall ( cmdID, dstID, 0, arg1, arg2 );
 		status.PushCommand ( call );
 		
 		var newDebugInfo = new SCLParsingStatus.SCLDebugInfo ( status ); // Refresh

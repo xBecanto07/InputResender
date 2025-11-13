@@ -116,6 +116,38 @@ internal class AssertEqual : ICommand {
 	}
 }
 
+internal class CompareInt : ICommand {
+	public string CmdCode => "COMPARE_INT";
+	public string CommonName => "Compare Integers";
+	public string Description => "Compares two integer values, sets relevant flags and returns -1, 0, or 1.";
+	public int ArgC => 2;
+	public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => [
+		("a", new TestValueIntDef (), "First integer to compare"),
+		("b", new TestValueIntDef (), "Second integer to compare")
+	];
+	public DataTypeDefinition ReturnType => new TestValueIntDef ();
+	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
+		List<string> progress = [];
+		return ExecuteSafe ( runtime, args, ref progress );
+	}
+	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
+		SIdVal aID = args[0];
+		SIdVal bID = args[1];
+		IDataType a = runtime.SafeGetVar ( aID );
+		IDataType b = runtime.SafeGetVar ( bID );
+		if ( a is not TestValueInt va )
+			throw new InvalidOperationException ( $"Expected integer for argument 'a', got '{a.Definition.Name}'." );
+		if ( b is not TestValueInt vb )
+			throw new InvalidOperationException ( $"Expected integer for argument 'b', got '{b.Definition.Name}'." );
+		int result = va.Value.CompareTo ( vb.Value );
+		progress.Add ( $" . Compare {va} to {vb} -> {result}" );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Equal, result == 0 );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Larger, result > 0 );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Smaller, result < 0 );
+		return new TestValueInt ( va.Definition, result );
+	}
+}
+
 internal class AppendIntToString : ICommand {
 	public string CmdCode => "APPEND_INT_TO_STR";
 	public string CommonName => "Append Int to String";
@@ -386,7 +418,7 @@ internal class SCL_TestModule : DModuleLoader.IModuleInfo {
 
 	public IReadOnlySet<ICommand> Commands => new HashSet<ICommand> () {
 		new AssertEqual (), new AddInts (), new ConcatStrs (), new AppendIntToString (),
-		new SetFlag (), new ResetFlag (), new ReadFlags (),
+		new SetFlag (), new ResetFlag (), new ReadFlags (), new CompareInt (),
 	};
 
 	public IReadOnlySet<IMacro> Macros => new HashSet<IMacro> () {
