@@ -82,7 +82,7 @@ public class LoaderCommand : ACommand {
 			if ( sclCmd is not SeClavRunnerCommand sclRunner )
 				return new CommandResult ( "SeClavRunnerCommand is not of correct type." );
 
-			List<SeClav.DModuleLoader.IModuleInfo> knownModules = [
+			List<SeClav.IModuleInfo> knownModules = [
 				new Components.Interfaces.SeClav.SCL_BasicModule ()
 				, new Components.Implementations.VScriptedInputProcessor.SCL_Module ()
 				];

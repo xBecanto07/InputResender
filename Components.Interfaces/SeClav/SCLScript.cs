@@ -14,7 +14,7 @@ public class SCLScriptHolder {
 
 	public string ScriptName { get; private set; }
 
-	internal SCLScriptHolder ( string code, string name, System.Func<string, DModuleLoader.IModuleInfo> moduleLoader ) {
+	internal SCLScriptHolder ( string code, string name, System.Func<string, IModuleInfo> moduleLoader ) {
 		ScriptName = name;
 		ErrorList = [];
 		Errors = ErrorList.AsReadOnly ();
@@ -57,7 +57,7 @@ internal interface ISCLParsedScript {
 	IReadOnlyList<ICommand> Commands { get; }
 	IReadOnlyList<CmdCall> CommandIndices { get; }
 	IReadOnlyList<IDataType> Constants { get; }
-	IReadOnlyList<DModuleLoader.IModuleInfo> Modules { get; }
+	IReadOnlyList<IModuleInfo> Modules { get; }
 	IReadOnlyList<int> VariableTypes { get; }
 	IReadOnlyList<int> ResultTypes { get; }
 	IReadOnlyDictionary<int, Func<IDataType>> Getters { get; }
@@ -98,6 +98,17 @@ public abstract class DataTypeDefinition {
 public interface IDataType {
 	DataTypeDefinition Definition { get; }
 	void Assign ( IDataType value );
+}
+
+public delegate void PraeDirective ( SCLParsingContext context, ArgParser args );
+
+public interface IModuleInfo {
+	string Name { get; }
+	string Description { get; }
+	IReadOnlySet<ICommand> Commands { get; }
+	IReadOnlySet<IMacro> Macros { get; }
+	IReadOnlySet<DataTypeDefinition> DataTypes { get; }
+	IReadOnlyDictionary<string, PraeDirective> PraeDirectives { get; }
 }
 
 public interface ISCLRuntime {

@@ -85,8 +85,8 @@ public class SeClavRunnerCommand : ACommand {
 }
 
 public class SeClavModuleManagerCommand : ACommand {
-	private readonly Dictionary<string, DModuleLoader.IModuleInfo> loadedModules = [];
-	private readonly Dictionary<string, DModuleLoader.IModuleInfo> availableModules = [];
+	private readonly Dictionary<string, IModuleInfo> loadedModules = [];
+	private readonly Dictionary<string, IModuleInfo> availableModules = [];
 
 	public override string Description => "Manage valid modules for SeClav scripts";
 
@@ -156,13 +156,13 @@ public class SeClavModuleManagerCommand : ACommand {
 	}
 
 
-	public void RegisterModule ( DModuleLoader.IModuleInfo module ) {
+	public void RegisterModule ( IModuleInfo module ) {
 		ArgumentNullException.ThrowIfNull ( module );
 		if ( availableModules.ContainsKey ( module.Name ) )
 			throw new InvalidOperationException ( $"Module with name '{module.Name}' is already registered." );
 		availableModules[module.Name] = module;
 	}
 
-	public DModuleLoader.IModuleInfo ModuleLoader ( string moduleName )
+	public IModuleInfo ModuleLoader ( string moduleName )
 		=> availableModules.TryGetValue ( moduleName, out var module ) ? module : null;
 }

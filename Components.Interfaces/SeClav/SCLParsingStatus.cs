@@ -22,7 +22,7 @@ internal class SCLParsingStatus {
 		public IReadOnlyList<ICommand> Commands { get; }
 		public IReadOnlyList<CmdCall> CommandIndices { get; }
 		public IReadOnlyList<IDataType> Constants { get; }
-		public IReadOnlyList<DModuleLoader.IModuleInfo> Modules { get; }
+		public IReadOnlyList<IModuleInfo> Modules { get; }
 		public IReadOnlyList<int> VariableTypes { get; }
 		public IReadOnlyList<int> ResultTypes { get; }
 		public IReadOnlyDictionary<int, Func<IDataType>> Getters { get; }
@@ -95,7 +95,7 @@ internal class SCLParsingStatus {
 	readonly List<ICommand> commands = [];
 	readonly List<CmdCall> commandIndices = [];
 	readonly List<(int dataType, string name)> variables = [];
-	readonly List<DModuleLoader.IModuleInfo> modules = [];
+	readonly List<IModuleInfo> modules = [];
 	readonly List<IDataType> constants = [];
 	readonly List<IDataType> results = []; // FIXME: This should only be <int> as we don't yet know the value, only the data type
 	readonly Dictionary<int, Func<IDataType>> getters = [];
@@ -103,7 +103,8 @@ internal class SCLParsingStatus {
 
 	readonly Dictionary<string, DataTypeDefinition> dataTypeMap = [];
 	readonly Dictionary<string, ICommand> commandMap = [];
-	readonly Dictionary<string, IMacro> mappers = [];
+	readonly Dictionary<string, IMacro> macros = [];
+	readonly Dictionary<string, PraeDirective> praeDirectives = [];
 
 	readonly Dictionary<string, string> MemoryInfo = [];
 	public IReadOnlyDictionary<string, string> GetMemoryInfoRef () => MemoryInfo;
@@ -117,7 +118,7 @@ internal class SCLParsingStatus {
 		results.Add ( new SCLT_Void.VoidData ( dataTypes[0] as SCLT_Void ) );
 	}
 
-	public void RegisterModule ( DModuleLoader.IModuleInfo module ) {
+	public void RegisterModule ( IModuleInfo module ) {
 		ArgumentNullException.ThrowIfNull ( module );
 		if ( modules.Any ( m => m.Name == module.Name ) )
 			throw new InvalidOperationException ( $"Module '{module.Name}' is already registered." );
@@ -133,19 +134,22 @@ internal class SCLParsingStatus {
 			dataTypeMap[dt.Name] = dt;
 		}
 		foreach ( var macro in module.Macros ) {
-			if ( mappers.ContainsKey ( macro.CmdCode ) )
+			if ( macros.ContainsKey ( macro.CmdCode ) )
 				throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' is already defined." );
-			mappers[macro.CmdCode] = macro;
+			macros[macro.CmdCode] = macro;
+		}
+		foreach ( var prae in module.PraeDirectives ) {
+			if ( praeDirectives.ContainsKey ( prae.Key ) )
+				throw new InvalidOperationException ( $"Prae directive '{prae.Key}' is already defined." );
+			praeDirectives[prae.Key] = prae.Value;
 		}
 	}
 
 	public bool TryRunPraeDirective ( string name, ArgParser args) {
 		ArgumentNullException.ThrowIfNull ( name );
-		foreach ( var module in modules ) {
-			if ( module.PraeDirectives.TryGetValue ( name, out var action ) ) {
-				action ( GetContext (), args );
-				return true;
-			}
+		if ( praeDirectives.TryGetValue ( name, out var action ) ) {
+			action ( GetContext (), args );
+			return true;
 		}
 		return false;
 	}
@@ -169,9 +173,16 @@ internal class SCLParsingStatus {
 		return SCLInterpreter.CrOpCode ( commands.Count - 1 );
 	}
 
+	public void RegisterPraeDirective (string name, PraeDirective prae) {
+		ArgumentNullException.ThrowIfNull ( prae );
+				if ( praeDirectives.ContainsKey ( name ) )
+			throw new InvalidOperationException ( $"Prae directive '{name}' is already defined." );
+		praeDirectives[name] = prae;
+	}
+
 	public IMacro TryGetMacro (string cmd) {
 		ArgumentNullException.ThrowIfNull ( cmd );
-		if ( !mappers.TryGetValue ( cmd, out IMacro macro ) ) return null;
+		if ( !macros.TryGetValue ( cmd, out IMacro macro ) ) return null;
 		return macro;
 	}
 
