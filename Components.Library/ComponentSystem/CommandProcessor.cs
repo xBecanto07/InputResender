@@ -49,6 +49,11 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		return registeredCmds.Add ( cmd );
 	}
 
+	public ACommand GetCommandInstance<T> () where T : ACommand {
+		if (registeredCmds.FirstOrDefault(c => c is T) is T cmd) return cmd;
+		throw new ArgumentException ( $"Command of type {typeof ( T ).Name} not found." );
+	}
+
 	/// <summary>Find a command based on a callname. This command is passed to callback function. If this function returns null, no more processing is done. If some reference is returned, it will be either added or replaced in 1st level command list. Removing command is not supported since no use-case has been provided.</summary>
 	public void ModifyCommand ( string line, Func<ACommand, ACommand> modifyFcn ) {
 		ArgParser args = new ( line, WriteLine );

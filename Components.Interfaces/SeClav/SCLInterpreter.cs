@@ -67,7 +67,7 @@ internal class SCLRuntime : ISCLRuntime {
 				throw new AccessViolationException ( $"Detected attemt to write into protected memory at {varID.ValueId}" );
 			if ( varID.ValueId >= Variables.Count )
 				throw new IndexOutOfRangeException ( $"Variable ID {varID} is out of range." );
-			if ( value.Definition != Variables[varID.ValueId].Definition )
+			if ( !value.Definition.Equals ( Variables[varID.ValueId].Definition ) )
 				throw new InvalidOperationException ( $"Cannot set variable {varID} to type {value.Definition.Name}, expected {Variables[varID.ValueId].Definition.Name}." );
 			Variables[varID.ValueId].Assign ( value );
 			break;
@@ -111,8 +111,23 @@ internal class SCLRuntime : ISCLRuntime {
 	public void ResetFlag ( ISCLRuntime.SCLFlags value ) => flags &= ~value;
 }
 
-internal class SCLRunner : ICommand {
-	public readonly ISCLParsedScript Script;
+public class SCLRuntimeHolder {
+	internal SCLRuntime BaseRuntime;
+
+	public SCLRuntimeHolder (SCLScriptHolder scriptHolder) {
+		if ( scriptHolder == null )
+			throw new ArgumentNullException ( nameof ( scriptHolder ) );
+		BaseRuntime = new SCLRuntime ( scriptHolder.ParsedScript );
+	}
+
+	public IDataType SafeGetVar ( SIdVal varID ) => BaseRuntime.SafeGetVar ( varID );
+	public void SafeSetVar ( SIdVal varID, IDataType value ) => BaseRuntime.SafeSetVar ( varID, value );
+	public T GetDefinition<T> () where T : DataTypeDefinition
+		=> BaseRuntime.Script.DataTypes.FirstOrDefault ( x => x.GetType () == typeof ( T ) ) as T;
+}
+
+public class SCLRunner : ICommand {
+	private readonly ISCLParsedScript Script;
 	public string CmdCode => "SCLInterpreter";
 	public string CommonName => "SeClav Language Interpreter";
 	public string Description => "Executes SeClav Language scripts.";
@@ -120,9 +135,10 @@ internal class SCLRunner : ICommand {
 	public readonly SIdVal NoArg = new ( 0, 0 );
 	public readonly SIdVal NoDst = new ( SCLInterpreter.ResultTypeID, 0 );
 
-	public SCLRunner ( ISCLParsedScript script ) {
+	internal SCLRunner ( ISCLParsedScript script ) {
 		Script = script ?? throw new ArgumentNullException ( nameof ( script ) );
 	}
+	public SCLRunner ( SCLScriptHolder scriptHolder ) : this ( scriptHolder?.ParsedScript ) { }
 
 	public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => throw new NotImplementedException ();
 
@@ -172,6 +188,11 @@ internal class SCLRunner : ICommand {
 			return null;
 		} catch ( Exception ex ) { throw; }
 	}
+
+	public IDataType Execute ( SCLRuntimeHolder runtime, IReadOnlyList<SIdVal> args )
+		=> Execute ( runtime.BaseRuntime, args );
+	public IDataType ExecuteSafe ( SCLRuntimeHolder runtime, IReadOnlyList<SIdVal> args, ref List<string> progress )
+		=> ExecuteSafe ( runtime.BaseRuntime, args, ref progress );
 
 	private bool TestFlags ( ISCLRuntime runtime, ushort flagReq ) {
 		int flagStatus = ((ushort)runtime.GetFlags ()) | 1;

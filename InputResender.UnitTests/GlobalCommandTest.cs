@@ -219,7 +219,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 	const string line4 = $"\\n\\s+{SW}({arg2})*( = \\S+)?: \\S.*";
 	public static readonly Regex helpRegex = new ( $"^{line1}((: [\\S ]*)|({line2})|({line3})|({line5})|({line4}))+$", RegexOptions.ExplicitCapture );
 
-	const string callname = $"Usage:( ({ascii})(\\[\\.(\\|({ascii}))\\])?)+";
+	const string callname = $"Usage:( ({ascii})(\\[\\.(\\|({ascii}))+\\])?)+";
 	public static readonly Regex callnameRegex = new ( callname );
 
 	public GlobalCommandTest ( Outputter output ) : base ( null, output, GeneralInitCmds ) {

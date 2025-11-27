@@ -11,11 +11,15 @@ public class SeClavRunnerCommand : ACommand {
 	private readonly Dictionary<string, SCLScriptHolder> ParsedScripts;
 	private readonly Func<string, string> FileLoader;
 
+	public SCLScriptHolder TryGetParsedScript ( string scriptName )
+		=> ParsedScripts.GetValueOrDefault ( scriptName );
+
 	public override string Description => "Parse and run SeClav scripts.";
 
 	private static List<string> CommandNames = ["seclav"];
 	private static List<(string, Type)> InterCommands = [
 		("module", typeof(SeClavModuleManagerCommand))
+		, ("list", null)
 		, ("parse", null)
 		, ("run", null)
 		];
@@ -32,24 +36,31 @@ public class SeClavRunnerCommand : ACommand {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"parse" => CallName + " parse <Script>: Parse a SeClav script\n\tScript: The script to run, enclosed in quotes",
 			"run" => CallName + " run <Script> [force]: Run a previously parsed SeClav script\n\tScript: The script to run, enclosed in quotes\n\tforce: Optional hint to force reparse if the script was already parsed",
+			"list" => CallName + " list: List all parsed SeClav scripts",
 			"module" => CallName + " module <Subcommand> [Options]: Manage valid modules for SeClav scripts\n\tSubcommand: {{list|add|remove|info}}\n\tOptions: Subcommand specific options",
 			_ => null
 		}, out var helpRes ) ) return helpRes;
 
 		switch ( context.SubAction ) {
+		case "list": return new CommandResult ( "Parsed Scripts:\n" +
+			( ParsedScripts.Count == 0 ? "  (none)" :
+			string.Join ( "\n", ParsedScripts.Keys.Select ( k => $"  - {k}" ) ) ) );
 		case "module": return ModuleManager.Execute ( context.Sub () );
 		case "parse": {
 			string script = context.Args.String ( context.ArgID + 1, "Script" );
 			if ( string.IsNullOrEmpty ( script ) )
 				return new CommandResult ( "Script cannot be empty." );
-			if ( ParsedScripts.ContainsKey ( script ) && context.Args.String ( context.ArgID + 2, "Force reparse", shouldThrow: false ) != "force" )
+			context.Args.RegisterSwitch ( 'f', "force" );
+			bool alreadyContains = ParsedScripts.ContainsKey ( script );
+			bool shouldForce = context.Args.Present ( "--force" );
+			if ( alreadyContains && !shouldForce )
 				return new CommandResult ( $"Script '{script}' is already parsed. Use 'force' option to reparse." );
 
 			string code = FileLoader ( script );
 			if ( string.IsNullOrEmpty ( code ) )
 				return new CommandResult ( $"Failed to load script from '{script}'." );
 
-			SCLScriptHolder parsed = new ( code, ModuleManager.ModuleLoader );
+			SCLScriptHolder parsed = new ( code, script, ModuleManager.ModuleLoader );
 			ParsedScripts[script] = parsed;
 			if ( parsed.Errors.Count > 0 ) {
 				string errMsg = $"Script '{script}' parsed with {parsed.Errors.Count} errors:\n" + string.Join ( "\n", parsed.Errors.Select ( e => e.Item1 ) );

@@ -6,7 +6,7 @@ public abstract class ACommandLoader : ACommand {
 	public override string Description => $"Dynamically add '{CmdGroupName}' commands to the command processor";
 	public override string Help => $"{parentCommandHelp} {CallName}";
 	public ACommandLoader (string cmdGroupName)
-		: base ( null, [BaseLoadCmdName + '-' + cmdGroupName], [] ) => CmdGroupName = BaseLoadCmdName + '-' + CmdGroupName;
+		: base ( null, [BaseLoadCmdName + '-' + cmdGroupName], [] ) => CmdGroupName = BaseLoadCmdName + '-' + cmdGroupName;
 
 	protected abstract IReadOnlyCollection<Func<ACommand>> NewCommands { get; }
 	protected virtual IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => null;
