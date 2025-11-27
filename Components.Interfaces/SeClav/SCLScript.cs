@@ -12,7 +12,10 @@ public class SCLScriptHolder {
 	public IReadOnlyList<(string, Exception)> Errors;
 	private List<(string, Exception)> ErrorList;
 
-	internal SCLScriptHolder ( string code, System.Func<string, DModuleLoader.IModuleInfo> moduleLoader ) {
+	public string ScriptName { get; private set; }
+
+	internal SCLScriptHolder ( string code, string name, System.Func<string, DModuleLoader.IModuleInfo> moduleLoader ) {
+		ScriptName = name;
 		ErrorList = [];
 		Errors = ErrorList.AsReadOnly ();
 		if ( string.IsNullOrEmpty ( code ) ) throw new ArgumentNullException ( nameof ( code ) );
@@ -31,6 +34,21 @@ public class SCLScriptHolder {
 		}
 
 		debugInfo = parser.GetResultWithDebugInfo ();
+	}
+
+	public SIdVal GetVariableID (string name) {
+		foreach ( var kvp in debugInfo.VarNames ) {
+			if ( kvp.Value == name ) {
+				return kvp.Key.Generic;
+			}
+		}
+		throw new KeyNotFoundException ( $"Variable '{name}' not found in script." );
+	}
+	public bool IsUsingModule (string moduleName) {
+		foreach ( var mod in ParsedScript.Modules ) {
+			if ( mod.Name == moduleName ) return true;
+		}
+		return false;
 	}
 }
 

@@ -15,12 +15,35 @@
       <C6>loglevel all</C6>
       <C7>network callback recv print</C7>
       <C8>network callback newconn print</C8>
-      <C9>hook manager start</C9>
-      <C10>pipeline new Sender DInputProcessor DDataSigner DPacketSender</C10>
-      <C11>pipeline new Recver DPacketSender DDataSigner DInputSimulator</C11>
-      <C12>pipeline new InputProcess DInputReader DInputMerger DInputProcessor</C12>
-      <C13>hook add Print Keydown KeyUp</C13>
-      <C14>sim keypress R</C14>
     </initCmds>
+    <setupPipes>
+      <P0>hook manager start</P0>
+      <P1>pipeline new Sender DInputProcessor DDataSigner DPacketSender</P1>
+      <P2>pipeline new Recver DPacketSender DDataSigner DInputSimulator</P2>
+      <P3>pipeline new InputProcess DInputReader DInputMerger DInputProcessor</P3>
+      <P4>pipeline new HookManagerInputProcess SHookManager DInputMerger DInputProcessor</P4>
+    </setupPipes>
+    <testSimKey>
+      <K0>hook add Print Keydown KeyUp</K0>
+      <K1>sim keypress R</K1>
+    </testSimKey>
+    <printWinKey>
+      <W0>windows load --force</W0>
+      <W1>windows msgs start</W1>
+      <W2>hook add Print Keydown KeyUp</W2>
+    </printWinKey>
+    <startListener>
+      <L0>help</L0>
+    </startListener>
+    <TestSclAutorun>
+      <S0>load sclModules</S0>
+      <S1>load joiners</S1>
+      <S2>seclav parse SIPtest.scl</S2>
+      <S3>SIP force</S3>
+      <S4>SIP assign SIPtest.scl</S4>
+      <S5>auto run setupPipes</S5>
+      <S6>hook add Pipeline Keydown KeyUp</S6>
+      <S7>sim keydown R</S7>
+    </TestSclAutorun>
   </AutoCommands>
 </Config>

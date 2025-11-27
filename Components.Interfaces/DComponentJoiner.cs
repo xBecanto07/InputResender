@@ -34,6 +34,7 @@ public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 
 	public abstract object RegisterPipeline ( params ComponentSelector[] types );
 	public abstract void UnregisterPipeline ( object pipelineId );
+	/// <summary>Attempt to send data throught the pipeline that starts at the origin. Returns number of successful steps.</summary>
 	public abstract int Send ( ComponentBase origin, Type target, object data );
 	public static void TryRegisterJoiner<CA, CB, DT> ( DComponentJoiner compJoiner, Func<DComponentJoiner, CB, DT, (bool, object)> joiner, string dsc = null ) where CA : ComponentBase where CB : ComponentBase {
 		ArgumentNullException.ThrowIfNull ( compJoiner, nameof ( compJoiner ) );
@@ -47,6 +48,7 @@ public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 			return joiner ( compJoiner, activeComp, (DT)obj );
 		} );
 	}
+	/// <summary>Try to run a pipeline to any of the given data objects. Returns number of successful steps for the first successful pipeline start, or 0 if none succeeded.</summary>
 	public static int TrySend (ComponentBase origin, Type target, params object[] data) {
 		if ( origin == null ) return 0;
 		if ( data == null ) return 0;
@@ -106,6 +108,7 @@ public class VComponentJoiner : DComponentJoiner {
 		else throw new KeyNotFoundException ( "Pipeline ID not found." );
 	}
 
+	/// <inheritdoc/>
 	public override int Send ( ComponentBase origin, Type target, object data ) {
 		int thisID;
 		lock ( eventNumberLockObj ) {
@@ -117,6 +120,17 @@ public class VComponentJoiner : DComponentJoiner {
 		dsc += $"\n  Data: {data}";
 		foreach (var pipelineInfo in Links.Values) {
 			var pipeline = pipelineInfo.comps;
+
+			Type origT = origin.GetType ();
+			Type[] firstTs = GetCompTypes ( pipeline[0] );
+			bool matchesOrigin = false;
+			foreach (var t in firstTs) {
+				if ( origT.IsAssignableFrom ( t ) ) {
+					matchesOrigin = true;
+					break;
+				}
+			}
+			if ( !matchesOrigin ) continue; // Pipeline does not start with origin component, skip
 
 			if ( pipeline.Count < 2 ) continue;
 			if ( target != null ) {

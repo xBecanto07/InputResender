@@ -9,10 +9,11 @@ public class TopLevelLoader : ACommandLoader {
 	readonly ConsoleManager consoleManager;
 	public TopLevelLoader (ConsoleManager console = null) : base ("TopLevel") { consoleManager = console; }
 
-	private static Dictionary<Type, Func<ACommand>> NewCommandList (TopLevelLoader self) => new () {
-		  { typeof(GUICommands), () => new GUICommands ()},
-		  { typeof(ComponentVisualizer.ComponentVisualizerCommands), () => new ComponentVisualizer.ComponentVisualizerCommands ()},
-		  { typeof ( WindowsCommands ), () => new WindowsCommands ( self.consoleManager )},
+	private static Dictionary<Type, Func<ACommand>> NewCommandList ( TopLevelLoader self ) => new () {
+		{ typeof(CLI.FactoryCommandsLoader), ()=> new CLI.FactoryCommandsLoader ()},
+		{ typeof(GUICommands), () => new GUICommands ()},
+		{ typeof(ComponentVisualizer.ComponentVisualizerCommands), () => new ComponentVisualizer.ComponentVisualizerCommands ()},
+		{ typeof ( WindowsCommands ), () => new WindowsCommands ( self.consoleManager )},
 	};
 	private static Dictionary<Type, (string, Func<ACommand, ACommand>)> NewSubCommandList = new () {
 		{ typeof (LowLevelInputCommand), ("hook", ( ACommand parent ) => {

@@ -74,6 +74,8 @@ public class DMainAppCoreFactory {
 
 		DComponentJoiner.TryRegisterJoiner<DInputReader, DInputMerger, HInputEventDataHolder> ( compJoiner, ( joiner, merger, data ) =>
 			(true, merger.ProcessInput ( data )) );
+		DComponentJoiner.TryRegisterJoiner<HookManagerCommand.SHookManager, DInputMerger, HInputEventDataHolder> ( compJoiner, ( joiner, merger, data ) =>
+			(true, merger.ProcessInput ( data )) );
 		DComponentJoiner.TryRegisterJoiner<DInputMerger, DInputProcessor, HInputEventDataHolder[]> ( compJoiner, ( joiner, processor, data ) => {
 			processor.ProcessInput ( data );
 			return (true, null);

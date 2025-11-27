@@ -71,10 +71,10 @@ public class BaseIntegrationTest : IDisposable {
 
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
 		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => throw new System.NotImplementedException () ) );
-		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
-		cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader () );
 		cliWrapper.CmdProc.AddCommand ( new TopLevelLoader () );
-		cliWrapper.CmdProc.AddCommand ( new SeClavCommandLoader () );
+		//cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
+		//cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader () );
+		//cliWrapper.CmdProc.AddCommand ( new SeClavCommandLoader () );
 
 		foreach ( string cmd in initCmds ){
 			var res = cliWrapper.ProcessLine ( cmd );
