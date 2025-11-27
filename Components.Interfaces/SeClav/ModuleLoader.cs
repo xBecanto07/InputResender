@@ -13,15 +13,6 @@ public abstract class DModuleLoader : ComponentBase<CoreBase> {
 	public abstract void RegisterModule ( IModuleInfo module );
 	public abstract IModuleInfo GetModule ( string name );
 
-	public interface IModuleInfo {
-		string Name { get; }
-		string Description { get; }
-		IReadOnlySet<ICommand> Commands { get; }
-		IReadOnlySet<IMacro> Macros { get; }
-		IReadOnlySet<DataTypeDefinition> DataTypes { get; }
-		IReadOnlyDictionary<string, Action<SCLParsingContext, ArgParser>> PraeDirectives { get; }
-	}
-
 	public abstract class DStateInfo : StateInfo {
 		public readonly string[] Modules;
 

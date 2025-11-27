@@ -8,7 +8,7 @@ using TExtraArgs = SeClav.SId<SeClav.ExtraArgsTag>;
 namespace SeClav;
 internal class SCLParsing {
 	//private readonly DModuleLoader ModuleLoader;
-	private readonly System.Func<string, DModuleLoader.IModuleInfo> ModuleLoader;
+	private readonly System.Func<string, IModuleInfo> ModuleLoader;
 	private readonly SCLParsingStatus Status;
 	readonly TOpCode AssignOpCode;
 	private readonly List<string> Log = [];
@@ -16,7 +16,7 @@ internal class SCLParsing {
 	public bool EnableLogging;
 	public readonly IReadOnlyDictionary<string, string> MemoryInfo;
 
-	public SCLParsing ( System.Func<string, DModuleLoader.IModuleInfo> moduleLoader, Action<string> logger = null, bool enableLogging = true ) {
+	public SCLParsing ( System.Func<string, IModuleInfo> moduleLoader, Action<string> logger = null, bool enableLogging = true ) {
 		ArgumentNullException.ThrowIfNull ( moduleLoader );
 		Logger = logger;
 		EnableLogging = enableLogging;

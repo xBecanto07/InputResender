@@ -406,7 +406,7 @@ internal class AddOrAppend : IMacro {
 	}
 }
 
-internal class SCL_TestModule : DModuleLoader.IModuleInfo {
+internal class SCL_TestModule : IModuleInfo {
 	public string Name => "TestModule";
 	public string Description => "Module for testing purposes";
 
@@ -430,6 +430,6 @@ internal class SCL_TestModule : DModuleLoader.IModuleInfo {
 	};
 
 	// Prae-directives are provided by tests themselves as needed
-	public IReadOnlyDictionary<string, Action<SCLParsingContext, ArgParser>> PraeDirectives => GetPraeDirectives;
-	internal Dictionary<string, Action<SCLParsingContext, ArgParser>> GetPraeDirectives = [];
+	public IReadOnlyDictionary<string, PraeDirective> PraeDirectives => GetPraeDirectives;
+	internal Dictionary<string, PraeDirective> GetPraeDirectives = [];
 }

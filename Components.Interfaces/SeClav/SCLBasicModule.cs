@@ -1,13 +1,14 @@
-﻿using System;
+﻿using Components.Library;
+using SeClav;
+using SeClav.DataTypes;
+using System;
+using System;
+using System.Collections.Generic;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using SeClav;
-using SeClav.DataTypes;
-using System;
-using System.Collections.Generic;
-using Components.Library;
+using static SeClav.DModuleLoader;
 
 namespace Components.Interfaces.SeClav;
 public class BasicValueIntDef : DataTypeDefinition {
@@ -230,7 +231,7 @@ public class ReadFlags : ICommand {
 	}
 }
 
-public class SCL_BasicModule : DModuleLoader.IModuleInfo {
+public class SCL_BasicModule : IModuleInfo {
 	public const string ModuleName = "BasicModule";
 	public string Name => ModuleName;
 	public string Description => "Implementation of basic functionalities.";
@@ -254,6 +255,6 @@ public class SCL_BasicModule : DModuleLoader.IModuleInfo {
 	};
 
 	// Prae-directives are provided by tests themselves as needed
-	public IReadOnlyDictionary<string, Action<SCLParsingContext, ArgParser>> PraeDirectives => GetPraeDirectives;
-	internal Dictionary<string, Action<SCLParsingContext, ArgParser>> GetPraeDirectives = [];
+	public IReadOnlyDictionary<string, PraeDirective> PraeDirectives => new Dictionary<string, PraeDirective> () {
+	};
 }

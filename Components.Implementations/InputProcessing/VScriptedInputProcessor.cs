@@ -45,7 +45,7 @@ public class VScriptedInputProcessor : DInputProcessor {
 
 
 
-	public class SCL_Module : SeClav.DModuleLoader.IModuleInfo {
+	public class SCL_Module : IModuleInfo {
 		public string Name => "ScriptedInputProcessor";
 		public string Description => "A module for scripted processing of input.";
 
@@ -60,7 +60,7 @@ public class VScriptedInputProcessor : DInputProcessor {
 			new SCL_StatusTypeDef (),
 		};
 
-		public IReadOnlyDictionary<string, Action<SCLParsingContext, ArgParser>> PraeDirectives => new Dictionary<string, Action<SCLParsingContext, ArgParser>> () { };
+		public IReadOnlyDictionary<string, PraeDirective> PraeDirectives => new Dictionary<string, PraeDirective> () { };
 	}
 
 	public class SCL_StatusTypeDef : SeClav.DataTypeDefinition {
