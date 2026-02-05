@@ -26,6 +26,10 @@ internal class SCLParsingStatus {
 		public IReadOnlyList<int> VariableTypes { get; }
 		public IReadOnlyList<int> ResultTypes { get; }
 		public IReadOnlyDictionary<int, Func<IDataType>> Getters { get; }
+		public IReadOnlyDictionary<string, SIdVal> InputVars { get; }
+		public IReadOnlyDictionary<string, int> InputSamplers { get; }
+		public IReadOnlyDictionary<string, SIdVal> OutputVars { get; }
+		public IReadOnlyDictionary<string, int> ExternFunctions { get; }
 
 		public SCLParsedScript ( SCLParsingStatus parsingStatus ) {
 			// Also could have/extract from status some disassembly info (closer discussion in diary)
@@ -43,7 +47,10 @@ internal class SCLParsingStatus {
 			VariableTypes = parsingStatus.variables.Select ( v => v.dataType ).ToList ().AsReadOnly ();
 			ResultTypes = parsingStatus.results.Select ( r => parsingStatus.dataTypes.IndexOf ( r.Definition ) ).ToList ().AsReadOnly ();
 			Getters = new Dictionary<int, Func<IDataType>> ( parsingStatus.getters );
-			//Variables = parser.variables.Select ( v => DataTypes[v.dataType].Default ).ToList ().AsReadOnly ();
+			InputVars = parsingStatus.inputVars.AsReadOnly ();
+			InputSamplers = parsingStatus.inputSamplers.AsReadOnly ();
+			OutputVars = parsingStatus.outputVars.AsReadOnly ();
+			ExternFunctions = parsingStatus.externFunctions.AsReadOnly ();
 		}
 	}
 
@@ -99,6 +106,10 @@ internal class SCLParsingStatus {
 	readonly List<IDataType> constants = [];
 	readonly List<IDataType> results = []; // FIXME: This should only be <int> as we don't yet know the value, only the data type
 	readonly Dictionary<int, Func<IDataType>> getters = [];
+	public Dictionary<string, SIdVal> inputVars = [];
+	public Dictionary<string, int> inputSamplers = [];
+	public Dictionary<string, SIdVal> outputVars = [];
+	public Dictionary<string, int> externFunctions = [];
 	//readonly List<Action<SCLParsedScript>> OnLoad = [];
 
 	readonly Dictionary<string, DataTypeDefinition> dataTypeMap = [];
@@ -145,13 +156,13 @@ internal class SCLParsingStatus {
 		}
 	}
 
-	public bool TryRunPraeDirective ( string name, ArgParser args) {
+	public PraeDirective TryGetPraeDirective ( string name ) {
 		ArgumentNullException.ThrowIfNull ( name );
-		if ( praeDirectives.TryGetValue ( name, out var action ) ) {
-			action ( GetContext (), args );
-			return true;
-		}
-		return false;
+		return praeDirectives.TryGetValue ( name, out var action ) ? action : null;
+	}
+	public void RunPraeDirective ( PraeDirective prae, ArgParser args ) {
+		ArgumentNullException.ThrowIfNull ( prae );
+		prae ( GetContext (), args );
 	}
 
 	public (int dataType, string name) GetVarInfo ( TDst varID ) {
@@ -248,6 +259,34 @@ internal class SCLParsingStatus {
 		variables.Add ( (dataType, name) );
 		UpdateMemoryInfo ();
 		return varID;
+	}
+
+	public void RegisterExterInVariable (int dataType, string name ) {
+		var varID = RegisterVariable ( dataType, name );
+		inputVars[name] = varID.Generic;
+	}
+	public void RegisterExterOutVariable ( int dataType, string name ) {
+		var varID = RegisterVariable ( dataType, name );
+		outputVars[name] = varID.Generic;
+	}
+	public void RegisterExterSampler ( string name, DataTypeDefinition dataTypeIn, DataTypeDefinition dataTypeOut ) {
+		ArgumentNullException.ThrowIfNullOrWhiteSpace ( name, nameof ( name ) );
+		ArgumentNullException.ThrowIfNull ( dataTypeIn, nameof ( dataTypeIn ) );
+		ArgumentNullException.ThrowIfNull ( dataTypeOut, nameof ( dataTypeOut ) );
+
+		ExternMapper sampler = new ( name, dataTypeIn, dataTypeOut );
+		commandMap[name] = sampler;
+		int cmdID = GetCommandID ( sampler );
+		inputSamplers[name] = cmdID;
+	}
+	public void RegisterExterFunction ( string name, DataTypeDefinition returnType, DataTypeDefinition[] argTypes ) {
+		ArgumentNullException.ThrowIfNullOrWhiteSpace ( name, nameof ( name ) );
+		ArgumentNullException.ThrowIfNull ( returnType, nameof ( returnType ) );
+		ArgumentNullException.ThrowIfNull ( argTypes, nameof ( argTypes ) );
+		ExternFunction function = new ( name, argTypes, returnType );
+		commandMap[name] = function;
+		int cmdID = GetCommandID ( function );
+		externFunctions[name] = cmdID;
 	}
 
 	public bool TryGetVarID ( string name, out TArg varID ) {

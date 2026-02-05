@@ -3,129 +3,6 @@ using Components.Library;
 using System.Linq;
 
 namespace SeClav;
-internal class SCLRuntime : ISCLRuntime {
-	public ISCLParsedScript Script;
-	public IReadOnlyList<IDataType> Variables;
-	public IReadOnlyList<IDataType> Results;
-	private ISCLRuntime.SCLFlags flags;
-
-	private const int VarIdMask = SCLInterpreter.VarIdMask;
-	private const int VarIdShift = SCLInterpreter.VarIdShift;
-
-
-	public SCLRuntime ( ISCLParsedScript script ) {
-		Script = script ?? throw new ArgumentNullException ( nameof ( script ) );
-		Variables = script.VariableTypes.Select ( t => {
-			if ( t < 0 || t >= script.DataTypes.Count )
-				throw new IndexOutOfRangeException ( $"Variable type index {t} is out of range <0|{script.DataTypes.Count}>." );
-			return script.DataTypes[t].Default;
-		} ).ToList ().AsReadOnly ();
-		Results = script.ResultTypes.Select ( t => {
-			if ( t < 0 || t >= script.DataTypes.Count )
-				throw new IndexOutOfRangeException ( $"Result type index {t} is out of range <0|{script.DataTypes.Count}>." );
-			return script.DataTypes[t].Default;
-		} ).ToList ().AsReadOnly ();
-
-		foreach ( var (id, getter) in script.Getters) {
-			if ( id < 0 || id >= Variables.Count )
-				throw new IndexOutOfRangeException ( $"Getter ID {id} is out of range <0|{Variables.Count}>." );
-			var val = getter ();
-			if (val.Definition != Variables[id].Definition )
-				throw new InvalidOperationException ( $"Getter for variable ID {id} returned type {val.Definition.Name}({val.Definition.Owner}), expected {Variables[id].Definition.Name}({Variables[id].Definition.Owner})." );
-			Variables[id].Assign ( val );
-		}
-	}
-
-	public IDataType SafeGetVar ( SIdVal varID ) {
-		ushort varType = varID.ValueType;
-		ushort ID = varID.ValueId;
-		// FIXME: Never use 0 as a valid ID! Debugging this is a nightmare. Treat 0 as invalid ID.
-		switch ( varType ) {
-		case SCLInterpreter.VarTypeID:
-			if ( ID >= Variables.Count )
-				throw new IndexOutOfRangeException ( $"Variable ID {ID} is out of range <0|{Variables.Count}>." );
-			return Variables[ID];
-		case SCLInterpreter.ConstTypeID:
-			if ( ID >= Script.Constants.Count )
-				throw new IndexOutOfRangeException ( $"Constant ID {ID} is out of range <0|{Script.Constants.Count}>." );
-			return Script.Constants[ID];
-		case SCLInterpreter.ResultTypeID:
-			if ( ID >= Results.Count )
-				throw new IndexOutOfRangeException ( $"Result ID {ID} is out of range <0|{Results.Count}>." );
-			return Results[ID];
-		case SCLInterpreter.InvalidTypeID:
-			throw new InvalidOperationException ( $"Index type '{SCLInterpreter.InvalidTypeID}' is reserved for future use and cannot be used yet." );
-		default:
-			throw new ArgumentOutOfRangeException ( nameof ( varID ), $"Invalid variable ID {varID}. The type {varType} is outside of supported range!" );
-		}
-	}
-
-	public void SafeSetVar ( SIdVal varID, IDataType value ) {
-		switch ( varID.ValueType ) {
-		case SCLInterpreter.VarTypeID:
-			if ( varID.ValueId < 0 )
-				throw new AccessViolationException ( $"Detected attemt to write into protected memory at {varID.ValueId}" );
-			if ( varID.ValueId >= Variables.Count )
-				throw new IndexOutOfRangeException ( $"Variable ID {varID} is out of range." );
-			if ( !value.Definition.Equals ( Variables[varID.ValueId].Definition ) )
-				throw new InvalidOperationException ( $"Cannot set variable {varID} to type {value.Definition.Name}, expected {Variables[varID.ValueId].Definition.Name}." );
-			Variables[varID.ValueId].Assign ( value );
-			break;
-		case SCLInterpreter.ConstTypeID: throw new AccessViolationException ( $"Detected attemt to write into protected memory at constant ID {varID.ValueId}" );
-		case SCLInterpreter.ResultTypeID:
-			if ( varID.ValueId >= Results.Count )
-				throw new IndexOutOfRangeException ( $"Result ID {varID} is out of range." );
-			if ( value.Definition != Results[varID.ValueId].Definition )
-				throw new InvalidOperationException ( $"Cannot set result {varID} to type {value.Definition.Name}, expected {Results[varID.ValueId].Definition.Name}." );
-			Results[varID.ValueId].Assign ( value );
-			break;
-		case SCLInterpreter.InvalidTypeID: throw new InvalidOperationException ( "Index type '3' is reserved for future use and cannot be used yet." );
-		default: throw new ArgumentOutOfRangeException ( nameof ( varID ), $"Invalid variable ID {varID}." );
-		}
-	}
-	//public IDataType GetVar ( int varID ) => varID < 0 ? Script.Constants[IDtoConstPtr ( varID )] : Variables[varID];
-	public IDataType GetVar ( SIdVal varID ) => (varID.ValueType) switch {
-		SCLInterpreter.VarTypeID => Variables[varID.ValueId],
-		SCLInterpreter.ConstTypeID => Script.Constants[varID.ValueId],
-		SCLInterpreter.ResultTypeID => Results[varID.ValueId],
-		SCLInterpreter.InvalidTypeID => throw new InvalidOperationException ( "Index type '3' is reserved for future use and cannot be used yet." ),
-		_ => throw new ArgumentOutOfRangeException ( nameof ( varID ), $"Invalid variable ID {varID}." )
-	};
-	//public void SetVar ( int varID, IDataType value ) => Variables[varID].Assign ( value );
-	public void SetVar ( SIdVal varID, IDataType value ) {
-		switch ( varID.ValueType ) {
-		case SCLInterpreter.VarTypeID: Variables[varID.ValueId].Assign ( value ); break;
-		case SCLInterpreter.ResultTypeID: Results[varID.ValueId].Assign ( value ); break;
-		default: throw new ArgumentOutOfRangeException ( nameof ( varID ), $"Invalid variable ID {varID}." );
-		}
-	}
-
-	public void UpdateMemoryInfo ( ref Dictionary<string, string> memInfo ) {
-		memInfo["Variables"] = $"{Variables.Count} variables: {string.Join ( " | ", Variables.Select ( ( v, i ) => $"V{i}={v}" ) )}";
-		memInfo["Results"] = $"{Results.Count} results : {string.Join ( " | ", Results.Select ( ( r, i ) => $"R{i}={r}" ) )}";
-		memInfo["Constants"] = $"{Script.Constants.Count} constants : {string.Join ( " | ", Script.Constants.Select ( ( c, i ) => $"C{i}={c}" ) )}";
-	}
-
-	public ISCLRuntime.SCLFlags GetFlags () => flags;
-	public void SetFlag ( ISCLRuntime.SCLFlags value ) => flags |= value;
-	public void ResetFlag ( ISCLRuntime.SCLFlags value ) => flags &= ~value;
-}
-
-public class SCLRuntimeHolder {
-	internal SCLRuntime BaseRuntime;
-
-	public SCLRuntimeHolder (SCLScriptHolder scriptHolder) {
-		if ( scriptHolder == null )
-			throw new ArgumentNullException ( nameof ( scriptHolder ) );
-		BaseRuntime = new SCLRuntime ( scriptHolder.ParsedScript );
-	}
-
-	public IDataType SafeGetVar ( SIdVal varID ) => BaseRuntime.SafeGetVar ( varID );
-	public void SafeSetVar ( SIdVal varID, IDataType value ) => BaseRuntime.SafeSetVar ( varID, value );
-	public T GetDefinition<T> () where T : DataTypeDefinition
-		=> BaseRuntime.Script.DataTypes.FirstOrDefault ( x => x.GetType () == typeof ( T ) ) as T;
-}
-
 public class SCLRunner : ICommand {
 	private readonly ISCLParsedScript Script;
 	public string CmdCode => "SCLInterpreter";
@@ -177,7 +54,7 @@ public class SCLRunner : ICommand {
 					argIDs.Add ( argID );
 				}
 
-				progress.Add ( $"PC={PC}: Executing {cmd.CmdCode} with args [{string.Join ( ", ", argIDs )}] -> {cmdIndices.dst}" );
+				progress.Add ( $"PC={PC}: Executing '{cmd.CmdCode}' ({cmd.CommonName}) with args [{string.Join ( ", ", argIDs )}] -> {cmdIndices.dst}" );
 
 				IDataType result = cmd.ExecuteSafe ( runtime, argIDs, ref progress );
 				if ( cmd.ReturnType != null && !cmdIndices.dst.Equals ( NoDst ) )

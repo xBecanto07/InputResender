@@ -123,6 +123,7 @@ public class VComponentJoiner : DComponentJoiner {
 
 			Type origT = origin.GetType ();
 			Type[] firstTs = GetCompTypes ( pipeline[0] );
+			if ( firstTs == null ) continue;
 			bool matchesOrigin = false;
 			foreach (var t in firstTs) {
 				if ( origT.IsAssignableFrom ( t ) ) {
@@ -163,7 +164,7 @@ public class VComponentJoiner : DComponentJoiner {
 			return pipeline.Count;
 		}
 		dsc = target == null ? string.Empty : $" -> {target.Name}";
-		Owner.PushDelayedMsg ( $"No pipeline #{thisID} found for {origin.GetType ().Name}{dsc} : <{data.GetType ().Name}> {data}" );
+		//Owner.PushDelayedMsg ( $"No pipeline #{thisID} found for {origin.GetType ().Name}{dsc} : <{data.GetType ().Name}> {data}" );
 		return 0;
 	}
 
@@ -172,6 +173,7 @@ public class VComponentJoiner : DComponentJoiner {
 	private Type[] GetCompTypes ( Type compType ) => GetCompTypes ( Owner.Fetch ( compType ) );
 
 	private HashSet<(Func<DComponentJoiner, object, (bool, object)> joiner, string dsc)> GetJoiners ( Type[] Atypes, Type[] Btypes ) {
+		if ( Atypes == null || Btypes == null ) return null;
 		foreach ( var Atype in Atypes ) {
 			foreach ( var Btype in Btypes ) {
 				if ( Joiners.TryGetValue ( (Atype, Btype), out var joinerSet ) ) return joinerSet;

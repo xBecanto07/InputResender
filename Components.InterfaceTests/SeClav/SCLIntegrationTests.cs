@@ -23,6 +23,20 @@ public class SCLIntegrationTests {
 		var runtime = new SCLAssertionRuntime ( result );
 		SCLRunner runner = new ( result.Script );
 		runner.ExecuteSafe ( runtime, [], ref runtime.ProgressInfo );
+
+		Output.WriteLine ( "---- Script Execution Log ----" );
+		foreach ( string logLine in runtime.ProgressInfo )
+			Output.WriteLine ( logLine );
+		return runtime;
+	}
+
+	private SCLAssertionRuntime RunScript ( SCLParsing parser, Action<SCLRuntimeHolder> setup ) {
+		// If you want the holder too, not just the runtime, use the 'setup' action to store it somewhere 😉
+		ISCLDebugInfo result = parser.GetResultWithDebugInfo ();
+		var runtime = new SCLAssertionRuntime ( result );
+		SCLRuntimeHolder holder = new ( runtime );
+		setup?.Invoke ( holder );
+		holder.Execute ( safe: true );
 		return runtime;
 	}
 
@@ -71,9 +85,7 @@ public class SCLIntegrationTests {
 	[Fact]
 	public void PraeDirectiveIsCalled () {
 		bool wasCalled = false;
-		testModule.GetPraeDirectives.Add("test_prae", ( ctx, parser ) => {
-			wasCalled = true;
-		} );
+		parser.RegisterPraeDirective ( "test_prae", ( ctx, parser ) => { wasCalled = true; } );
 		parser.ProcessLine ( "@test_prae" );
 		wasCalled.Should ().BeTrue ();
 
@@ -85,7 +97,7 @@ public class SCLIntegrationTests {
 
 	[Fact]
 	public void PraeRegisterVariableBasic () {
-		testModule.GetPraeDirectives.Add ("register_var", ( ctx, _ ) => {
+		parser.RegisterPraeDirective ( "register_var", ( ctx, _ ) => {
 			ctx.RegisterVariable ("praeVar", () => new TestValueInt ( testModule.IntTypeDef, 123 ) );
 		} );
 		parser.ProcessLine ( "@register_var" );
@@ -99,7 +111,7 @@ public class SCLIntegrationTests {
 
 	[Fact]
 	public void PraeRegisterVariableViaArgs () {
-		testModule.GetPraeDirectives.Add ( "register_var", ( ctx, parser ) => {
+		parser.RegisterPraeDirective ( "register_var", ( ctx, parser ) => {
 			string varName = parser.String ( 0, "Variable Name", shouldThrow: true );
 			int varValue = parser.Int ( 1, "Variable Value", shouldThrow: true ).Value;
 			ctx.RegisterVariable ( varName, () => new TestValueInt ( testModule.IntTypeDef, varValue ) );
@@ -226,5 +238,60 @@ public class SCLIntegrationTests {
 		var assertionRuntime = RunScript ( parser );
 		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "val" );
 		val.Value.Should ().Be ( 2 );
+	}
+
+	[Fact]
+	public void SettingExternalVariable () {
+		parser.ProcessLine ( "@in TestInt extID" );
+		parser.ProcessLine ( "TestInt resultID = ADD_INT extID 10" );
+		var assertionRuntime = RunScript ( parser, holder => holder.SetExternVar ( "extID", new TestValueInt ( holder.GetDefinition<TestValueIntDef> (), 32 ), null ) );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "resultID" );
+		val.Value.Should ().Be ( 42 );
+	}
+
+	[Fact]
+	public void SettingExternalMapper () {
+		parser.ProcessLine ( "@mapper TestString inBuffer : TestInt" );
+		parser.ProcessLine ( "TestString val1 = inBuffer 42" );
+		parser.ProcessLine ( "TestInt id2 = 8" );
+		parser.ProcessLine ( "id2 = ADD_INT id2 10" );
+		parser.ProcessLine ( "TestString val2 = inBuffer id2" );
+		var assertionRuntime = RunScript ( parser, holder => {
+			holder.SetExternSampler<TestValueIntDef, TestValueStringDef> ( "inBuffer", ( runtime, val ) => new TestValueString ( holder.GetDefinition<TestValueStringDef> (), $"Value is: {(val as TestValueInt).Value}" ), null );
+		} );
+		var (_, val1) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "val1" );
+		var (_, val2) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "val2" );
+		val1.Value.Should ().Be ( "Value is: 42" );
+		val2.Value.Should ().Be ( "Value is: 18" );
+	}
+
+	[Fact]
+	public void SettingExternalFunction () {
+		parser.ProcessLine ( "@extFcn TestInt FMADD : TestInt TestInt TestInt" );
+		parser.ProcessLine ( "TestInt result = FMADD 5 10 2" );
+		var assertionRuntime = RunScript ( parser, holder => {
+			holder.SetExternFunction<TestValueIntDef, TestValueIntDef, TestValueIntDef, TestValueIntDef> ( "FMADD", ( runtime, args ) => {
+				int a = (args[0] as TestValueInt).Value;
+				int b = (args[1] as TestValueInt).Value;
+				int c = (args[2] as TestValueInt).Value;
+				return new TestValueInt ( args[0].Definition, a * b + c );
+			}, null );
+		} );
+	}
+
+	[Fact]
+	public void SettingExternalOutput () {
+		parser.ProcessLine ( "@out TestInt extID" );
+		parser.ProcessLine ( "extID = ADD_INT 32 10" );
+		SCLRuntimeHolder holder = null;
+		var assertionRuntime = RunScript ( parser, h => holder = h );
+		holder.Should ().NotBeNull ();
+
+		holder.TryGetOutputVar ("extID", null, out var outputVar).Should ().BeTrue ();
+		outputVar.Should ().BeOfType<TestValueInt> ().Subject.Value.Should ().Be ( 42 );
+
+		outputVar = null;
+		holder.TryStoreOutputVar ("extID", null, ref outputVar).Should ().BeTrue ();
+		outputVar.Should ().NotBeNull ().And.BeOfType<TestValueInt> ().Subject.Value.Should ().Be ( 42 );
 	}
 }

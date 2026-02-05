@@ -430,6 +430,5 @@ internal class SCL_TestModule : IModuleInfo {
 	};
 
 	// Prae-directives are provided by tests themselves as needed
-	public IReadOnlyDictionary<string, PraeDirective> PraeDirectives => GetPraeDirectives;
-	internal Dictionary<string, PraeDirective> GetPraeDirectives = [];
+	public IReadOnlyDictionary<string, PraeDirective> PraeDirectives => new Dictionary<string, PraeDirective> ();
 }
