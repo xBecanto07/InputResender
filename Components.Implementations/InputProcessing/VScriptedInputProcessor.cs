@@ -10,6 +10,7 @@ public class VScriptedInputProcessor : DInputProcessor {
 	public SeClav.SCLScriptHolder Script { get; private set; }
 	public bool IsScriptIntegratable => statusID.HasValue;
 	SIdVal? statusID;
+	const string StatusVarName = "sip_status";
 
 	public override int ComponentVersion => 1;
 
@@ -20,6 +21,7 @@ public class VScriptedInputProcessor : DInputProcessor {
 
 	public override void ProcessInput ( DataHolder[] inputCombination ) {
 		var runtime = new SCLRuntimeHolder ( Script );
+		runtime.SetExternVar ( StatusVarName, new SCL_StatusType ( this, inputCombination, runtime ), Owner );
 		if ( statusID.HasValue ) {
 			runtime.SafeSetVar ( statusID.Value, new SCL_StatusType ( this, inputCombination, runtime ) );
 		}
@@ -37,9 +39,9 @@ public class VScriptedInputProcessor : DInputProcessor {
 		}
 
 		try {
-			statusID = Script.GetVariableID ( "sip_status" );
+			statusID = Script.GetVariableID ( StatusVarName );
 		} catch ( KeyNotFoundException ) {
-			Owner.PushDelayedMsg ( "ScriptedInputProcessor: 'sip_status' variable not found in script. Cannot access status from inside the script." );
+			Owner.PushDelayedMsg ( $"ScriptedInputProcessor: '{StatusVarName}' variable not found in script. Cannot access status from inside the script." );
 		}
 	}
 
@@ -64,7 +66,7 @@ public class VScriptedInputProcessor : DInputProcessor {
 	}
 
 	public class SCL_StatusTypeDef : SeClav.DataTypeDefinition {
-		public override string Name => "SIP_Status";
+		public override string Name => "SIP_Status_t";
 		public override string Description => "Container for status of ScriptedInputProcessor execution.";
 		public override IReadOnlySet<ICommand> Commands => null;
 		public override bool TryParse ( ref string line, out IDataType result ) {

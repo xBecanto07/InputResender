@@ -4,6 +4,7 @@ using TOpCode = SeClav.SId<SeClav.OpCodeTag>;
 using TDst = SeClav.SId<SeClav.DstTag>;
 using TArg = SeClav.SId<SeClav.ArgTag>;
 using TExtraArgs = SeClav.SId<SeClav.ExtraArgsTag>;
+using Components.Interfaces.SeClav.Parsing;
 
 namespace SeClav;
 internal class SCLParsing {
@@ -16,20 +17,81 @@ internal class SCLParsing {
 	public bool EnableLogging;
 	public readonly IReadOnlyDictionary<string, string> MemoryInfo;
 
+	private readonly ParsingContext parsingContext;
+
 	public SCLParsing ( System.Func<string, IModuleInfo> moduleLoader, Action<string> logger = null, bool enableLogging = true ) {
 		ArgumentNullException.ThrowIfNull ( moduleLoader );
 		Logger = logger;
 		EnableLogging = enableLogging;
-		if ( EnableLogging ) LogAdd ( "SCL parser started" );
 		ModuleLoader = moduleLoader;
 		Status = new ();
 		AssignOpCode = Status.RegisterCustomCmd ( new CmdAssignment () );
+		Status.RegisterPraeDirective ( "in", RegisterExternalInput );
+		Status.RegisterPraeDirective ( "mapper", RegisterExternalMapper );
+		Status.RegisterPraeDirective ( "extFcn", RegisterExternalFunction );
+		Status.RegisterPraeDirective ( "out", RegisterExternalOutput );
 		MemoryInfo = Status.GetMemoryInfoRef ();
+
+		parsingContext = new ParsingContext ( ModuleLoader, Status, MemoryInfo, AssignOpCode ) {
+			EnableLogging = EnableLogging,
+			Logger = Logger,
+			ProcessLine = ProcessLine
+		};
+		if ( EnableLogging ) parsingContext.LogAdd ( "SCL parser started" );
 	}
 
-	private void LogAdd ( string message ) {
-		Log.Add ( message );
-		Logger?.Invoke ( message );
+	/// <summary>Mostly intented only for tests. Prefer assigning prae directives into module and loading the module instead.</summary>
+	internal void RegisterPraeDirective ( string directive, PraeDirective prae ) {
+		Status.RegisterPraeDirective ( directive, prae );
+	}
+
+	private void RegisterExternalInput ( SCLParsingContext context, ArgParser args ) {
+		string typeName = args.String ( 0, "Type of the external input to register", 1, true );
+		string varName = args.String ( 1, "Name of the variable to register the external input into", 1, true );
+		var typeDef = Status.GetDataType ( typeName );
+		int typeID = Status.GetDataTypeID ( typeDef );
+		Status.RegisterExterInVariable ( typeID, varName );
+	}
+
+	private void RegisterExternalMapper ( SCLParsingContext context, ArgParser args ) {
+		if (args.ArgC != 4)
+			throw new InvalidOperationException ( $"@mapper directive expects exactly 3 arguments: output type, mapper name, input type, separated by colon ':'. Got {args.ArgC - 1}." );
+		if ( args.String ( 2, null, 1, true ) != ":" )
+			throw new InvalidOperationException ( $"@mapper directive expects exactly 3 arguments: output type, mapper name, input type, separated by colon ':'. Got '{args.String ( 2, null, 1, true )}' instead of ':'." );
+
+		string outName = args.String ( 0, "Name of the output variable to register the external mapper into", 1, true );
+		string mapperName = args.String ( 1, "Name of the mapper to register", 1, true );
+		string inName = args.String ( 3, "Name of the input variable to register the external mapper from", 1, true );
+
+		var outTypeDef = Status.GetDataType ( outName );
+		var inTypeDef = Status.GetDataType ( inName );
+		Status.RegisterExterSampler ( mapperName, inTypeDef, outTypeDef );
+	}
+
+	private void RegisterExternalFunction ( SCLParsingContext context, ArgParser args ) {
+		const int ARGS_START = 3;
+		if ( args.ArgC < ARGS_START + 1 ) throw new InvalidOperationException ( $"@mapper directive expects at least 3 arguments: output type, function name, input type, separated by colon ':'. Got {args.ArgC - 1}." );
+		if ( args.String ( 2, null, 1, true ) != ":" ) throw new InvalidOperationException ( $"@mapper directive expects exactly 3 arguments: output type, function name, input type, separated by colon ':'. Got '{args.String ( 2, null, 1, true )}' instead of ':'." );
+
+		string returnTypeName = args.String ( 0, "Name of the return type", 1, true );
+		string funcName = args.String ( 1, "Name of the function to register", 1, true );
+		var returnType = Status.GetDataType ( returnTypeName );
+
+		var argTypes = new DataTypeDefinition[args.ArgC - ARGS_START];
+		for ( int i = ARGS_START; i < args.ArgC; i++ ) {
+			string argTypeName = args.String ( i, $"Name of argument type {i - ARGS_START + 1}", 1, true );
+			var argType = Status.GetDataType ( argTypeName );
+			argTypes[i - ARGS_START] = argType;
+		}
+		Status.RegisterExterFunction ( funcName, returnType, argTypes );
+	}
+
+	private void RegisterExternalOutput ( SCLParsingContext context, ArgParser args ) {
+		string typeName = args.String ( 0, "Type of the external output to register", 1, true );
+		string varName = args.String ( 1, "Name of the variable to register the external output from", 1, true );
+		var typeDef = Status.GetDataType ( typeName );
+		int typeID = Status.GetDataTypeID ( typeDef );
+		Status.RegisterExterOutVariable ( typeID, varName );
 	}
 
 	public ISCLParsedScript GetResult () => new SCLParsingStatus.SCLParsedScript ( Status );
@@ -55,7 +117,7 @@ internal class SCLParsing {
 	*/
 
 	public void ProcessLine ( string line ) {
-		if ( EnableLogging ) LogAdd ( $"Processing line: {line}" );
+		if ( EnableLogging ) parsingContext.LogAdd ( $"Processing line: {line}" );
 		string originalLine = line;
 		line = line.Trim ();
 		int commentIndex = line.IndexOf ( '#' );
@@ -63,15 +125,40 @@ internal class SCLParsing {
 			line = line[..commentIndex].TrimEnd ();
 
 		if ( string.IsNullOrEmpty ( line ) ) return;
-		if ( TryParseMacro ( line ) ) return;
-		if ( TryParsePrae ( line ) ) return;
-		if ( TryParseUsing ( line ) ) return;
-		if ( TryParseDataType ( line ) ) return;
-		if ( TryParseAssignment ( line ) ) return;
-		if ( TryParseCommand ( ref line, null ) ) return;
+		if ( SubMacroParser.Parse ( line, parsingContext, out var macroResult ) ) {
+			macroResult.MustEndLine ();
+			macroResult.Apply ();
+			return;
+		}
+		if ( SubPraeParser.Parse ( line, parsingContext, out var praeResult ) ) {
+			praeResult.MustEndLine ();
+			praeResult.Apply ();
+			return;
+		}
+		if ( SubUsingParser.Parse ( line, parsingContext, out var usingResult ) ) {
+			usingResult.MustEndLine ();
+			usingResult.Apply ();
+			return;
+		}
+		if ( SubDataTypeParser.Parse ( line, parsingContext, out var dataTypeResult ) ) {
+			dataTypeResult.MustEndLine ();
+			dataTypeResult.Apply ();
+			return;
+		}
+		if ( SubAssignmentParser.Parse ( line, parsingContext, out var assignmentResult ) ) {
+			assignmentResult.MustEndLine ();
+			assignmentResult.Apply ();
+			return;
+		}
+		if ( SubCommandParser.Parse ( line, parsingContext, out var commandResult ) ) {
+			commandResult.MustEndLine ();
+			commandResult.Apply ();
+			return;
+		}
 		throw new InvalidOperationException ( $"Could not parse line: '{originalLine}'." );
 	}
 
+	/*
 	private ushort GetFlag (ref string line) {
 		int flagReq = 0;
 		if (line.StartsWith('?')) {
@@ -102,102 +189,7 @@ internal class SCLParsing {
 		return (ushort)flagReq;
 	}
 
-	private static (int guiderID, string arg)[] ProcessMacro ( IMacro macro, string line ) {
-		if ( macro.guiders.Count == 0 )
-			return [(-1, line)]; // No guiders, return the whole line as a single part
-
-		List<(int guiderID, string arg)> parts = [];
-		int lastPos = 0;
-		if ( macro.UnorderedGuiders ) {
-			string[] splitters = macro.guiders.Select ( g => g.split ).ToArray ();
-			while ( true ) {
-				int nearestPos = -1;
-				int nearestGuiderID = -1;
-				string nearestSplitter = null;
-				for ( int i = 0; i < splitters.Length; i++ ) {
-					int pos = line.IndexOf ( splitters[i], lastPos );
-					if ( pos < 0 ) continue;
-					if ( nearestPos < 0 || pos < nearestPos ) {
-						nearestPos = pos;
-						nearestGuiderID = i;
-						nearestSplitter = splitters[i];
-					}
-				}
-				if ( nearestPos < 0 ) break;
-				string part = line[lastPos..nearestPos];
-				parts.Add ( (nearestGuiderID, part) );
-				lastPos = nearestPos + nearestSplitter.Length;
-			}
-			if ( lastPos < line.Length ) {
-				string part = line[lastPos..];
-				parts.Add ( (-1, part) );
-			}
-		} else {
-			List<string> args = [.. line.Split ( [' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries )];
-			for ( int i = 0; i < macro.guiders.Count; i++ ) {
-				var guider = macro.guiders[i];
-				int pos = Math.Abs ( guider.after ) - 1;
-				bool canRepeat = guider.after < 0;
-
-				if ( pos >= args.Count ) {
-					if ( canRepeat ) continue;
-					throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' expects at least {guider.after + 1} arguments, but only {args.Count} were provided." );
-				}
-				int sepPos = (args[pos]?.IndexOf ( guider.split )).GetValueOrDefault ( -1 );
-				bool nextStarts = sepPos < 0 && (args.Count > pos + 1) && args[pos + 1].StartsWith ( guider.split );
-				if ( sepPos < 0 && !nextStarts ) {
-					if ( canRepeat ) continue;
-					else throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' expects argument {pos + 1} to start with '{guider.split}', but got '{args[pos]}'." );
-				}
-
-				string part = string.Join ( ' ', args[lastPos..pos] );
-				if ( nextStarts ) {
-					if ( part.Length == 0 || part.EndsWith ( ' ' ) ) part += args[pos];
-					else part += ' ' + args[pos];
-					pos++;
-					sepPos = 0;
-				} else {
-					if ( sepPos > 0 ) part += args[lastPos][..sepPos];
-				}
-				args[pos] = args[pos][(sepPos + guider.split.Length)..]; // Remove the guider split from the argument
-				if ( string.IsNullOrWhiteSpace ( args[pos] ) )
-					args.RemoveAt ( pos ); // Remove the current argument, as it is fully consumed
-
-				for ( int j = 0; j < macro.guiders.Count; j++ ) {
-					if ( guider.split.Contains ( macro.guiders[j].split ) ) continue;
-					if ( part.Contains ( macro.guiders[j].split ) )
-						throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' guider split '{macro.guiders[j].split}' found inside argument for guider split '{guider.split}'." );
-				}
-
-				parts.Add ( (i, part) );
-
-				if ( canRepeat ) {
-					for ( int j = pos - 1; j >= lastPos; j-- )
-						args.RemoveAt ( j );
-					i--;
-				} else
-					lastPos = pos;
-			}
-			if ( lastPos < args.Count ) {
-				string part = string.Join ( ' ', args[lastPos..] );
-				parts.Add ( (-1, part) );
-			}
-		}
-
-		if ( macro.SelectRight ) {
-			var copy = parts.ToArray ();
-			parts.Clear ();
-			if ( !string.IsNullOrWhiteSpace ( copy[0].arg ) )
-				parts.Add ( (-1, copy[0].arg) );
-			// Hopefully this simple trick will work: Simply combine previous guider ID with next part.
-			// This should convert left-selecting guiders to right-selecting ones.
-			for ( int i = 1; i < copy.Length; i++ )
-				parts.Add ( (copy[i - 1].guiderID, copy[i].arg) );
-		}
-		return parts.ToArray ();
-	}
-
-	private bool TryParseMacro  (string line) {
+	private bool TryParseMacro ( string line ) {
 		string originalLine = line;
 		string token = GetIdentifier ( ref line );
 		if ( string.IsNullOrEmpty ( token ) ) return false;
@@ -213,7 +205,7 @@ internal class SCLParsing {
 		return true;
 	}
 
-	private bool TryParseUsing (string line) {
+	private bool TryParseUsing ( string line ) {
 		string originalLine = line;
 		if ( !line.StartsWith ( "@using ", out string moduleName ) ) return false;
 		var module = ModuleLoader ( moduleName );
@@ -255,7 +247,7 @@ internal class SCLParsing {
 		return true;
 	}
 
-	private bool TryParseAssignment (  string line ) {
+	private bool TryParseAssignment ( string line ) {
 		string originalLine = line;
 		ushort flags = GetFlag ( ref line );
 		string token = GetIdentifier ( ref line );
@@ -426,5 +418,5 @@ internal class SCLParsing {
 			return ret;
 		}
 		return line;
-	}
+	}*/
 }

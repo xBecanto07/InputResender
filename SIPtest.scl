@@ -1,5 +1,5 @@
 @using BasicModule
 @using ScriptedInputProcessor
 
-SIP_Status sip_status
+@in SIP_Status_t sip_status
 PRINT_SIP_STATUS sip_status

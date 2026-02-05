@@ -219,12 +219,13 @@ public static class MdxExtensions {
 		return ret;
 	}
 
-	public static bool StartsWith ( this string line, string prefix, out string rest ) {
+	/// <summary>Normal string.StartsWith but returns the rest of the string on match, full string otherwise.</summary>
+	public static bool StartsWith ( this string line, string prefix, out string rest, StringComparison compareOptions = StringComparison.OrdinalIgnoreCase ) {
 		if ( string.IsNullOrEmpty ( line ) || string.IsNullOrEmpty ( prefix ) ) {
 			rest = line;
 			return false;
 		}
-		if ( line.StartsWith ( prefix, StringComparison.OrdinalIgnoreCase ) ) {
+		if ( line.StartsWith ( prefix, compareOptions ) ) {
 			rest = line.Substring ( prefix.Length );
 			return true;
 		}

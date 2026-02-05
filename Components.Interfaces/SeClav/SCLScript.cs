@@ -61,6 +61,24 @@ internal interface ISCLParsedScript {
 	IReadOnlyList<int> VariableTypes { get; }
 	IReadOnlyList<int> ResultTypes { get; }
 	IReadOnlyDictionary<int, Func<IDataType>> Getters { get; }
+	IReadOnlyDictionary<string, SIdVal> InputVars { get; }
+	// The runtime owner (RuntimeHolder) is responsible to insert proper function into the command list at index at InputSamplers[<name>]
+	IReadOnlyDictionary<string, int> InputSamplers { get; }
+	IReadOnlyDictionary<string, SIdVal> OutputVars { get; }
+	IReadOnlyDictionary<string, int> ExternFunctions { get; }
+
+	public struct ExternFunction {
+		public readonly string Name;
+		public readonly DataTypeDefinition ReturnType;
+		public readonly IReadOnlyList<(string name, DataTypeDefinition type)> Args;
+		public readonly Func<IReadOnlyList<IDataType>, IDataType> FunctionBody;
+		public ExternFunction ( string name, DataTypeDefinition returnType, IReadOnlyList<(string name, DataTypeDefinition type)> args, Func<IReadOnlyList<IDataType>, IDataType> functionBody ) {
+			Name = name;
+			ReturnType = returnType;
+			Args = args;
+			FunctionBody = functionBody;
+		}
+	}
 }
 
 internal interface ISCLDebugInfo {
@@ -232,4 +250,83 @@ internal struct CmdCall {
 
 internal struct CmdExtraArgs {
 
+}
+internal abstract class AExternFcn : ICommand {
+	protected List<(string name, DataTypeDefinition type, string description)> IndexerArg = [
+		("input", null, "Indexer placeholder")
+	];
+	protected string CmnName = "External Command - Empty";
+	protected DataTypeDefinition ResultType = null;
+	public bool IsInitialized => ResultType != null && argBuffer != null;
+	protected IDataType[] argBuffer = null;
+
+	public string CmdCode { get; init; }
+	public string CommonName => CmnName;
+	public string Description => "A placeholder for an external command.";
+	public int ArgC => argBuffer.Length;
+	public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => IndexerArg;
+	public DataTypeDefinition ReturnType => ResultType;
+
+	protected AExternFcn (string cmdName) {
+		CmdCode = cmdName;
+		CmnName = "External Command - " + cmdName;
+	}
+
+	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
+		List<string> progress = [];
+		return ExecuteSafe ( runtime, args, ref progress );
+	}
+
+	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
+		if ( args.Count != argBuffer.Length )
+			throw new InvalidOperationException ( $"Invalid argument count for external command '{CmnName}': expected {argBuffer.Length}, got {args.Count}." );
+		for ( int i = 0; i < argBuffer.Length; i++ ) {
+			argBuffer[i] = runtime.SafeGetVar ( args[i] );
+			if ( argBuffer[i].Definition.Equals ( IndexerArg[i].type ) == false )
+				throw new InvalidOperationException ( $"Invalid argument type for external command '{CmnName}' at argument {i}: expected {IndexerArg[i].type.Name}, got {argBuffer[i].Definition.Name}." );
+		}
+		return ExecuteInternal ( runtime );
+	}
+
+	protected void Set ( string commonName, DataTypeDefinition resultType, DataTypeDefinition[] argType ) {
+		CmnName = "External Command - " + commonName;
+		ResultType = resultType;
+		while ( argType.Length != IndexerArg.Count )
+			IndexerArg.Add ( ($"input{IndexerArg.Count}", null, "Indexer placeholder") );
+		for ( int i = 0; i < argType.Length; i++ )
+			IndexerArg[i] = ($"input{i}", argType[i], $"Input argument of type {argType[i].Name}");
+		argBuffer = new IDataType[argType.Length];
+	}
+
+	protected abstract IDataType ExecuteInternal ( ISCLRuntime runtime );
+}
+
+internal class ExternFunction : AExternFcn {
+	private Func<ISCLRuntime, IDataType[], IDataType> MapperFunction;
+
+	public ExternFunction ( string cmdName, DataTypeDefinition[] inputTypes, DataTypeDefinition outputType ) : base ( cmdName ) {
+		Set ( "External Function - Empty", outputType, inputTypes, null );
+	}
+
+	protected override IDataType ExecuteInternal ( ISCLRuntime runtime ) => MapperFunction ( runtime, argBuffer );
+
+	public void Set ( string commonName, DataTypeDefinition resultType, DataTypeDefinition[] argTypes, Func<ISCLRuntime, IDataType[], IDataType> function ) {
+		Set ( commonName, resultType, argTypes );
+		MapperFunction = function;
+	}
+}
+
+internal class ExternMapper : AExternFcn {
+	private Func<ISCLRuntime, IDataType, IDataType> MapperFunction;
+
+	public ExternMapper ( string cmdName, DataTypeDefinition inputType, DataTypeDefinition outputType ) : base ( cmdName ) {
+		Set ( "External Mapper - Empty", outputType, inputType, null );
+	}
+
+	protected override IDataType ExecuteInternal ( ISCLRuntime runtime ) => MapperFunction ( runtime, argBuffer[0] );
+
+	public void Set ( string commonName, DataTypeDefinition resultType, DataTypeDefinition argType, Func<ISCLRuntime, IDataType, IDataType> function ) {
+		Set ( commonName, resultType, [argType] );
+		MapperFunction = function;
+	}
 }
