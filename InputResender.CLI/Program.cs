@@ -6,14 +6,13 @@ using InputResender.Services;
 
 namespace InputResender.CLI;
 public static class Program {
-	public static CliWrapper StartMain ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
-		CliWrapper cliWrapper = new ( console );
-		ArgParser parser = new ( string.Join ( " ", args ), console.WriteLine );
+	public static void StartMain ( string[] args, ACommandLoader TLLoader, CliWrapper cliWrapper ) {
+		ArgParser parser = new ( string.Join ( " ", args ), cliWrapper.Console.WriteLine );
 		if ( !Config.Load ( parser.String ( "cfg", null ) ) )
 			Config.Save (); // Couldn't load configuration, save the current one
 
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
-		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => { /* Cleanup is done after main loop */ } ) );
+		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( cliWrapper.Console.WriteLine, cliWrapper.Console.Clear, () => { /* Cleanup is done after main loop */ } ) );
 		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
 		cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader () );
 		if ( TLLoader != null ) cliWrapper.CmdProc.AddCommand ( TLLoader );
@@ -24,13 +23,10 @@ public static class Program {
 			else cliWrapper.CmdProc.ProcessLine ( cmd );
 		}
 
-		console.WriteLine ( "Program started. Type 'help' for a list of commands. Type 'exit' to close the program." );
-		return cliWrapper;
+		cliWrapper.Console.WriteLine ( "Program started. Type 'help' for a list of commands. Type 'exit' to close the program." );
 	}
 
-	public static void Main ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
-		CliWrapper cliWrapper = StartMain ( args, TLLoader, console );
-
+	public static void MainRun ( CliWrapper cliWrapper ) {
 		while ( true ) {
 			var res = cliWrapper.ProcessLineBlocking ();
 			if ( res == null ) break;
@@ -38,7 +34,13 @@ public static class Program {
 
 		cliWrapper.CmdProc.Owner.Close ();
 
-		console.WriteLine ( "Program closed." );
+		cliWrapper.Console.WriteLine ( "Program closed." );
+	}
+
+	public static void Main ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
+		CliWrapper cliWrapper = new ( console );
+		StartMain ( args, TLLoader, cliWrapper );
+		MainRun ( cliWrapper );
 	}
 
 	enum MsgType { None, Result, Error }

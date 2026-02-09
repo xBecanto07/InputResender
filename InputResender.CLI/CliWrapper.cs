@@ -10,6 +10,8 @@ public class CliWrapper {
 	public readonly CommandProcessor CmdProc;
 	public bool VerboseMode = false;
 
+	public event Action<string, CommandResult> OnCommandProcessed;
+
 	private bool PrintStart => Config.ResponsePrintFormat == Config.PrintFormat.Normal
 		|| Config.ResponsePrintFormat == Config.PrintFormat.Full;
 
@@ -78,6 +80,7 @@ public class CliWrapper {
 		var res = processFcn ( line );
 		CmdProc?.Owner?.FlushDelayedMsgs ( Console.WriteLine );
 		if ( Config.ResponsePrintFormat != Config.PrintFormat.None ) Program.PrintResult ( res, Console, Config.MaxOnelinerLength );
+		OnCommandProcessed?.Invoke ( line, res );
 		return res;
 	}
 

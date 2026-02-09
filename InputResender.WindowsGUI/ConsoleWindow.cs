@@ -65,7 +65,8 @@ public partial class ConsoleWindow : Form {
 
 	private void ConsoleWindow_Load ( object sender, EventArgs e ) {
 		console = new ( WriteLine, ReadLine, Write, Clear, ReadKey, OverwriteLine );
-		cliWrapper = InputResender.CLI.Program.StartMain ( [], new TopLevelLoader (), console );
+		cliWrapper = new ( console );
+		InputResender.CLI.Program.StartMain ( [], new TopLevelLoader (), cliWrapper );
 		Task.Delay ( 50 ).Wait ();
 		lock ( generalLock ) {
 			if (lineWaiter != null) {
