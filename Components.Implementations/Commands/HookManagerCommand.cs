@@ -183,7 +183,7 @@ public class HookManagerCommand : ACommand {
 			// This is currently the point of hook callback execution
 			case CallbackFcn.None: return true;
 			case CallbackFcn.Print:
-				lastContext.CmdProc.ProcessLine ( $"print \"{EventToStr ( e )}\"" );
+				lastContext.CmdProc.ProcessLine ( $"print \"Encountered Input Event: {EventToStr ( e )}\"" );
 				return true;
 			case CallbackFcn.Fcn:
 				try {

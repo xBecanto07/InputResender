@@ -150,6 +150,20 @@ public interface ISCLRuntime {
 
 	void UpdateMemoryInfo ( ref Dictionary<string, string> memInfo );
 
+	T SafeGetVar<T>( SIdVal varID ) where T : SeClav.IDataType {
+		var arg0 = SafeGetVar ( varID );
+		if ( arg0 is not T status )
+			throw new InvalidOperationException ( $"Argument 0 is not of type {typeof(T).Name}." );
+		return status;
+	}
+
+	(T, U) SafeGetVar<T, U> ( SIdVal var0, SIdVal var1 )
+		where T : SeClav.IDataType where U : SeClav.IDataType
+		=> (SafeGetVar<T> ( var0 ), SafeGetVar<U> ( var1 ));
+	(T, U, V) SafeGetVar<T, U, V> ( SIdVal var0, SIdVal var1, SIdVal var2 )
+		where T : SeClav.IDataType where U : SeClav.IDataType where V : SeClav.IDataType
+		=> (SafeGetVar<T> ( var0 ), SafeGetVar<U> ( var1 ), SafeGetVar<V> ( var2 ));
+
 	static void SetOrReset (ISCLRuntime runtime, SCLFlags flag, bool set ) {
 		if ( set ) runtime.SetFlag ( flag );
 		else runtime.ResetFlag ( flag );

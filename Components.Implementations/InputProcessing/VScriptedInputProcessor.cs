@@ -4,6 +4,7 @@ using DataHolder = Components.Interfaces.HInputEventDataHolder;
 using System.Xml;
 using SeClav;
 using SeClav.DataTypes;
+using Components.Interfaces.SeClav;
 
 namespace Components.Implementations;
 public class VScriptedInputProcessor : DInputProcessor {
@@ -53,6 +54,8 @@ public class VScriptedInputProcessor : DInputProcessor {
 
 		public IReadOnlySet<ICommand> Commands => new HashSet<ICommand> () {
 			new SCL_PrintStatusCmd (),
+			new SCL_GetKeyName (),
+			new SCL_GetKeyStatus (),
 			new SCL_FireKeyCmd (),
 		};
 
@@ -125,6 +128,69 @@ public class VScriptedInputProcessor : DInputProcessor {
 		}
 	}
 
+	public class SCL_GetKeyName : SeClav.ICommand {
+		private readonly BasicValueStringDef stringType = new ();
+		private readonly SCLT_Void voidType = new ();
+
+		public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => [
+			( "status", new SCL_StatusTypeDef (), "The status containing data" ),
+			( "id", new BasicValueIntDef(), "Input key ID" )
+			];
+
+		public int ArgC => 2;
+		public DataTypeDefinition ReturnType => stringType;
+		public string CmdCode => "GET_SIP_KEY_NAME";
+		public string CommonName => "Get Key Name";
+		public string Description => "Get name of i-th key in given input event";
+
+		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
+			List<string> progress = [];
+			return ExecuteSafe ( runtime, args, ref progress );
+		}
+		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
+			var (status, idVal) = runtime.SafeGetVar<SCL_StatusType, BasicValueInt> ( args[0], args[1] );
+
+			if (idVal.Value >= status.InputCombination.Length)
+				throw new InvalidOperationException ( $"Input ID {idVal.Value} is out of range for the current input combination." );
+
+			return new BasicValueString ( stringType, ((KeyCode)status.InputCombination[idVal.Value].InputCode).ToString () );
+		}
+	}
+
+	public class SCL_GetKeyStatus : SeClav.ICommand {
+		private readonly BasicValueIntDef intType = new ();
+		private readonly BasicValueStringDef stringType = new ();
+		private readonly SCLT_Void voidType = new ();
+
+		public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => [
+			( "status", new SCL_StatusTypeDef (), "The status containing data" ),
+			( "name", stringType, "Input key name" )
+			];
+
+		public int ArgC => 2;
+		public DataTypeDefinition ReturnType => intType;
+		public string CmdCode => "GET_SIP_KEY_STATUS";
+		public string CommonName => "Get Key Status";
+		public string Description => "Get press status of given key in given input event";
+
+		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
+			List<string> progress = [];
+			return ExecuteSafe ( runtime, args, ref progress );
+		}
+		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
+			var (status, key) = runtime.SafeGetVar<SCL_StatusType, BasicValueString> ( args[0], args[1] );
+
+			//return new BasicValueString ( stringType, ((KeyCode)status.InputCombination[idVal.Value].InputCode).ToString () );
+
+			foreach ( var data in status.InputCombination ) {
+				if ( ((KeyCode)data.InputCode).ToString () == key.Value ) {
+					return new BasicValueInt ( intType, data.ValueX );
+				}
+			}
+			return new BasicValueInt ( intType, -1 );
+		}
+	}
+
 	public class SCL_FireKeyCmd : SeClav.ICommand {
 		private readonly SeClav.DataTypes.SCLT_Void voidType = new ();
 
@@ -134,8 +200,8 @@ public class VScriptedInputProcessor : DInputProcessor {
 		public int ArgC => 3;
 		public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => [
 			( "status", new SCL_StatusTypeDef (), "The status to use." ),
-			( "key", new Components.Interfaces.SeClav.BasicValueStringDef (), "The key to fire." ),
-			( "pressed", new Components.Interfaces.SeClav.BasicValueIntDef (), "1 to press the key, 0 to release." )
+			( "key", new BasicValueStringDef (), "The key to fire." ),
+			( "pressed", new BasicValueIntDef (), "1 to press the key, 0 to release." )
 		];
 		public DataTypeDefinition ReturnType => voidType;
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
@@ -143,18 +209,10 @@ public class VScriptedInputProcessor : DInputProcessor {
 			return ExecuteSafe ( runtime, args, ref progress );
 		}
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
-			var arg0 = runtime.SafeGetVar ( args[0] );
-			if ( arg0 is not SCL_StatusType status ) {
-				throw new InvalidOperationException ( "Argument 0 is not of type SCL_StatusType." );
-			}
-			var arg1 = runtime.SafeGetVar ( args[1] );
-			if ( arg1 is not Components.Interfaces.SeClav.BasicValueString keyVal ) {
-				throw new InvalidOperationException ( "Argument 1 is not of type BasicValueString." );
-			}
-			var arg2 = runtime.SafeGetVar ( args[2] );
-			if ( arg2 is not Components.Interfaces.SeClav.BasicValueInt pressedVal ) {
-				throw new InvalidOperationException ( "Argument 2 is not of type BasicValueInt." );
-			}
+			var (status, keyVal, pressedVal) = runtime.SafeGetVar<
+				SCL_StatusType, BasicValueString, BasicValueInt
+				> ( args[0], args[1], args[2] );
+
 			bool pressed = pressedVal.Value != 0;
 			status.Processor.Owner.PushDelayedMsg ( $"Firing key '{keyVal.Value}' - Pressed: {pressed}" );
 

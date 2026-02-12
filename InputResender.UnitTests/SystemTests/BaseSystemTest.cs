@@ -23,7 +23,7 @@ public abstract class BaseSystemTest : IDisposable {
 	bool closing = false;
 
 	readonly List<(string cmd, CommandResult res)> CmdResults = [];
-	const int DelayMult = 2;
+	const int DelayMult = 20;
 	const string StartCmd = "print \"Main Started!\"";
 
 	protected BaseSystemTest ( ITestOutputHelper output, params string[] initCmds ) : base () {
@@ -109,8 +109,10 @@ public abstract class BaseSystemTest : IDisposable {
 	protected string[] Test ( string[] cmds, string[] expectedOuts, TestSensitivity sensitivity, TestTimeout timeout ) {
 		foreach ( string cmd in cmds )
 			StdStream.InputLine ( cmd );
+		WaitUntilCmd ( cmds[^1], 2000 ); // Wait until all commands are processed before starting the timeout for callbacks
+		Task.Delay ( 20 ).Wait ();
+
 		if (timeout == TestTimeout.Immediate ) {
-			WaitUntilCmd ( cmds[^1], 20 );
 			return AssertFinal ( expectedOuts, sensitivity );
 		}
 		int reps = timeout switch {
@@ -197,6 +199,9 @@ public abstract class BaseSystemTest : IDisposable {
 		if (sensitivity.HasFlag(TestSensitivity.Exclusive) && unusedLines.Count > 0 )
 			throw new Exception ( $"Found unexpected output: {string.Join ( "\n", unusedLines.Select ( i => output[i] ) )}" );
 
+		Output.WriteLine ( "Last known output:" );
+		foreach ( string s in StdStream.ReadAllOutput () )
+			Output.WriteLine ( s );
 		return output;
 	}
 }

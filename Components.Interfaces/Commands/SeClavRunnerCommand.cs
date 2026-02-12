@@ -51,12 +51,15 @@ public class SeClavRunnerCommand : ACommand {
 			if ( string.IsNullOrEmpty ( script ) )
 				return new CommandResult ( "Script cannot be empty." );
 			context.Args.RegisterSwitch ( 'f', "force" );
+			context.Args.RegisterSwitch ( 'i', "inline" );
 			bool alreadyContains = ParsedScripts.ContainsKey ( script );
 			bool shouldForce = context.Args.Present ( "--force" );
 			if ( alreadyContains && !shouldForce )
 				return new CommandResult ( $"Script '{script}' is already parsed. Use 'force' option to reparse." );
 
-			string code = FileLoader ( script );
+			string code = context.Args.Present ( "--inline" )
+				? context.Args.String ( "--inline", "code", 4 )
+				: FileLoader ( script );
 			if ( string.IsNullOrEmpty ( code ) )
 				return new CommandResult ( $"Failed to load script from '{script}'." );
 
