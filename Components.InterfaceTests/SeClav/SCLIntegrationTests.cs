@@ -31,7 +31,7 @@ public class SCLIntegrationTests {
 	}
 
 	private SCLAssertionRuntime RunScript ( SCLParsing parser, Action<SCLRuntimeHolder> setup ) {
-		// If you want the holder too, not just the runtime, use the 'setup' action to store it somewhere 😉
+		// If you want the holder too, not just the runtime, use the 'setup' action to store it somewhere 😉 - Haha, thanks man! What a helpful advice! 😂
 		ISCLDebugInfo result = parser.GetResultWithDebugInfo ();
 		var runtime = new SCLAssertionRuntime ( result );
 		SCLRuntimeHolder holder = new ( runtime );
@@ -293,5 +293,17 @@ public class SCLIntegrationTests {
 		outputVar = null;
 		holder.TryStoreOutputVar ("extID", null, ref outputVar).Should ().BeTrue ();
 		outputVar.Should ().NotBeNull ().And.BeOfType<TestValueInt> ().Subject.Value.Should ().Be ( 42 );
+	}
+
+	[Fact]
+	public void RepeatedRun () {
+		parser.ProcessLine ( "TestInt val" );
+		parser.ProcessLine ( "val = ADD_INT val 1" );
+		SCLRuntimeHolder holder = null;
+		var assertionRuntime = RunScript ( parser, h => holder = h );
+		for ( int i = 0; i < 10; i++ )
+			holder.Execute ( true );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "val" );
+		val.Value.Should ().Be ( 1 );
 	}
 }

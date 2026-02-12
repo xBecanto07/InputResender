@@ -42,10 +42,15 @@ public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 		if ( dsc == null ) dsc = $"{typeof ( CA ).Name}<{typeof ( DT ).Name}> => {typeof ( CB ).Name}";
 		compJoiner.RegisterJoiner ( typeof ( CA ), typeof ( CB ), dsc, ( joinerComp, obj ) => {
 			string objType = obj.GetType ().Name + " - " + obj.GetType ().FullName;
-			if (obj is not DT) return (false, null);
+			if ( obj is not DT ) return (false, null);
 			var activeComp = joinerComp.Owner?.Fetch<CB> ();
 			if ( activeComp == null ) return (false, null);
-			return joiner ( compJoiner, activeComp, (DT)obj );
+			try {
+				return joiner ( compJoiner, activeComp, (DT)obj );
+			} catch ( Exception ex ) {
+				compJoiner.Note ( $"Exception in joiner {dsc} : {ex}" );
+				return (false, null);
+			}
 		} );
 	}
 	/// <summary>Try to run a pipeline to any of the given data objects. Returns number of successful steps for the first successful pipeline start, or 0 if none succeeded.</summary>

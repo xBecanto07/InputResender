@@ -19,7 +19,8 @@
     <setupPipes>
       <P0>hook manager start</P0>
       <P1>pipeline new Sender DInputProcessor DDataSigner DPacketSender</P1>
-      <P2>pipeline new Recver DPacketSender DDataSigner DInputSimulator</P2>
+      <P2>pipeline new Recver DPacketSender DDataSigner DInputSimulator DInputSimulator</P2>
+      <P2>pipeline new LocalCallback DInputProcessor DInputSimulator SHookManager</P2>
       <P3>pipeline new InputProcess DInputReader DInputMerger DInputProcessor</P3>
       <P4>pipeline new HookManagerInputProcess SHookManager DInputMerger DInputProcessor</P4>
     </setupPipes>

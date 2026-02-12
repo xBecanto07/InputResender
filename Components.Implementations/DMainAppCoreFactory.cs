@@ -54,6 +54,25 @@ public class DMainAppCoreFactory {
 			HMessageHolder msg = new ( HMessageHolder.MsgFlags.None, bin );
 			return (true, signer.Encrypt ( msg ));
 		} );
+		DComponentJoiner.TryRegisterJoiner<DInputSimulator, HookManagerCommand.SHookManager, HInputEventDataHolder[]>
+			/* Ehm, what's the difference between HInputEventDataHolder and InputData? 🤔
+			Please, create actual documentation for this project! 🙏 Anyway, there are 4 datatypes related to this:
+			1) HInputData - Abstract holder for low-level data, platform dependent data implemented in the inheriting child.
+				- Created by DLowLevelInput
+				- example of implementation is WinLLInputData
+			2) HInputEventDataHolder - Abstract holder for higher-level data, platform independent data (HookInfo, InputCode, V3_Value|Delta)
+				- created by DInputReader by converting from HInputData
+				- example of implementation is HKeyboardEventDataHolder
+			3) InputData - Non-abstract high-level data, containing 'Command' rather than specific numerical data
+				- created by DInputProcessor
+			4) HMessageHolder - Envelope around binary data to be sent over network */
+
+			( compJoiner, ( joiner, manager, data ) => {
+				foreach (var hiedh in data) {
+					manager.HookCallback ( hiedh );
+				}
+				return (true, null);
+			} );
 		DComponentJoiner.TryRegisterJoiner<DDataSigner, DPacketSender, HMessageHolder> ( compJoiner, ( joiner, sender, msg ) => {
 			// Send encrypted data
 			sender.Send ( msg );
@@ -68,7 +87,16 @@ public class DMainAppCoreFactory {
 			byte[] data = msg.InnerMsg;
 			InputData input = new ( joiner );
 			input.Deserialize ( data, overwrite: true );
-			var pressAr = simulator.ParseCommand ( input );
+			return (true, simulator.ParseCommand ( input ));
+		} );
+		DComponentJoiner.TryRegisterJoiner<DInputProcessor, DInputSimulator, HMessageHolder> ( compJoiner, ( joiner, simulator, msg ) => {
+			// Simulate input from decrypted data
+			byte[] data = msg.InnerMsg;
+			InputData input = new ( joiner );
+			input.Deserialize ( data, overwrite: true );
+			return (true, simulator.ParseCommand ( input ));
+		} );
+		DComponentJoiner.TryRegisterJoiner<DInputSimulator, DInputSimulator, HInputEventDataHolder[]> ( compJoiner, ( joiner, simulator, pressAr ) => {
 			return (true, simulator.Simulate ( pressAr ));
 		} );
 
