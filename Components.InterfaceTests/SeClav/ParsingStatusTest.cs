@@ -301,4 +301,41 @@ public class ParsingStatusTest {
 		debugInfo.VarNames.Should ().BeEmpty ();
 		debugInfo.Script.VariableTypes.Should ().BeEmpty ();
 	}
+
+	[Theory]
+	// Note that LSB is always set to allow checking for 'no flag'. FlagRequest doesn't store as bitmask but as a shift value, so 'no flag' is 1<<0 = 1.
+	[InlineData ( "?N ", 0b0000_0000_0000_0001 )]
+	[InlineData ( "?! ", 0b0000_0000_0000_0011 )]
+	[InlineData ( "?~ ", 0b0000_0000_0000_0101 )]
+	[InlineData ( "?= ", 0b0000_0000_0000_1001 )]
+	[InlineData ( "?> ", 0b0000_0000_0001_0001 )]
+	[InlineData ( "?< ", 0b0000_0000_0010_0001 )]
+	[InlineData ( "?1 ", 0b0000_0000_0000_0011 )]
+	[InlineData ( "?2 ", 0b0000_0000_0000_0101 )]
+	[InlineData ( "?3 ", 0b0000_0000_0000_1001 )]
+	[InlineData ( "?4 ", 0b0000_0000_0001_0001 )]
+	[InlineData ( "?5 ", 0b0000_0000_0010_0001 )]
+	[InlineData ( "?6 ", 0b0000_0000_0100_0001 )]
+	[InlineData ( "?7 ", 0b0000_0000_1000_0001 )]
+	[InlineData ( "?8 ", 0b0000_0001_0000_0001 )]
+	[InlineData ( "?9 ", 0b0000_0010_0000_0001 )]
+	[InlineData ( "?A ", 0b0000_0100_0000_0001 )]
+	[InlineData ( "?B ", 0b0000_1000_0000_0001 )]
+	[InlineData ( "?C ", 0b0001_0000_0000_0001 )]
+	[InlineData ( "?D ", 0b0010_0000_0000_0001 )]
+	[InlineData ( "?E ", 0b0100_0000_0000_0001 )]
+	[InlineData ( "?F ", 0b1000_0000_0000_0001 )]
+	[InlineData ( "?NNN ", 0b0000_0000_0000_0001 )]
+	[InlineData ( "?N1 ", 0b0000_0000_0000_0011 )]
+	[InlineData ( "?=A ", 0b0000_0100_0000_1001 )]
+	[InlineData ( "?!>5 ", 0b0000_0000_0011_0010 )]
+	public void TestConditionMask (string line, int mask) {
+		ushort flagReq = Components.Interfaces.SeClav.Parsing.ParsingContext.GetFlag ( ref line );
+		string bitFlagReq = Convert.ToString ( flagReq, 2 ).PadLeft ( 16, '0' );
+		for ( int i = 1; i < bitFlagReq.Length; i += 6 )
+			bitFlagReq = bitFlagReq.Insert ( i, "." ); // Separate the 5-bit flag selectors
+		int flagMask = SCLRunner.CreateFlagMask ( flagReq );
+		string bitFlagMask = Convert.ToString ( flagMask, 2 ).PadLeft ( 16, '0' );
+		flagMask.Should ().Be ( mask );
+	}
 }

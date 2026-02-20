@@ -31,3 +31,31 @@ public class CmdAssignment : ICommand {
 		return ret;
 	}
 }
+
+public class EmitMacro ( Action<ushort, string> callback ) : IMacro {
+	public bool SelectRight => false;
+	public bool UnorderedGuiders => true;
+	public IReadOnlyList<(int after, string split)> guiders => [];
+	public string CmdCode => "emit";
+	public string CommonName => "Emit Event";
+	public string Description => "Emits an event (FSM transition) with the specified name.";
+	public string[] RewriteByGuiders ( ushort flags, (int guiderID, string arg)[] parts ) {
+		callback ( flags, parts[0].arg );
+		return [];
+	}
+}
+
+public class ThrowCmd : ICommand {
+	public string CmdCode => "throw";
+	public string CommonName => "Throw Exception";
+	public string Description => "Throws an exception with the specified message.";
+	public int ArgC => 0;
+	public IReadOnlyList<(string name, DataTypeDefinition type, string description)> Args => [];
+	public DataTypeDefinition ReturnType => new SCLT_Void ();
+	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
+		throw new Exception ( "Exception thrown by SCL script." );
+	}
+	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
+		throw new Exception ( "Exception thrown by SCL script." );
+	}
+}

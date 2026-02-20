@@ -10,6 +10,7 @@ using TArg = SeClav.SId<SeClav.ArgTag>;
 
 namespace Components.InterfaceTests.SeClav;
 internal class SCLAssertionRuntime : SCLRuntime {
+	public SCLDebugger Debugger;
 	public List<string> ProgressInfo;
 	readonly ISCLDebugInfo DebugInfo;
 

@@ -84,6 +84,14 @@ public static class MdxExtensions {
 		return ret;
 	}
 
+	public static bool Contains<T> ( this T[] ar, T val ) {
+		if ( ar == null ) return false;
+		foreach ( T t in ar ) {
+			if ( t.Equals ( val ) ) return true;
+		}
+		return false;
+	}
+
 	public static long CalcHash ( this ReadOnlySpan<byte> data, int start = 0, int size = -1 ) {
 		if ( data.IsEmpty ) return -1;
 		if ( size < 0 ) size = data.Length - start;
@@ -231,6 +239,15 @@ public static class MdxExtensions {
 		}
 		rest = line;
 		return false;
+	}
+
+	public static string SubstringBetween ( this string line, string prefix, string suffix, StringComparison compareOptions = StringComparison.OrdinalIgnoreCase ) {
+		if ( string.IsNullOrEmpty ( line ) || string.IsNullOrEmpty ( prefix ) || string.IsNullOrEmpty ( suffix ) ) return line;
+		if ( !line.StartsWith ( prefix, compareOptions ) ) return null;
+		line = line[prefix.Length..];
+		int suffixPos = line.IndexOf ( suffix, compareOptions );
+		if ( suffixPos < 0 ) return null;
+		return line[0..suffixPos];
 	}
 
 	public static int IndexOf<T> ( this IReadOnlyList<T> list, Func<T, bool> predicate ) {
