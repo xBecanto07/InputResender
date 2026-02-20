@@ -311,7 +311,7 @@ internal class SetResetMultipleFlags : IMacro {
 	public bool UnorderedGuiders => true;
 	public IReadOnlyList<(int after, string split)> guiders => [(-1, "-"), (-1, "+")];
 
-	public string[] RewriteByGuiders ( (int guiderID, string arg)[] parts ) {
+	public string[] RewriteByGuiders ( ushort flags, (int guiderID, string arg)[] parts ) {
 		SetFlag setter = new ();
 		ResetFlag resetter = new ();
 		List<string> rewritten = [];
@@ -338,7 +338,7 @@ internal class JoinStrings : IMacro {
 	public bool UnorderedGuiders => false;
 	public IReadOnlyList<(int after, string split)> guiders => [(1, "="), (-2, "|")];
 	// ⮤ Allow limitless number of strings separated by commas
-	public string[] RewriteByGuiders ( (int guiderID, string arg)[] parts ) {
+	public string[] RewriteByGuiders ( ushort flags, (int guiderID, string arg)[] parts ) {
 		// Just a reminder, this is only a test method, doesn't need to be user-friendly command
 		// This specific macro would provide bad result for strings containing the separator inside i.e. '|'.
 		ConcatStrs concater = new ();
@@ -367,7 +367,7 @@ internal class AddOrAppend : IMacro {
 	public bool SelectRight => true;
 	public bool UnorderedGuiders => false;
 	public IReadOnlyList<(int after, string split)> guiders => [(1, "->"), (-2, "."), (2, "."), (-3, "+")];
-	public string[] RewriteByGuiders ( (int guiderID, string arg)[] parts ) {
+	public string[] RewriteByGuiders ( ushort flags, (int guiderID, string arg)[] parts ) {
 		if ( parts.Length < 3 )
 			throw new InvalidOperationException ( "ADD_OR_APPEND macro requires at least two arguments." );
 		ConcatStrs concater = new ();

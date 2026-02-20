@@ -25,6 +25,7 @@ internal class SCLParsingStatus {
 		public IReadOnlyList<IModuleInfo> Modules { get; }
 		public IReadOnlyList<int> VariableTypes { get; }
 		public IReadOnlyList<int> ResultTypes { get; }
+		public IReadOnlyList<string> Disassembly { get; }
 		public IReadOnlyDictionary<int, Func<IDataType>> Getters { get; }
 		public IReadOnlyDictionary<string, SIdVal> InputVars { get; }
 		public IReadOnlyDictionary<string, int> InputSamplers { get; }
@@ -34,16 +35,27 @@ internal class SCLParsingStatus {
 		public SCLParsedScript ( SCLParsingStatus parsingStatus ) {
 			// Also could have/extract from status some disassembly info (closer discussion in diary)
 
-			//SCLParsing parser = new ( moduleLoader );
-
-			//foreach ( string line in code.Split ( ['\n', '\r'], StringSplitOptions.RemoveEmptyEntries ) )
-			//	parser.ProcessLine ( line );
+			foreach ( (string targetState, int cmdIndex) in parsingStatus.StateJumps ) {
+				if ( !parsingStatus.StateStarts.TryGetValue ( targetState, out int stateStart ) )
+					throw new InvalidOperationException ( $"State jump target '{targetState}' does not have a registered state start." );
+				CmdCall jmpCall = parsingStatus.commandIndices[cmdIndex];
+				parsingStatus.commandIndices[cmdIndex] = new CmdCall
+					( new TOpCode ( jmpCall.opCode )
+					, SCLInterpreter.CrDst ( stateStart )
+					, jmpCall.flags
+					, new TArg ( jmpCall.arg1 )
+					, new TArg ( jmpCall.arg2 )
+					, new TArg ( jmpCall.arg3 )
+					, new TArg ( jmpCall.arg4 )
+					);
+			}
 
 			DataTypes = parsingStatus.dataTypes.ToList ().AsReadOnly ();
 			Commands = parsingStatus.commands.ToList ().AsReadOnly ();
 			CommandIndices = parsingStatus.commandIndices.ToList ().AsReadOnly ();
 			Modules = parsingStatus.modules.ToList ().AsReadOnly ();
 			Constants = parsingStatus.constants.ToList ().AsReadOnly ();
+			Disassembly = parsingStatus.disassembly.ToList ().AsReadOnly ();
 			VariableTypes = parsingStatus.variables.Select ( v => v.dataType ).ToList ().AsReadOnly ();
 			ResultTypes = parsingStatus.results.Select ( r => parsingStatus.dataTypes.IndexOf ( r.Definition ) ).ToList ().AsReadOnly ();
 			Getters = new Dictionary<int, Func<IDataType>> ( parsingStatus.getters );
@@ -51,6 +63,9 @@ internal class SCLParsingStatus {
 			InputSamplers = parsingStatus.inputSamplers.AsReadOnly ();
 			OutputVars = parsingStatus.outputVars.AsReadOnly ();
 			ExternFunctions = parsingStatus.externFunctions.AsReadOnly ();
+
+			if (Disassembly.Count != CommandIndices.Count)
+				throw new InvalidOperationException ( $"Disassembly count ({Disassembly.Count}) does not match command indices count ({CommandIndices.Count})." );
 		}
 	}
 
@@ -117,11 +132,17 @@ internal class SCLParsingStatus {
 	readonly Dictionary<string, IMacro> macros = [];
 	readonly Dictionary<string, PraeDirective> praeDirectives = [];
 
+	readonly Dictionary<string, int> StateStarts = [];
+	readonly List<(string, int)> StateJumps = [];
+
 	readonly Dictionary<string, string> MemoryInfo = [];
 	public IReadOnlyDictionary<string, string> GetMemoryInfoRef () => MemoryInfo;
 
 	public SCLParsedScript GetResult () => new SCLParsedScript ( this );
 	public SCLParsingContext GetContext () => new SCLParsingContext ( new SCLContextInner ( this ) );
+
+	readonly List<string> disassembly = [];
+	public string LastLine { private get; set; } = "";
 
 	public SCLParsingStatus () {
 		dataTypeMap["void"] = new SCLT_Void ();
@@ -181,6 +202,7 @@ internal class SCLParsingStatus {
 		if ( commands.Any ( c => c.CmdCode == cmd.CmdCode ) )
 			throw new InvalidOperationException ( $"Command '{cmd.CmdCode}' is already registered." );
 		commands.Add ( cmd );
+		commandMap.Add ( cmd.CmdCode, cmd );
 		return SCLInterpreter.CrOpCode ( commands.Count - 1 );
 	}
 
@@ -189,6 +211,13 @@ internal class SCLParsingStatus {
 				if ( praeDirectives.ContainsKey ( name ) )
 			throw new InvalidOperationException ( $"Prae directive '{name}' is already defined." );
 		praeDirectives[name] = prae;
+	}
+
+	public void RegisterMacro ( IMacro macro ) {
+		ArgumentNullException.ThrowIfNull ( macro );
+		if ( macros.ContainsKey ( macro.CmdCode ) )
+			throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' is already defined." );
+		macros[macro.CmdCode] = macro;
 	}
 
 	public IMacro TryGetMacro (string cmd) {
@@ -218,6 +247,8 @@ internal class SCLParsingStatus {
 		if ( dataTypeMap.TryGetValue ( dataType.Name, out var existing ) )
 			dataType = existing;
 		else throw new InvalidOperationException ( $"Data type '{dataType.Name}' is not registered." );
+		if (!dataTypes.Contains ( dataType ) )
+			dataTypes.Add ( dataType );
 	}
 
 	public DataTypeDefinition GetDataType ( string name ) {
@@ -274,6 +305,9 @@ internal class SCLParsingStatus {
 		ArgumentNullException.ThrowIfNull ( dataTypeIn, nameof ( dataTypeIn ) );
 		ArgumentNullException.ThrowIfNull ( dataTypeOut, nameof ( dataTypeOut ) );
 
+		TranslateDataType ( ref dataTypeIn );
+		TranslateDataType ( ref dataTypeOut );
+
 		ExternMapper sampler = new ( name, dataTypeIn, dataTypeOut );
 		commandMap[name] = sampler;
 		int cmdID = GetCommandID ( sampler );
@@ -283,10 +317,30 @@ internal class SCLParsingStatus {
 		ArgumentNullException.ThrowIfNullOrWhiteSpace ( name, nameof ( name ) );
 		ArgumentNullException.ThrowIfNull ( returnType, nameof ( returnType ) );
 		ArgumentNullException.ThrowIfNull ( argTypes, nameof ( argTypes ) );
+		TranslateDataType ( ref returnType );
+		for (int i = 0; i < argTypes.Length; i++ ) {
+			ArgumentNullException.ThrowIfNull ( argTypes[i], nameof ( argTypes ) );
+			TranslateDataType ( ref argTypes[i] );
+		}
 		ExternFunction function = new ( name, argTypes, returnType );
 		commandMap[name] = function;
 		int cmdID = GetCommandID ( function );
 		externFunctions[name] = cmdID;
+	}
+
+	public int RegisterStateStart ( string stateName ) {
+		ArgumentNullException.ThrowIfNullOrWhiteSpace ( stateName, nameof ( stateName ) );
+		if ( StateStarts.ContainsKey ( stateName ) )
+			throw new InvalidOperationException ( $"State '{stateName}' is already defined." );
+		return StateStarts[stateName] = commandIndices.Count;
+	}
+	public void RegisterStateJump ( string stateName, bool canParallel, ushort flagRequired ) {
+		ArgumentNullException.ThrowIfNullOrWhiteSpace ( stateName, nameof ( stateName ) );
+		StateJumps.Add ( ( stateName, commandIndices.Count ) );
+		TOpCode opCode = SCLInterpreter.CrOpCode ( canParallel ? ISCLParsedScript.FORK_OPCODE_ID : ISCLParsedScript.JMP_OPCODE_ID );
+		CmdCall jmp = new ( opCode, new TDst ( 0, 0 ), flagRequired );
+		PushCommand ( jmp );
+
 	}
 
 	public bool TryGetVarID ( string name, out TArg varID ) {
@@ -342,6 +396,7 @@ internal class SCLParsingStatus {
 
 	public void PushCommand ( CmdCall cmd ) {
 		commandIndices.Add ( cmd );
+		disassembly.Add ( LastLine );
 		UpdateMemoryInfo ();
 	}
 
@@ -354,7 +409,14 @@ internal class SCLParsingStatus {
 		for ( int i = 0; i < commandIndices.Count; i++ ) {
 			if ( i > 0 ) sb.Append ( ", " );
 			var c = commandIndices[i];
-			sb.Append ( $"{i}:{commands[c.opCode.ValueId].CmdCode}(" );
+			string cmdCode = c.opCode.ValueId switch {
+				ISCLParsedScript.JMP_OPCODE_ID => "JMP",
+				ISCLParsedScript.FORK_OPCODE_ID => "FORK",
+				ISCLParsedScript.TERMINATE_OPCODE_ID => "STOP",
+				ISCLParsedScript.SUSPEND_OPCODE_ID => "SUSPEND",
+				_ => commands[c.opCode.ValueId].CmdCode
+			};
+			sb.Append ( $"{i}:{cmdCode}(" );
 			for ( int a = 0; a < CmdCall.MaxDirectArgs; a++ ) {
 				var arg = c.ArgAt ( a );
 				if ( arg.RawValue == 0 ) break;

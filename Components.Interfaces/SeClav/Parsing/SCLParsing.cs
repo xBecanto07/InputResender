@@ -11,7 +11,7 @@ internal class SCLParsing {
 	//private readonly DModuleLoader ModuleLoader;
 	private readonly System.Func<string, IModuleInfo> ModuleLoader;
 	private readonly SCLParsingStatus Status;
-	readonly TOpCode AssignOpCode;
+	readonly TOpCode AssignOpCode, ThrowOpCode;
 	private readonly List<string> Log = [];
 	public Action<string> Logger;
 	public bool EnableLogging;
@@ -26,10 +26,13 @@ internal class SCLParsing {
 		ModuleLoader = moduleLoader;
 		Status = new ();
 		AssignOpCode = Status.RegisterCustomCmd ( new CmdAssignment () );
+		ThrowOpCode = Status.RegisterCustomCmd ( new ThrowCmd () );
 		Status.RegisterPraeDirective ( "in", RegisterExternalInput );
 		Status.RegisterPraeDirective ( "mapper", RegisterExternalMapper );
 		Status.RegisterPraeDirective ( "extFcn", RegisterExternalFunction );
 		Status.RegisterPraeDirective ( "out", RegisterExternalOutput );
+		Status.RegisterMacro ( new EmitMacro ( ProcessEmitMacro ) );
+
 		MemoryInfo = Status.GetMemoryInfoRef ();
 
 		parsingContext = new ParsingContext ( ModuleLoader, Status, MemoryInfo, AssignOpCode ) {
@@ -94,8 +97,34 @@ internal class SCLParsing {
 		Status.RegisterExterOutVariable ( typeID, varName );
 	}
 
-	public ISCLParsedScript GetResult () => new SCLParsingStatus.SCLParsedScript ( Status );
-	public ISCLDebugInfo GetResultWithDebugInfo () => new SCLParsingStatus.SCLDebugInfo ( Status, Log );
+	private void ProcessEmitMacro (ushort flags, string eventName ) {
+		if (!CurrentActiveState.Transitions.TryGetValue (eventName, out var existing) )
+			throw new InvalidOperationException ( $"Current active state '{CurrentActiveState.StateName}' does not have a transition for event '{eventName}', which is required to use 'emit' macro with that event name." );
+		Status.RegisterStateJump ( existing.nextState, existing.canParallel, flags );
+	}
+
+	public ISCLParsedScript GetResult () {
+		FinishParsing ();
+		return new SCLParsingStatus.SCLParsedScript ( Status );
+	}
+	public ISCLDebugInfo GetResultWithDebugInfo () {
+		FinishParsing ();
+		return new SCLParsingStatus.SCLDebugInfo ( Status, Log );
+	}
+	private void FinishParsing () {
+		// It is a question if this should actually close up the script or should just 'prepare' it for generating the result, without modifying the underlying Status. For now, this is destructive action, but it might be a useful feature to allow calling Finalize multiple times, for producing different scripts from the same source. (Create one script, add some more lines, create another script with the same Status but different content, etc.)
+
+		if ( CurrentActiveState == null ) return;
+		if ( CurrentActiveState.IsAccepting ) {
+			TOpCode endCmd = SCLInterpreter.CrOpCode ( ISCLParsedScript.TERMINATE_OPCODE_ID );
+			CmdCall cmdCall = new ( endCmd, SCLInterpreter.CrDst ( FirstEntryStatus.PCindex ), 0 );
+			parsingContext.Status.PushCommand ( cmdCall );
+		} else {
+			TOpCode endCmd = SCLInterpreter.CrOpCode ( ISCLParsedScript.SUSPEND_OPCODE_ID );
+			CmdCall cmdCall = new ( endCmd, SCLInterpreter.CrDst ( CurrentActiveState.PCindex ), 0 );
+			parsingContext.Status.PushCommand ( cmdCall );
+		}
+	}
 
 	/*
 	.......┌──────┐....┌───────┐.....<DataType>┌──────┐.<VarName>.┌───────┐...............
@@ -116,8 +145,12 @@ internal class SCLParsing {
 	..........................................└---------┘.................................
 	*/
 
+	SubStateParser CurrentActiveState = null;
+	SubStateParser FirstEntryStatus = null;
+
 	public void ProcessLine ( string line ) {
 		if ( EnableLogging ) parsingContext.LogAdd ( $"Processing line: {line}" );
+		parsingContext.Status.LastLine = line;
 		string originalLine = line;
 		line = line.Trim ();
 		int commentIndex = line.IndexOf ( '#' );
@@ -138,6 +171,27 @@ internal class SCLParsing {
 		if ( SubUsingParser.Parse ( line, parsingContext, out var usingResult ) ) {
 			usingResult.MustEndLine ();
 			usingResult.Apply ();
+			return;
+		}
+		if ( SubStateParser.Parse ( line, parsingContext, out var stateResult ) ) {
+			FirstEntryStatus ??= stateResult;
+			stateResult.MustEndLine ();
+			CmdCall cmdCall;
+			if (CurrentActiveState == null) {
+				TOpCode endStartCmd = SCLInterpreter.CrOpCode ( ISCLParsedScript.JMP_OPCODE_ID );
+				parsingContext.Status.RegisterStateJump ( stateResult.StateName, false, 0 );
+			} else if ( CurrentActiveState.IsAccepting ) {
+				TOpCode endCmd = SCLInterpreter.CrOpCode ( ISCLParsedScript.TERMINATE_OPCODE_ID );
+				cmdCall = new ( endCmd, SCLInterpreter.CrDst ( FirstEntryStatus.PCindex ), 0 );
+				parsingContext.Status.PushCommand ( cmdCall );
+			} else {
+				TOpCode endCmd = SCLInterpreter.CrOpCode ( ISCLParsedScript.SUSPEND_OPCODE_ID );
+				cmdCall = new ( endCmd, SCLInterpreter.CrDst ( CurrentActiveState.PCindex ), 0 );
+				parsingContext.Status.PushCommand ( cmdCall );
+			}
+
+			stateResult.Apply ();
+			CurrentActiveState = stateResult;
 			return;
 		}
 		if ( SubDataTypeParser.Parse ( line, parsingContext, out var dataTypeResult ) ) {

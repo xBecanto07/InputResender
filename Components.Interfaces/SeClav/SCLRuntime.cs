@@ -116,19 +116,73 @@ internal class SCLRuntime : ISCLRuntime {
 
 
 
+public class SCLDebugger {
+	public struct Entry {
+		private static string FlagsMarks = "N!~=><6789ABCDEFzyxwvutsrqponmlkjihgfedcba";
+		public int PC;
+		public string Line;
+		public string CmdCall;
+		public ISCLRuntime.SCLFlags Flags;
+		public List<(SIdVal ptr, string name, string val)> MemoryInfo;
+		internal Entry ( int pc, CmdCall cmd, string dissassembly, ISCLRuntime runtime ) {
+			PC = pc;
+			Line = dissassembly;
+			CmdCall = cmd.ToString ()
+				.Replace ( "0$16382", "0$J" )
+				.Replace ( "0$16381", "0$F" )
+				.Replace ( "0$16380", "0$T" )
+				.Replace ( "0$16379", "0$S" );
+			MemoryInfo = [];
+			Flags = runtime.GetFlags ();
+		}
+		public override readonly string ToString () {
+			string memInfoStr = string.Join ( "  |  ", MemoryInfo.Select ( m => $"{m.ptr} '{m.name}' = {m.val}" ) );
+			BitField flagsField = new ();
+			flagsField.Value = (uint)Flags;
+			char[] flagChars = new char[sizeof(ushort)*8];
+			for ( int i = 0; i < sizeof(ushort)*8; i++ )
+				flagChars[i] = flagsField[i] ? FlagsMarks[i] : '_';
+			string flagsStr = new ( flagChars.Reverse ().ToArray () );
+			return $"PC={PC,-2}: {Line,-32} \t|  {CmdCall, -40} {flagsStr}  |   {memInfoStr}";
+		}
+	}
+	public List<(SIdVal id, string name)> CapturedVars = [];
+	public List<Entry> ExecutionLog = [];
+	public void ClearLog () => ExecutionLog.Clear ();
+	public int LoggingRate = 1; // Log every N commands, set to 0 to disable logging
+
+	internal int LogExecution ( int PC, CmdCall cmd, string dissassembly, ISCLRuntime runtime) {
+		Entry e = new ( PC, cmd, dissassembly, runtime );
+		foreach ( var varID in CapturedVars )
+			e.MemoryInfo.Add ( (varID.id, varID.name, runtime.SafeGetVar ( varID.id ).ToString ()) );
+		ExecutionLog.Add ( e );
+		return LoggingRate > 0 ? LoggingRate : int.MaxValue;
+	}
+}
 
 public class SCLRuntimeHolder {
 	internal SCLRuntime BaseRuntime;
 	private readonly HashSet<string> UnassignedExternals = new ();
 	private List<string> Errors = [], Log = [];
+	private readonly int WatchdogMax;
+	private SCLDebugger Debugger;
+	private object PersistentStatus;
 
 	public IReadOnlyList<string> RuntimeErrors => Errors.AsReadOnly ();
 	public IReadOnlyList<string> RuntimeLog => Log.AsReadOnly ();
 
-	internal SCLRuntimeHolder (SCLRuntime runtime ) {
+	public SCLDebugger SetupDebugger ( int loggingRate = 1 ) {
+		Debugger = new SCLDebugger { LoggingRate = loggingRate };
+		return Debugger;
+	}
+
+	public void ResetStatus () => PersistentStatus = null;
+
+	internal SCLRuntimeHolder ( SCLRuntime runtime, int watchdogMax = int.MaxValue ) {
 		if ( runtime == null )
 			throw new ArgumentNullException ( nameof ( runtime ) );
 		BaseRuntime = runtime;
+		WatchdogMax = watchdogMax;
 
 		List<string> allExternals = runtime.Script.InputVars.Keys
 			.Union ( runtime.Script.InputSamplers.Keys )
@@ -139,19 +193,34 @@ public class SCLRuntimeHolder {
 				throw new InvalidOperationException ( $"Duplicate external identifier '{varName}' found in the script." );
 	}
 
-	public SCLRuntimeHolder ( SCLScriptHolder scriptHolder ) : this ( new SCLRuntime ( scriptHolder?.ParsedScript ) ) { }
+	public SCLRuntimeHolder ( SCLScriptHolder scriptHolder, int watchdogMax = int.MaxValue )
+		: this ( new SCLRuntime ( scriptHolder?.ParsedScript ), watchdogMax ) { }
 
 	public IDataType SafeGetVar ( SIdVal varID ) => BaseRuntime.SafeGetVar ( varID );
 	public void SafeSetVar ( SIdVal varID, IDataType value ) => BaseRuntime.SafeSetVar ( varID, value );
-	public T GetDefinition<T> () where T : DataTypeDefinition
-		=> BaseRuntime.Script.DataTypes.FirstOrDefault ( x => x.GetType () == typeof ( T ) ) as T;
+	public T GetDefinition<T> () where T : DataTypeDefinition {
+		Type type = typeof ( T );
+		var ret = BaseRuntime.Script.DataTypes.FirstOrDefault ( x => x.GetType () == type ) as T;
+		if ( ret == null )
+			throw new InvalidOperationException ( $"Data type definition of type '{typeof ( T ).Name}' not found in the script." );
+		return ret;
+	}
 
 	public IDataType Execute ( bool safe ) {
 		if ( UnassignedExternals.Count > 0 )
 			throw new InvalidOperationException ( $"Cannot execute script: Unassigned external variables: {string.Join ( ", ", UnassignedExternals )}." );
-		SCLRunner runner = new ( BaseRuntime.Script );
-		return safe ? runner.ExecuteSafe ( BaseRuntime, [], ref Log ) :
+		SCLRunner runner = new ( BaseRuntime.Script, WatchdogMax );
+		if (PersistentStatus != null )
+			runner.PersistantStatus = PersistentStatus;
+
+		if ( Debugger != null && Debugger.LoggingRate > 0 ) {
+			runner.DebuggerCallback = Debugger.LogExecution;
+			runner.nextBreakpoint = 0;
+		}
+		var ret = safe ? runner.ExecuteSafe ( BaseRuntime, [], ref Log ) :
 			runner.Execute ( BaseRuntime, [] );
+		PersistentStatus = runner.PersistantStatus;
+		return ret;
 	}
 
 	public void ClearErrors () => Errors.Clear ();
@@ -234,6 +303,10 @@ public class SCLRuntimeHolder {
 	// More arguments isn't currently supported! That would require either expanding the CmdCall structure or supporting ExtraArguments in SCLRunner.
 
 	private void SetExternFcn ( string name, DataTypeDefinition[] inArgs, DataTypeDefinition outArg, Func<ISCLRuntime, IDataType[], IDataType> function, CoreBase owner ) {
+		foreach ( var def in inArgs )
+			if ( def == null )
+				throw new InvalidOperationException ( $"Input argument type for extern function '{name}' is not found in the script's data types." );
+
 		if ( !BaseRuntime.Script.ExternFunctions.TryGetValue ( name, out int cmdIndex ) )
 			throw new KeyNotFoundException ( $"Extern function '{name}' not found in the script." );
 		try {

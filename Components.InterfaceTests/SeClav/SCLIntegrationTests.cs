@@ -1,17 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using Xunit;
-using FluentAssertions;
+﻿using FluentAssertions;
 using SeClav;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using Xunit;
 using Xunit.Abstractions;
+using Components.Library;
 
-namespace Components.InterfaceTests.SeClav; 
+namespace Components.InterfaceTests.SeClav;
 public class SCLIntegrationTests {
 	readonly SCL_TestModule testModule;
 	readonly SCLParsing parser;
 	readonly ITestOutputHelper Output;
 
-	public SCLIntegrationTests (ITestOutputHelper output) {
+	public SCLIntegrationTests ( ITestOutputHelper output ) {
 		Output = output;
 		testModule = new ();
 		parser = new SCLParsing ( name => name == testModule.Name ? testModule : null, logger: msg => Output.WriteLine ( msg ), enableLogging: true );
@@ -21,24 +23,41 @@ public class SCLIntegrationTests {
 	private SCLAssertionRuntime RunScript ( SCLParsing parser ) {
 		ISCLDebugInfo result = parser.GetResultWithDebugInfo ();
 		var runtime = new SCLAssertionRuntime ( result );
-		SCLRunner runner = new ( result.Script );
+		SCLRunner runner = new ( result.Script, 999 );
 		runner.ExecuteSafe ( runtime, [], ref runtime.ProgressInfo );
-
 		Output.WriteLine ( "---- Script Execution Log ----" );
 		foreach ( string logLine in runtime.ProgressInfo )
 			Output.WriteLine ( logLine );
 		return runtime;
 	}
 
-	private SCLAssertionRuntime RunScript ( SCLParsing parser, Action<SCLRuntimeHolder> setup ) {
+	private SCLAssertionRuntime RunScript ( SCLParsing parser, Action<SCLRuntimeHolder> setup, params string[] capturedVars ) {
 		// If you want the holder too, not just the runtime, use the 'setup' action to store it somewhere 😉 - Haha, thanks man! What a helpful advice! 😂
 		ISCLDebugInfo result = parser.GetResultWithDebugInfo ();
 		var runtime = new SCLAssertionRuntime ( result );
-		SCLRuntimeHolder holder = new ( runtime );
+		SCLRuntimeHolder holder = new ( runtime, 999 );
 		setup?.Invoke ( holder );
+		runtime.Debugger = holder.SetupDebugger ();
+		foreach ( var (id, name) in result.VarNames ) {
+			if ( capturedVars.Contains ( name ) ) {
+				runtime.Debugger.CapturedVars.Add ( (id.Generic, name) );
+			}
+		}
 		holder.Execute ( safe: true );
 		return runtime;
 	}
+
+	/*private SCLAssertionRuntime RunScript ( SCLParsing parser, Action<SCLRuntimeHolder, ISCLDebugInfo> setup ) {
+		// If you want the holder too, not just the runtime, use the 'setup' action to store it somewhere 😉 - Haha, thanks man! What a helpful advice! 😂
+		ISCLDebugInfo result = parser.GetResultWithDebugInfo ();
+		var runtime = new SCLAssertionRuntime ( result );
+		SCLRuntimeHolder holder = new ( runtime, 999 );
+		setup?.Invoke ( holder, result );
+		runtime.Debugger = holder.SetupDebugger ();
+		holder.Execute ( safe: true );
+		return runtime;
+	}*/
+
 
 	[Fact]
 	public void VariableDeclaration () {
@@ -52,7 +71,7 @@ public class SCLIntegrationTests {
 	[InlineData ( 42 )]
 	[InlineData ( -1 )]
 	[InlineData ( 0 )]
-	public void VariableDirectAssignment (int val) {
+	public void VariableDirectAssignment ( int val ) {
 		parser.ProcessLine ( $"TestInt myVar = {val}" );
 		var assertionRuntime = RunScript ( parser );
 		var (_, Var) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "myVar" );
@@ -60,11 +79,11 @@ public class SCLIntegrationTests {
 	}
 
 	[Theory]
-	[InlineData ( 42, 10)]
-	[InlineData ( -1, -5)]
+	[InlineData ( 42, 10 )]
+	[InlineData ( -1, -5 )]
 	[InlineData ( 0, 100 )]
 	[InlineData ( (int)1e3, (int)-2.5e4 )]
-	public void AddExpressionAssignment (int val1, int val2) {
+	public void AddExpressionAssignment ( int val1, int val2 ) {
 		parser.ProcessLine ( $"TestInt myVar = ADD_INT {val1} {val2}" );
 		var assertionRuntime = RunScript ( parser );
 		var (_, Var) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "myVar" );
@@ -98,7 +117,7 @@ public class SCLIntegrationTests {
 	[Fact]
 	public void PraeRegisterVariableBasic () {
 		parser.RegisterPraeDirective ( "register_var", ( ctx, _ ) => {
-			ctx.RegisterVariable ("praeVar", () => new TestValueInt ( testModule.IntTypeDef, 123 ) );
+			ctx.RegisterVariable ( "praeVar", () => new TestValueInt ( testModule.IntTypeDef, 123 ) );
 		} );
 		parser.ProcessLine ( "@register_var" );
 		parser.ProcessLine ( "TestString result = APPEND_INT_TO_STR \"Value is: \" praeVar" );
@@ -147,7 +166,7 @@ public class SCLIntegrationTests {
 		flagVar.Value.Should ().Be ( 0 );
 		afterSet.Value.Should ().Be ( 1 << 7 );
 		afterReset.Value.Should ().Be ( 0 );
-		finalFlags.Value.Should ().Be ( ( 1 << 1 ) | ( 1 << 2 ) | ( 1 << 7 ) );
+		finalFlags.Value.Should ().Be ( (1 << 1) | (1 << 2) | (1 << 7) );
 	}
 
 	[Fact]
@@ -192,7 +211,7 @@ public class SCLIntegrationTests {
 
 	[Fact]
 	public void ConditionalCommand_FlagBased () {
-		parser.ProcessLine("SET_FLAG 7");
+		parser.ProcessLine ( "SET_FLAG 7" );
 		parser.ProcessLine ( "TestInt flagVar1 = READ_FLAGS" );
 		parser.ProcessLine ( "?5 SET_FLAG 2" );
 		parser.ProcessLine ( "TestInt flagVar2 = READ_FLAGS" );
@@ -284,26 +303,252 @@ public class SCLIntegrationTests {
 		parser.ProcessLine ( "@out TestInt extID" );
 		parser.ProcessLine ( "extID = ADD_INT 32 10" );
 		SCLRuntimeHolder holder = null;
-		var assertionRuntime = RunScript ( parser, h => holder = h );
+		var assertionRuntime = RunScript ( parser, h => holder = h, "extID" );
 		holder.Should ().NotBeNull ();
 
-		holder.TryGetOutputVar ("extID", null, out var outputVar).Should ().BeTrue ();
+		holder.TryGetOutputVar ( "extID", null, out var outputVar ).Should ().BeTrue ();
 		outputVar.Should ().BeOfType<TestValueInt> ().Subject.Value.Should ().Be ( 42 );
 
 		outputVar = null;
-		holder.TryStoreOutputVar ("extID", null, ref outputVar).Should ().BeTrue ();
+		holder.TryStoreOutputVar ( "extID", null, ref outputVar ).Should ().BeTrue ();
 		outputVar.Should ().NotBeNull ().And.BeOfType<TestValueInt> ().Subject.Value.Should ().Be ( 42 );
 	}
 
 	[Fact]
-	public void RepeatedRun () {
+	public void RepeatedRunNoReset () {
+		// This test makes sure that multiple runs by default execute the script from the start.
+		// This specific one makes sure that the behaviour is consistent between assigning a variable directly vs. just declaring it and leaving it to default value.
 		parser.ProcessLine ( "TestInt val" );
 		parser.ProcessLine ( "val = ADD_INT val 1" );
 		SCLRuntimeHolder holder = null;
-		var assertionRuntime = RunScript ( parser, h => holder = h );
+		var assertionRuntime = RunScript ( parser, h => holder = h, "val" );
 		for ( int i = 0; i < 10; i++ )
 			holder.Execute ( true );
 		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "val" );
+		val.Value.Should ().Be ( 1 );
+	}
+
+	[Fact]
+	public void RepeatedRunResetAssign () {
+		parser.ProcessLine ( "TestInt val = 0" );
+		parser.ProcessLine ( "val = ADD_INT val 1" );
+		SCLRuntimeHolder holder = null;
+		var assertionRuntime = RunScript ( parser, h => holder = h, "val" );
+		for ( int i = 0; i < 10; i++ )
+			holder.Execute ( true );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "val" );
+		val.Value.Should ().Be ( 1 );
+	}
+
+	[Fact]
+	public void RandomFSM () {
+		const string S0 = "S0", S1 = "S1", S2 = "S2", Init = "Init", DirectHop = "DirectHop";
+		parser.ProcessLine ( "@in TestInt stateID" );
+		parser.ProcessLine ( "@extFcn TestInt LOG : TestString" );
+		parser.ProcessLine ( "LOG \"Init\"" );
+		parser.ProcessLine ( "TestInt cnt = 0" );
+
+		parser.ProcessLine ( "--> S0 -a->S1-b->S0 -c->S2			-goNext-> DirectHop" );
+		parser.ProcessLine ( "LOG \"S0\"" );
+		parser.ProcessLine ( "COMPARE_INT stateID 1" );
+		parser.ProcessLine ( "?= emit a" );
+		parser.ProcessLine ( "?> emit c" );
+
+		parser.ProcessLine ( "COMPARE_INT cnt 3" );
+		parser.ProcessLine ( "?> emit goNext" );
+		parser.ProcessLine ( "COMPARE_INT cnt 1" );
+		parser.ProcessLine ( "?> emit b" );
+		parser.ProcessLine ( "cnt = ADD_INT cnt 1" );
+
+		parser.ProcessLine ( "--> S1 -c-> S2" );
+		parser.ProcessLine ( "LOG \"S1\"" );
+		parser.ProcessLine ( "?N emit c" );
+
+		parser.ProcessLine ( "-(DirectHop, S1)-> [S2]" );
+		parser.ProcessLine ( "LOG \"S2\"" );
+
+		parser.ProcessLine ( "--> DirectHop --> S2" );
+
+		List<string> log = new ();
+		SCLRuntimeHolder holder = null;
+		var assertionRuntime = RunScript ( parser, h => {
+			holder = h;
+			holder.SetExternVar ( "stateID", new TestValueInt ( holder.GetDefinition<TestValueIntDef> (), 0 ), null );
+			holder.SetExternFunction<TestValueStringDef, TestValueIntDef> ( "LOG", ( runtime, args ) => {
+				string message = (args[0] as TestValueString).Value;
+				log.Add ( message );
+				return new TestValueInt ( holder.GetDefinition<TestValueIntDef> (), 0 );
+			}, null );
+		} );
+		log.Should ().Equal ( Init, S0 );
+		log.Clear ();
+
+		holder.Execute ( true );
+		log.Should ().Equal ( S0 );
+		log.Clear ();
+
+		holder.Execute ( true );
+		log.Should ().Equal ( S0, S0, S0, DirectHop, S2 );
+		log.Clear ();
+
+
+		holder.SetExternVar ( "stateID", new TestValueInt ( holder.GetDefinition<TestValueIntDef> (), 1 ), null );
+		holder.Execute ( true );
+		log.Should ().Equal ( Init, S0, S1, S2 );
+		log.Clear ();
+
+		holder.Execute ( true );
+		log.Should ().Equal ( Init, S0, S1, S2 );
+		log.Clear ();
+	}
+
+	[Theory]
+	[InlineData ( 0 )]
+	[InlineData ( 1 )]
+	[InlineData ( 2 )]
+	public void FSM_IfElse ( int i ) {
+		parser.ProcessLine ( "@in TestInt i" );
+		parser.ProcessLine ( "TestInt res = -1" );
+		parser.ProcessLine ( "--> S0 -a-> S1 -b-> S2 -c->S3" );
+		parser.ProcessLine ( "COMPARE_INT i 1" );
+		parser.ProcessLine ( "?< emit a" );
+		parser.ProcessLine ( "?= emit b" );
+		parser.ProcessLine ( "?> emit c" );
+		parser.ProcessLine ( "res = 7" );
+
+		parser.ProcessLine ( "--> [S1]" );
+		parser.ProcessLine ( "res = 9" );
+		parser.ProcessLine ( "--> [S2]" );
+		parser.ProcessLine ( "res = 11" );
+		parser.ProcessLine ( "--> [S3]" );
+		parser.ProcessLine ( "res = 13" );
+
+		var assertionRuntime = RunScript ( parser, h => {
+			h.SetExternVar ( "i", new TestValueInt ( h.GetDefinition<TestValueIntDef> (), i ), null );
+		} );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "res" );
+		val.Value.Should ().Be ( 7 + 2 * (i + 1) );
+	}
+
+	[Fact]
+	public void FSM_Parallel () {
+		parser.ProcessLine ( "TestInt res = 0" );
+		parser.ProcessLine ( "--> S0 --|>> S1 -a-|>> S2 -b-> S3" );
+		parser.ProcessLine ( "res = ADD_INT res 1" );
+		parser.ProcessLine ( "COMPARE_INT res 1" );
+		parser.ProcessLine ( "?= emit a" );
+		parser.ProcessLine ( "?= emit b" );
+		parser.ProcessLine ( "?> emit b" ); // Reverse order for 2nd pass
+		parser.ProcessLine ( "?> emit a" );
+
+		parser.ProcessLine ( "--> S1 -s-> F" );
+		parser.ProcessLine ( "res = ADD_INT res 2" );
+		parser.ProcessLine ( "--> S2 -s-> F" );
+		parser.ProcessLine ( "res = ADD_INT res 3" );
+		parser.ProcessLine ( "--> S3 -s-> F" );
+		parser.ProcessLine ( "res = ADD_INT res 4" );
+
+		parser.ProcessLine ( "-(S1,S2,S3)-> [F] -n-> S0" );
+		parser.ProcessLine ( "res = ADD_INT res res" );
+		parser.ProcessLine ( "COMPARE_INT res 7" );
+		parser.ProcessLine ( "?< emit n" );
+
+		var assertionRuntime = RunScript ( parser );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "res" );
+		int control = 1; // State 0
+		control += 2 + 3 + 4; // States 1|2|3
+		control += control; // State F
+		control += 1 + 2; // States 0|1 (1 is auto-fired via ϵ-transition)
+		control += 4; // Sequential transition is fired first, S2 is never
+		// Final state is never started as S2 was skipped 😉
+
+		val.Value.Should ().Be ( control );
+	}
+
+	[Fact]
+	public void FSM_Rerun () {
+		parser.ProcessLine ( "TestInt step = 0" );
+		parser.ProcessLine ( "TestString res = \"A \"" );
+		parser.ProcessLine ( "COMPARE_INT step 100" );
+		parser.ProcessLine ( "--> S0 -a-> S1 -b-> S2 -c-> S3" );
+		parser.ProcessLine ( "res = CONCAT_STR res \"B \"" );
+		parser.ProcessLine ( "?< emit c" ); // Should never fire as flags should be reset at the start of the state
+		parser.ProcessLine ( "COMPARE_INT step 0" );
+		parser.ProcessLine ( "?= emit a" );
+		parser.ProcessLine ( "emit b" );
+
+		parser.ProcessLine ( "--> S3" );
+		parser.ProcessLine ( "res = CONCAT_STR res \"E \"" );
+		parser.ProcessLine ( "throw" );
+
+		parser.ProcessLine ( "--> S1 -a-> S0" );
+		parser.ProcessLine ( "res = CONCAT_STR res \"N \"" );
+		parser.ProcessLine ( "step = ADD_INT step 1" );
+		parser.ProcessLine ( "COMPARE_INT step 2" );
+		parser.ProcessLine ( "?> emit a" );
+
+		parser.ProcessLine ( "--> [S2] -a-> S0" );
+		parser.ProcessLine ( "res = CONCAT_STR res \"F \"" );
+		parser.ProcessLine ( "COMPARE_INT step 300" );
+		parser.ProcessLine ( "step = 321" );
+		parser.ProcessLine ( "?< emit a" );
+
+		/*
+		Do setup (res = 'A')
+		S0.0 : +B
+		  step==0: goto S1
+		S1.0 : +N
+		  step==1, <=2: suspend
+		RESTART
+		S1.1 : +N
+		  step==2: <=2: suspend
+		RESTART
+		S1.2 : +N
+		  step==3: >2: goto S0
+		S0.1 : +B
+		  step≠0: goto S2
+		S2.0 : +F
+		  step<300: set step:=300 & goto S0
+		S0.2 : +B
+		  step≠0: goto S2 (same as S0.1)
+		S2.1 : +F
+		  step>300: ACCEPT
+		RESTART
+		S0.3 : +B (same as S0.1 and S0.2)
+		  step≠0: goto S2 (same as S0.1 and S0.2)
+		S2.2 : +F (same as S2.1)
+		  step>300: ACCEPT
+		*/
+
+		SCLRuntimeHolder holder = null;
+		var assertionRuntime = RunScript ( parser, ( h ) => holder = h, "step", "res" );
+		var (_, val) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "res" );
+		const string ControlStart = "A B N ";
+		string control = ControlStart;
+		val.Value.Should ().Be ( control );
+
+		holder.Execute ( true ); control += "N ";
+		//holder.Execute ( true ); control += "N ";
+		holder.Execute ( true ); control += "N B F B F ";
+		(_, val) = assertionRuntime.VarExists<TestValueStringDef, TestValueString> ( "res" );
+		val.Value.Should ().Be ( control );
+
+		holder.ResetStatus (); // Don't reset the whole environment, just move PC to 0.
+		holder.Execute ( true );
+		val.Value.Should ().Be ( ControlStart );
+	}
+
+	[Fact]
+	public void FSM_EpsilonTransitionDirect () {
+		parser.ProcessLine ( "TestInt res = 0" );
+		parser.ProcessLine ( "--> S0 --> S1" );
+		parser.ProcessLine ( "res = ADD_INT res 42" ); // This should be skipped
+
+		parser.ProcessLine ( "--> [S1]" );
+		parser.ProcessLine ( "res = ADD_INT res 1" );
+
+		var assertionRuntime = RunScript ( parser );
+		var (_, val) = assertionRuntime.VarExists<TestValueIntDef, TestValueInt> ( "res" );
 		val.Value.Should ().Be ( 1 );
 	}
 }

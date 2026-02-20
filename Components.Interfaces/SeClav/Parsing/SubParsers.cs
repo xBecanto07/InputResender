@@ -70,7 +70,7 @@ internal class ParsingContext {
 		Logger?.Invoke ( message );
 	}
 
-	public ushort GetFlag (ref string line) {
+	public static ushort GetFlag (ref string line) {
 		int flagReq = 0;
 		if (line.StartsWith('?')) {
 			line = line[1..];
@@ -245,6 +245,138 @@ internal abstract class SubParserBase {
 	}
 }
 
+internal class SubStateParser : SubParserBase {
+	public readonly string StateName;
+	public readonly bool IsAccepting;
+	public readonly Dictionary<string, (string nextState, bool canParallel)> Transitions;
+	public readonly List<(string nextState, bool canParallel)> eTransitions;
+	public int PCindex;
+
+	public SubStateParser ( ParsingContext context, bool isAccepting, string originalLine, string stateName ) : base ( context, originalLine ) {
+		StateName = stateName;
+		IsAccepting = isAccepting;
+		Transitions = new ();
+		eTransitions = new ();
+	}
+	
+	public static bool Parse ( string line, ParsingContext context, out SubStateParser result ) {
+		result = null;
+		string originalLine = line;
+		if ( !line.StartsWith ( '-' ) ) return false;
+
+		string[] awaitingTokens = AwaitingTransition ( ref line );
+		string stateName = NextToken ( ref line, "-" );
+		if ( string.IsNullOrEmpty ( stateName ) )
+			throw new InvalidOperationException ( $"Invalid state transition format in line '{originalLine}'. Missing state name." );
+		bool isAccepting = IsEnclosed ( ref stateName, "[", "]" );
+		result = new ( context, isAccepting, originalLine, stateName );
+
+		while ( true ) {
+			line = line.TrimStart ();
+			if ( line.Length == 0 ) break;
+			if ( !line.StartsWith ( '-' ) )
+				throw new InvalidOperationException ( $"Invalid state transition format in line '{originalLine}'. Expected '-' at the start of transition definition." );
+			line = line[1..];
+			(string token, bool canParallel) = OutTransition ( ref line );
+			string nextState = NextToken ( ref line, "-" );
+			if (nextState != null) {
+				if ( token == null ) result.eTransitions.Add ( (nextState, canParallel) );
+				else {
+					AssertTokenName ( token, 32 );
+					if ( result.Transitions.ContainsKey ( token ) )
+						throw new InvalidOperationException ( $"Duplicate transition token '{token}' in line '{originalLine}'." );
+					result.Transitions[token] = (nextState, canParallel);
+				}
+			} else throw new InvalidOperationException ( $"Invalid state transition format in line '{originalLine}'. Missing next state after token '{token}'." );
+
+			if ( line.Length == 0 ) break;
+		}
+		return true;
+	}
+
+	private static string NextToken ( ref string line, string separator ) {
+		int tokenEnd = line.IndexOf ( separator );
+		if ( tokenEnd < 0 )
+			tokenEnd = line.Length;
+		string token = line[..tokenEnd].Trim ();
+		line = line[tokenEnd..].TrimStart ();
+		return string.IsNullOrEmpty ( token ) ? null : token;
+	}
+	private static (string token, int used) NextToken ( ref string line, string[] separator ) {
+		int[] tokenEnds = new int[separator.Length];
+		bool foundAny = false;
+		for ( int i = 0; i < separator.Length; i++ ) {
+			int pos = line.IndexOf ( separator[i] );
+			tokenEnds[i] = pos >= 0 ? pos : int.MaxValue;
+			if ( pos >= 0 ) foundAny = true;
+		}
+		if ( !foundAny ) return (null, -1);
+
+		int nearestEnd = tokenEnds.Min ();
+		int nearestSepIndex = Array.IndexOf ( tokenEnds, nearestEnd );
+		string token = line[..nearestEnd].Trim ();
+		line = line[nearestEnd..].TrimStart ();
+		return (string.IsNullOrEmpty ( token ) ? null : token, nearestSepIndex);
+	}
+
+	private static string[] AwaitingTransition ( ref string line ) {
+		line.Trim ();
+		if (line.StartsWith("-->")) {
+			line = line[3..].TrimStart ();
+			return Array.Empty<string> ();
+		}
+
+		string awaitingGroup = line.SubstringBetween ( "-(", ")->" );
+		if ( !string.IsNullOrEmpty ( awaitingGroup ) ) {
+			string[] tokens = awaitingGroup.Split ( ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries );
+			foreach ( string token in tokens ) AssertTokenName ( token, 16 );
+			// Don't await specific states, but emited 'tokens'. This allows more flexibility. Like multiple states can emit the same token, or a state can emit different tokens in different transitions.
+			line = line[(5 + awaitingGroup.Length)..].TrimStart ();
+			return tokens;
+		}
+		// No group, but maybe a single token?
+		awaitingGroup = line.SubstringBetween ( "-", "->" );
+		if ( !string.IsNullOrEmpty ( awaitingGroup ) ) {
+			AssertTokenName ( awaitingGroup, 16 );
+			line = line[(3 + awaitingGroup.Length)..].TrimStart ();
+			return [awaitingGroup];
+		}
+		throw new InvalidOperationException ( $"Invalid state transition format in line '{line}'. Either '-->' or '-(state1, state2, ...)->' or '-state->' is expected at the start of the line." );
+	}
+
+	private static (string token, bool canParallel) OutTransition ( ref string line ) {
+		line.Trim ();
+		(string token, int usedSep) = NextToken ( ref line, ["-|>>", "->"] );
+		if ( usedSep < 0 )
+			throw new InvalidOperationException ( $"Invalid state transition format in line '{line}'. Missing transition arrow '->' or '-|>>'." );
+		int startOffset = usedSep == 0 ? 4 : 2; // Length of the separator
+		line = line[startOffset..].TrimStart ();
+		bool canParallel = usedSep == 0;
+		return (token, canParallel);
+	}
+
+	private static void AssertTokenName (string token, int maxSize) {
+		if (string.IsNullOrEmpty ( token ) || token.Length > maxSize )
+			throw new InvalidOperationException ( $"Invalid token name '{token}'. Token name must be 1 to {maxSize} characters long." );
+		if ( !token.All ( c => char.IsLetterOrDigit ( c ) || c == '_' ) || token.StartsWith ( '_' ) || token.EndsWith ( '_' ) )
+			throw new InvalidOperationException ( $"Invalid token name '{token}'. Token name must consist of letters, digits or underscores, and cannot start or end with an underscore." );
+	}
+
+	private static bool IsEnclosed ( ref string token, string prefix, string suffix ) {
+		if ( token.StartsWith ( prefix ) && token.EndsWith ( suffix ) ) {
+			token = token[(prefix.Length..^suffix.Length)];
+			return true;
+		}
+		return false;
+	}
+
+	public override void Apply () {
+		PCindex = Context.Status.RegisterStateStart ( StateName );
+		foreach ( var eTrans in eTransitions )
+			Context.Status.RegisterStateJump ( eTrans.nextState, eTrans.canParallel, 0 );
+	}
+}
+
 internal class SubMacroParser : SubParserBase {
 	public readonly string Callname;
 	public readonly IMacro Macro;
@@ -258,6 +390,7 @@ internal class SubMacroParser : SubParserBase {
 	public static bool Parse (string line, ParsingContext context, out SubMacroParser result) {
 		result = null;
 		string originalLine = line;
+		ushort flags = line.StartsWith ( '?' ) ? ParsingContext.GetFlag ( ref line ) : (ushort)0;
 		string token = context.GetIdentifier ( ref line );
 		if ( string.IsNullOrEmpty ( token ) ) return false;
 		IMacro macro = context.Status.TryGetMacro ( token );
@@ -265,7 +398,7 @@ internal class SubMacroParser : SubParserBase {
 
 		result = new ( context, originalLine, token, macro );
 		var parts = context.ProcessMacro ( macro, line );
-		result.RewrittenLines = macro.RewriteByGuiders ( parts );
+		result.RewrittenLines = macro.RewriteByGuiders ( flags, parts );
 		if ( result.RewrittenLines == null ) // Macro rejected the input
 			throw new InvalidOperationException ( $"Macro '{macro.CmdCode}' could not process the input line ({originalLine})." );
 		result.RemainLine = string.Empty; // All is expected to be consumed by the macro
@@ -352,7 +485,7 @@ internal class SubAssignmentParser : SubParserBase {
 	public static bool Parse (string line, ParsingContext context, out SubAssignmentParser result ) {
 		result = null;
 		string originalLine = line;
-		ushort flags = context.GetFlag ( ref line );
+		ushort flags = ParsingContext.GetFlag ( ref line );
 		string token = context.GetIdentifier ( ref line );
 		if ( string.IsNullOrEmpty ( token ) ) return false;
 		if ( !context.Status.TryGetVarID ( token, out TArg sId ) )
@@ -445,7 +578,13 @@ internal class SubDataTypeParser : SubParserBase {
 
 		if ( Context.EnableLogging ) Context.LogAdd ( $"Defining variable '{Context.Status.GetVarInfo ( SCLInterpreter.CrDst ( varID ) ).name}' of type '{DataType.Name}'." );
 
-		Assignment?.Apply ();
+		if ( Assignment != null )
+			Assignment.Apply ();
+		else {
+			// While the default value would be assigned when allocating the variable,
+			//     explicit assignment allows more consistent behaviour with the new Finite State Machine system.
+			Context.Status.PushCommand(new (Context.AssignOpCode, new(varID.Generic), 0, varID, Context.Status.AddConstant ( DataType.Default ) ) );
+		}
 	}
 }
 
@@ -478,7 +617,7 @@ internal class SubCommandParser : SubParserBase {
 	public static bool Parse ( string line, ParsingContext context, out SubCommandParser result ) {
 		result = null;
 		string originalLine = line;
-		ushort flagReq = context.GetFlag ( ref line );
+		ushort flagReq = ParsingContext.GetFlag ( ref line );
 		string token = context.GetIdentifier ( ref line );
 		if ( string.IsNullOrEmpty ( token ) ) return false;
 		ICommand cmd = context.Status.TryGetCommand ( token );

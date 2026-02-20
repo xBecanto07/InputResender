@@ -53,6 +53,11 @@ public class SCLScriptHolder {
 }
 
 internal interface ISCLParsedScript {
+	const ushort JMP_OPCODE_ID = SCLInterpreter.VarIdMask - 1;
+	const ushort FORK_OPCODE_ID = SCLInterpreter.VarIdMask - 2;
+	const ushort TERMINATE_OPCODE_ID = SCLInterpreter.VarIdMask - 3;
+	const ushort SUSPEND_OPCODE_ID = SCLInterpreter.VarIdMask - 4;
+
 	IReadOnlyList<DataTypeDefinition> DataTypes { get; }
 	IReadOnlyList<ICommand> Commands { get; }
 	IReadOnlyList<CmdCall> CommandIndices { get; }
@@ -61,6 +66,7 @@ internal interface ISCLParsedScript {
 	IReadOnlyList<int> VariableTypes { get; }
 	IReadOnlyList<int> ResultTypes { get; }
 	IReadOnlyDictionary<int, Func<IDataType>> Getters { get; }
+	IReadOnlyList<string> Disassembly { get; }
 	IReadOnlyDictionary<string, SIdVal> InputVars { get; }
 	// The runtime owner (RuntimeHolder) is responsible to insert proper function into the command list at index at InputSamplers[<name>]
 	IReadOnlyDictionary<string, int> InputSamplers { get; }
@@ -189,7 +195,7 @@ public interface IMacro : ICommandGen {
 	bool UnorderedGuiders { get; } // If true, guider parts can be in any order
 	IReadOnlyList<(int after, string split)> guiders { get; }
 	/// <summary>Allow to rewrite textual command based on (guiderID, argument) into separete multiline commands</summary>
-	string[] RewriteByGuiders ( (int guiderID, string arg)[] parts );
+	string[] RewriteByGuiders ( ushort flags, (int guiderID, string arg)[] parts );
 }
 
 public struct SIdVal {
@@ -259,6 +265,15 @@ internal struct CmdCall {
 
 	public CmdCall ( int opCode, List<CmdCall> extras, params int[] args ) {
 		throw new NotImplementedException ();
+	}
+
+	public override string ToString () {
+		string ret = opCode.ToString ()
+				.Replace ( "$16382", "$J" )
+				.Replace ( "$16381", "$F" )
+				.Replace ( "$16380", "$T" )
+				.Replace ( "$16379", "$S" );
+		return $"!{ret,-4}->{dst,4} [{arg1}, {arg2}, {arg3}, {arg4}], ~({flags})";
 	}
 }
 
