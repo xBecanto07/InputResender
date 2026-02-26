@@ -32,15 +32,16 @@ public class CmdAssignment : ICommand {
 	}
 }
 
-public class EmitMacro ( Action<ushort, string> callback ) : IMacro {
+public class EmitMacro ( Action<ushort, string, bool> callback ) : IMacro {
 	public bool SelectRight => false;
 	public bool UnorderedGuiders => true;
-	public IReadOnlyList<(int after, string split)> guiders => [];
+	public IReadOnlyList<(int after, string split)> guiders => [(1, ";")];
 	public string CmdCode => "emit";
 	public string CommonName => "Emit Event";
 	public string Description => "Emits an event (FSM transition) with the specified name.";
 	public string[] RewriteByGuiders ( ushort flags, (int guiderID, string arg)[] parts ) {
-		callback ( flags, parts[0].arg );
+		bool suspending = parts.Length > 1 && parts[1].arg.Trim () == "wait";
+		callback ( flags, parts[0].arg, suspending );
 		return [];
 	}
 }

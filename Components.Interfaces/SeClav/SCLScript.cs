@@ -14,7 +14,7 @@ public class SCLScriptHolder {
 
 	public string ScriptName { get; private set; }
 
-	internal SCLScriptHolder ( string code, string name, System.Func<string, IModuleInfo> moduleLoader ) {
+	internal SCLScriptHolder ( string code, string name, System.Func<string, IModuleInfo> moduleLoader, bool allowThrow = false ) {
 		ScriptName = name;
 		ErrorList = [];
 		Errors = ErrorList.AsReadOnly ();
@@ -23,13 +23,17 @@ public class SCLScriptHolder {
 		var lines = code.Split ( new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None );
 
 		foreach ( var line in lines ) {
-			var trimmed = line.Trim ();
-			if ( string.IsNullOrEmpty ( trimmed ) || trimmed.StartsWith ( "#" ) ) continue; // Skip empty lines and comments
+			//var trimmed = line.Trim ();
+			//if ( string.IsNullOrEmpty ( trimmed ) || trimmed.StartsWith ( "#" ) ) continue; // Skip empty lines and comments
 
-			try {
-				parser.ProcessLine ( trimmed );
-			} catch ( Exception ex ) {
-				ErrorList.Add ( ($"Error processing line '{line}': {ex.Message}", ex) );
+			if ( allowThrow ) {
+				parser.ProcessLine ( line );
+			} else {
+				try {
+					parser.ProcessLine ( line );
+				} catch ( Exception ex ) {
+					ErrorList.Add ( ($"Error processing line '{line}': {ex.Message}", ex) );
+				}
 			}
 		}
 
@@ -145,6 +149,22 @@ public interface ISCLRuntime {
 		Equal = 8,
 		Larger = 16,
 		Smaller = 32,
+
+		_1 = 0b0000_0000_0000_0010,
+		_2 = 0b0000_0000_0000_0100,
+		_3 = 0b0000_0000_0000_1000,
+		_4 = 0b0000_0000_0001_0000,
+		_5 = 0b0000_0000_0010_0000,
+		_6 = 0b0000_0000_0100_0000,
+		_7 = 0b0000_0000_1000_0000,
+		_8 = 0b0000_0001_0000_0000,
+		_9 = 0b0000_0010_0000_0000,
+		_A = 0b0000_0100_0000_0000,
+		_B = 0b0000_1000_0000_0000,
+		_C = 0b0001_0000_0000_0000,
+		_D = 0b0010_0000_0000_0000,
+		_E = 0b0100_0000_0000_0000,
+		_F = 0b1000_0000_0000_0000
 	}
 	IDataType GetVar ( SIdVal varID );
 	void SetVar ( SIdVal varID, IDataType value );
@@ -169,6 +189,9 @@ public interface ISCLRuntime {
 	(T, U, V) SafeGetVar<T, U, V> ( SIdVal var0, SIdVal var1, SIdVal var2 )
 		where T : SeClav.IDataType where U : SeClav.IDataType where V : SeClav.IDataType
 		=> (SafeGetVar<T> ( var0 ), SafeGetVar<U> ( var1 ), SafeGetVar<V> ( var2 ));
+	(T, U, V, W) SafeGetVar<T, U, V, W> ( SIdVal var0, SIdVal var1, SIdVal var2, SIdVal var3 )
+		where T : SeClav.IDataType where U : SeClav.IDataType where V : SeClav.IDataType where W : SeClav.IDataType
+		=> (SafeGetVar<T> ( var0 ), SafeGetVar<U> ( var1 ), SafeGetVar<V> ( var2 ), SafeGetVar<W> ( var3 ));
 
 	static void SetOrReset (ISCLRuntime runtime, SCLFlags flag, bool set ) {
 		if ( set ) runtime.SetFlag ( flag );
@@ -238,7 +261,7 @@ internal struct CmdCall {
 	public readonly ushort flags;
 	public readonly SIdVal extraArgs; // Currently unused, reserved for future use
 
-	public const int MaxDirectArgs = 5;
+	public const int MaxDirectArgs = 4;
 	public SIdVal ArgAt (int id) {
 		return id switch {
 			0 => arg1,

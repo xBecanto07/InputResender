@@ -334,11 +334,11 @@ internal class SCLParsingStatus {
 			throw new InvalidOperationException ( $"State '{stateName}' is already defined." );
 		return StateStarts[stateName] = commandIndices.Count;
 	}
-	public void RegisterStateJump ( string stateName, bool canParallel, ushort flagRequired ) {
+	public void RegisterStateJump ( string stateName, ushort opCode, ushort flagRequired ) {
 		ArgumentNullException.ThrowIfNullOrWhiteSpace ( stateName, nameof ( stateName ) );
 		StateJumps.Add ( ( stateName, commandIndices.Count ) );
-		TOpCode opCode = SCLInterpreter.CrOpCode ( canParallel ? ISCLParsedScript.FORK_OPCODE_ID : ISCLParsedScript.JMP_OPCODE_ID );
-		CmdCall jmp = new ( opCode, new TDst ( 0, 0 ), flagRequired );
+		TOpCode opCodeT = SCLInterpreter.CrOpCode ( opCode );
+		CmdCall jmp = new ( opCodeT, new TDst ( 0, 0 ), flagRequired );
 		PushCommand ( jmp );
 
 	}

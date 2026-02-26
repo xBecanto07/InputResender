@@ -84,4 +84,100 @@ public class InputTransformationTest : BaseSystemTest {
 			, TestSensitivity.None
 			, TestTimeout.Short );
 	}
+
+	[Fact]
+	public void MorseCode () {
+		Test (
+			[
+			"safemode off",
+@"seclav parse SipMorse.scl --inline=""
+@using BasicModule
+@using ScriptedInputProcessor
+
+@in SIP_Status_t sip_status
+@in Int SettingChanged
+
+String DotKey = \""E\""
+String DashKey = \""T\""
+String DelimiterKey = \""R\""
+SettingChanged = 1 # Enforce update of settings.
+
+ --> [Init] -sets-> Settings -e-> E -t-> T -n-> Init
+ COMPARE_INT SettingChanged 0
+ ?> emit sets
+ COMPARE_KEYS_3 sip_status DotKey DashKey DelimiterKey
+ ?A emit e; wait
+ ?B emit t; wait
+ FIRE_KEY sip_status \""Space\"" 2
+
+--> Settings -n-> Init
+SettingChanged = 0
+SIP_SETUP sip_status 1 2000
+SIP_RESET_LISTENS sip_status
+SIP_ADD_LISTEN sip_status DotKey
+SIP_ADD_LISTEN sip_status DashKey
+SIP_ADD_LISTEN sip_status DelimiterKey
+emit n
+
+SIP_3Tree --> E -e-> I -t-> A # ·
+SIP_3Tree --> I -e-> S -t-> U # ··
+SIP_3Tree --> S -e-> H -t-> V # ···
+SIP_3Tree --> H -e-> 5 -t-> 4 # ····
+SIP_3Tree --> 4					# ·····
+SIP_3Tree --> 5					# ····-
+SIP_3Tree --> V        -t-> 3 # ···-
+SIP_3Tree --> 3					# ···--
+SIP_3Tree --> U -e-> F        # ··-
+SIP_3Tree --> F					# ··-·
+SIP_3Tree --> A -e-> R -t-> W # ·-
+SIP_3Tree --> R -e-> L        # ·-·
+SIP_3Tree --> L					# ·-··
+SIP_3Tree --> W -e-> P -t-> J # ·--
+SIP_3Tree --> P					# ·--·
+SIP_3Tree --> J        -T-> 1 # ·---
+SIP_3Tree --> 1					# ·----
+SIP_3Tree --> T -e-> N -t-> M # −
+SIP_3Tree --> N -e-> D -t-> K # −·
+SIP_3Tree --> D -e-> B -T-> X # -··
+SIP_3Tree --> B -e-> 6        # -···
+SIP_3Tree --> 6					# -····
+SIP_3Tree --> K -e-> C -t-> Y # −·−
+SIP_3Tree --> C					# −·−·
+SIP_3Tree --> Y					# −·−-
+SIP_3Tree --> M -e-> G -t-> O # −-
+SIP_3Tree --> G -e-> Z -t-> Q # −-·
+SIP_3Tree --> Q					# −-·-
+SIP_3Tree --> Z -e-> 7        # −-··
+SIP_3Tree --> 7					# −-···
+SIP_3Tree --> O -e-> Separator -t-> Decimal # −−-
+SIP_3Tree --> Separator -E-> 8        # −−-·
+SIP_3Tree --> 8					# −−-··
+SIP_3Tree --> Decimal   -E-> 9 -T-> 0 # −−--
+SIP_3Tree --> 9					# −−--·
+SIP_3Tree --> 0					# −−---
+			""",
+			"SIP force",
+			"SIP assign SipMorse.scl",
+			"auto run setupPipes",
+			"hook add Print Keydown KeyUp",
+			"sim keypress E E E E R", // H
+			"sim keypress E R", // E
+			"sim keypress E T E E R", // L
+			"sim keypress E T E E R", // L
+			"sim keypress T T T R", // O
+			], [
+				"Firing key 'H' - Pressed: True",
+				"Firing key 'H' - Pressed: False",
+				"Firing key 'E' - Pressed: True",
+				"Firing key 'E' - Pressed: False",
+				"Firing key 'L' - Pressed: True",
+				"Firing key 'L' - Pressed: False",
+				"Firing key 'L' - Pressed: True",
+				"Firing key 'L' - Pressed: False",
+				"Firing key 'O' - Pressed: True",
+				"Firing key 'O' - Pressed: False",
+			]
+			, TestSensitivity.None
+			, TestTimeout.Short );
+	}
 }

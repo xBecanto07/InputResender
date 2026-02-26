@@ -21,6 +21,12 @@ namespace Components.Interfaces {
 				return (float)Math.Sqrt ( X * X + Y * Y + Z * Z );
 			}
 		}
+		public bool BeingPressedX => ValueX >= PressThreshold && (ValueX - DeltaX) < PressThreshold;
+		public bool BeingPressedY => ValueY >= PressThreshold && (ValueY - DeltaY) < PressThreshold;
+		public bool BeingPressedZ => ValueZ >= PressThreshold && (ValueZ - DeltaZ) < PressThreshold;
+		public bool BeingReleasedX => ValueX < PressThreshold && (ValueX - DeltaX) >= PressThreshold;
+		public bool BeingReleasedY => ValueY < PressThreshold && (ValueY - DeltaY) >= PressThreshold;
+		public bool BeingReleasedZ => ValueZ < PressThreshold && (ValueZ - DeltaZ) >= PressThreshold;
 
 		public HInputEventDataHolder ( ComponentBase owner, HHookInfo hookInfo ) : base ( owner ) { HookInfo = hookInfo; }
 

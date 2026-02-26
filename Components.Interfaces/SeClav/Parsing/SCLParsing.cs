@@ -97,10 +97,18 @@ internal class SCLParsing {
 		Status.RegisterExterOutVariable ( typeID, varName );
 	}
 
-	private void ProcessEmitMacro (ushort flags, string eventName ) {
+	private void ProcessEmitMacro (ushort flags, string eventName, bool suspending ) {
 		if (!CurrentActiveState.Transitions.TryGetValue (eventName, out var existing) )
 			throw new InvalidOperationException ( $"Current active state '{CurrentActiveState.StateName}' does not have a transition for event '{eventName}', which is required to use 'emit' macro with that event name." );
-		Status.RegisterStateJump ( existing.nextState, existing.canParallel, flags );
+		ushort opCode = 0;
+		if (suspending) {
+			if ( existing.canParallel )
+				throw new NotImplementedException ( $"Suspending emit macro with parallel transition is not supported yet." );
+			opCode = ISCLParsedScript.SUSPEND_OPCODE_ID;
+		} else {
+			opCode = existing.canParallel ? ISCLParsedScript.FORK_OPCODE_ID : ISCLParsedScript.JMP_OPCODE_ID;
+		}
+			Status.RegisterStateJump ( existing.nextState, opCode, flags );
 	}
 
 	public ISCLParsedScript GetResult () {
@@ -114,6 +122,9 @@ internal class SCLParsing {
 	private void FinishParsing () {
 		// It is a question if this should actually close up the script or should just 'prepare' it for generating the result, without modifying the underlying Status. For now, this is destructive action, but it might be a useful feature to allow calling Finalize multiple times, for producing different scripts from the same source. (Create one script, add some more lines, create another script with the same Status but different content, etc.)
 
+		InsertStateClosing ();
+	}
+	private void InsertStateClosing () {
 		if ( CurrentActiveState == null ) return;
 		if ( CurrentActiveState.IsAccepting ) {
 			TOpCode endCmd = SCLInterpreter.CrOpCode ( ISCLParsedScript.TERMINATE_OPCODE_ID );
@@ -154,7 +165,7 @@ internal class SCLParsing {
 		string originalLine = line;
 		line = line.Trim ();
 		int commentIndex = line.IndexOf ( '#' );
-		if ( commentIndex == 0 || commentIndex > 0 && line[commentIndex - 1] == '\\' )
+		if ( commentIndex == 0 || (commentIndex > 0 && line[commentIndex - 1] != '\\' ) )
 			line = line[..commentIndex].TrimEnd ();
 
 		if ( string.IsNullOrEmpty ( line ) ) return;
@@ -178,8 +189,7 @@ internal class SCLParsing {
 			stateResult.MustEndLine ();
 			CmdCall cmdCall;
 			if (CurrentActiveState == null) {
-				TOpCode endStartCmd = SCLInterpreter.CrOpCode ( ISCLParsedScript.JMP_OPCODE_ID );
-				parsingContext.Status.RegisterStateJump ( stateResult.StateName, false, 0 );
+				parsingContext.Status.RegisterStateJump ( stateResult.StateName, ISCLParsedScript.JMP_OPCODE_ID, 0 );
 			} else if ( CurrentActiveState.IsAccepting ) {
 				TOpCode endCmd = SCLInterpreter.CrOpCode ( ISCLParsedScript.TERMINATE_OPCODE_ID );
 				cmdCall = new ( endCmd, SCLInterpreter.CrDst ( FirstEntryStatus.PCindex ), 0 );
