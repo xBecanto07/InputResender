@@ -63,7 +63,7 @@ public class SeClavRunnerCommand : ACommand {
 			if ( string.IsNullOrEmpty ( code ) )
 				return new CommandResult ( $"Failed to load script from '{script}'." );
 
-			SCLScriptHolder parsed = new ( code, script, ModuleManager.ModuleLoader );
+			SCLScriptHolder parsed = new ( code, script, ModuleManager.ModuleLoader, !context.CmdProc.SafeMode );
 			ParsedScripts[script] = parsed;
 			if ( parsed.Errors.Count > 0 ) {
 				string errMsg = $"Script '{script}' parsed with {parsed.Errors.Count} errors:\n" + string.Join ( "\n", parsed.Errors.Select ( e => e.Item1 ) );

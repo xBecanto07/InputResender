@@ -9,6 +9,8 @@ namespace Components.Interfaces;
 public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 	public readonly string CompJoinerName;
 	public static string Log = "START";
+	public bool PreferUnsafe = false;
+
 	protected void Note (string msg) {
 		if (msg == null ) return;
 		lock (Log) Log += $"\n{CompJoinerName}: {msg}";
@@ -24,6 +26,8 @@ public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 		(nameof(RegisterPipeline), typeof(object)),
 		(nameof(UnregisterPipeline), typeof(void)),
 		(nameof(Send), typeof(int)),
+		("get_"+nameof(PreferUnsafe), typeof(bool)),
+		("set_"+nameof(PreferUnsafe), typeof(void))
 		];
 
 	// Joiner takes output from component A, executes some operation via component B and returns new data.
@@ -45,11 +49,16 @@ public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 			if ( obj is not DT ) return (false, null);
 			var activeComp = joinerComp.Owner?.Fetch<CB> ();
 			if ( activeComp == null ) return (false, null);
-			try {
+
+			if ( compJoiner.PreferUnsafe ) {
 				return joiner ( compJoiner, activeComp, (DT)obj );
-			} catch ( Exception ex ) {
-				compJoiner.Note ( $"Exception in joiner {dsc} : {ex}" );
-				return (false, null);
+			} else {
+				try {
+					return joiner ( compJoiner, activeComp, (DT)obj );
+				} catch ( Exception ex ) {
+					compJoiner.Note ( $"Exception in joiner {dsc} : {ex}" );
+					return (false, null);
+				}
 			}
 		} );
 	}

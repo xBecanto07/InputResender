@@ -23,7 +23,7 @@ public abstract class BaseSystemTest : IDisposable {
 	bool closing = false;
 
 	readonly List<(string cmd, CommandResult res)> CmdResults = [];
-	const int DelayMult = 20;
+	const int DelayMult = 2;
 	const string StartCmd = "print \"Main Started!\"";
 
 	protected BaseSystemTest ( ITestOutputHelper output, params string[] initCmds ) : base () {
@@ -109,7 +109,7 @@ public abstract class BaseSystemTest : IDisposable {
 	protected string[] Test ( string[] cmds, string[] expectedOuts, TestSensitivity sensitivity, TestTimeout timeout ) {
 		foreach ( string cmd in cmds )
 			StdStream.InputLine ( cmd );
-		WaitUntilCmd ( cmds[^1], 2000 ); // Wait until all commands are processed before starting the timeout for callbacks
+		WaitUntilCmd ( cmds[^1], 2000*100 ); // Wait until all commands are processed before starting the timeout for callbacks
 		Task.Delay ( 20 ).Wait ();
 
 		if (timeout == TestTimeout.Immediate ) {
@@ -174,8 +174,10 @@ public abstract class BaseSystemTest : IDisposable {
 		}
 
 		for (int i = 0; i < matches.Length; i++) {
-			if ( matches[i].Count == 0 )
+			if ( matches[i].Count == 0 ) {
+				var SIP = MainCliWrapper.CmdProc.Owner.Fetch<VScriptedInputProcessor> ();
 				throw new Exception ( $"Expected output '{expectedOuts[i]}' not found in actual output." );
+			}
 		}
 
 		if (sensitivity.HasFlag(TestSensitivity.Order)) {

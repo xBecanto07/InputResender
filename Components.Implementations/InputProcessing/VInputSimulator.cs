@@ -12,8 +12,10 @@ namespace Components.Implementations {
 		public override int Simulate ( params HInputEventDataHolder[] data ) {
 			int ret = 0;
 			Owner.PushDelayedMsg ( "Requested simulating input of " + string.Join ( " | ", data.ToList () ) );
-			foreach ( HInputEventDataHolder h in data )
+			foreach ( HInputEventDataHolder h in data ) {
 				ret += (short)Owner.Fetch<DInputReader> ().SimulateInput ( h, AllowRecapture );
+				System.Threading.Tasks.Task.Delay ( 50 ).Wait ();
+			}
 			return ret;
 		}
 

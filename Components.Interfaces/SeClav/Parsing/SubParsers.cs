@@ -1,5 +1,6 @@
 ﻿using Components.Library;
 using SeClav;
+using SeClav.DataTypes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -250,13 +251,15 @@ internal class SubStateParser : SubParserBase {
 	public readonly bool IsAccepting;
 	public readonly Dictionary<string, (string nextState, bool canParallel)> Transitions;
 	public readonly List<(string nextState, bool canParallel)> eTransitions;
+	public readonly IReadOnlyList<string> AwaitingTokens;
 	public int PCindex;
 
-	public SubStateParser ( ParsingContext context, bool isAccepting, string originalLine, string stateName ) : base ( context, originalLine ) {
+	public SubStateParser ( ParsingContext context, bool isAccepting, string originalLine, string stateName, string[] awaitingTokens ) : base ( context, originalLine ) {
 		StateName = stateName;
 		IsAccepting = isAccepting;
 		Transitions = new ();
 		eTransitions = new ();
+		AwaitingTokens = awaitingTokens;
 	}
 	
 	public static bool Parse ( string line, ParsingContext context, out SubStateParser result ) {
@@ -269,7 +272,7 @@ internal class SubStateParser : SubParserBase {
 		if ( string.IsNullOrEmpty ( stateName ) )
 			throw new InvalidOperationException ( $"Invalid state transition format in line '{originalLine}'. Missing state name." );
 		bool isAccepting = IsEnclosed ( ref stateName, "[", "]" );
-		result = new ( context, isAccepting, originalLine, stateName );
+		result = new ( context, isAccepting, originalLine, stateName, awaitingTokens );
 
 		while ( true ) {
 			line = line.TrimStart ();
@@ -371,9 +374,12 @@ internal class SubStateParser : SubParserBase {
 	}
 
 	public override void Apply () {
+		if (AwaitingTokens.Count > 0) {
+			throw new NotImplementedException ( $"Awaiting tokens in state transitions are not yet implemented. Line: '{OriginalLine}'." );
+		}
 		PCindex = Context.Status.RegisterStateStart ( StateName );
 		foreach ( var eTrans in eTransitions )
-			Context.Status.RegisterStateJump ( eTrans.nextState, eTrans.canParallel, 0 );
+			Context.Status.RegisterStateJump ( eTrans.nextState, eTrans.canParallel ? ISCLParsedScript.FORK_OPCODE_ID : ISCLParsedScript.JMP_OPCODE_ID, 0 );
 	}
 }
 
@@ -624,10 +630,17 @@ internal class SubCommandParser : SubParserBase {
 		if ( cmd == null ) return false;
 		result = new ( context, originalLine, token, cmd, flagReq );
 
+		if (cmd.Args.Count != cmd.ArgC)
+			throw new InvalidOperationException ( $"Internal error: Command '{cmd.CmdCode}' argument count mismatch between ICommand definition and Args list." );
 		for ( int i = 0; i < cmd.ArgC; i++ ) {
-			var type = context.Status.GetDataType ( cmd, i );
+			if ( cmd.Args[i].type is SCLT_Any ) {
+				result.args[i] = new CmdArgInfo ( SCLInterpreter.CrArgVar ( 1 ) ); // 'ANY' is requested. Corrently no better way to provide some 'placeholder' value.
+				line = string.Empty; // 'ANY' should probably consume the rest of the line.
+			} else {
+				var type = context.Status.GetDataType ( cmd, i );
 
-			result.args[i] = context.ParseArg ( ref line, context, type, $"Command '{result.Name}' expects argument {i + 1}" );
+				result.args[i] = context.ParseArg ( ref line, context, type, $"Command '{result.Name}' expects argument {i + 1}" );
+			}
 		}
 
 		result.RemainLine = line;

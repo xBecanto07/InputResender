@@ -143,7 +143,7 @@ public class SCLDebugger {
 			for ( int i = 0; i < sizeof(ushort)*8; i++ )
 				flagChars[i] = flagsField[i] ? FlagsMarks[i] : '_';
 			string flagsStr = new ( flagChars.Reverse ().ToArray () );
-			return $"PC={PC,-2}: {Line,-32} \t|  {CmdCall, -40} {flagsStr}  |   {memInfoStr}";
+			return $"PC={PC,-2}: {Line,-56} \t|  {CmdCall, -40} {flagsStr}  |   {memInfoStr}";
 		}
 	}
 	public List<(SIdVal id, string name)> CapturedVars = [];

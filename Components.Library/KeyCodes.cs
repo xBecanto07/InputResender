@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace Components.Library {
 	public enum VKChange { None = 0, KeyDown = 0x100, KeyUp = 0x101, SysKeyDown = 0x104, SysKeyUp = 0x105, MouseMove = 0x200, LButtonDown = 0x201, LButtonUp = 0x202, MouseWheel = 0x20A, RButtonDown = 0x204, RButtonUp = 0x205 } // This should be reduced such that LowLevel component translates these (like LButtonDown should be considered outside of the LL as KeyDown)
+	[Flags]
+	public enum VKChangeMask { None = 0, KeyDown = 1, KeyUp = 2, SysKeyDown = 4, SysKeyUp = 8, MouseMove = 16, LButtonDown = 32, LButtonUp = 64, MouseWheel = 128, RButtonDown = 256, RButtonUp = 512 }
 
 	public enum KeyCode {
 		/// <summary>The A key.</summary>
