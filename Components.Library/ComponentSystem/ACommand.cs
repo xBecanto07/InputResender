@@ -22,6 +22,8 @@ public abstract class ACommand {
 	protected virtual bool PrintHelpOnEmpty { get; } = false;
 	protected virtual int ArgsOffset => 0;
 
+	public virtual ComponentUIParametersInfo GetUIDescription () { return null; }
+
 	//protected string BasicCallName ( bool includeAlts ) =>
 	//	(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First () + (includeAlts && commandNames.Count > 1 ? $"[.|{string.Join ( "|", commandNames.Skip ( 1 ) )}]" : string.Empty);
 	protected string BasicCallName ( bool includeAlts ) {

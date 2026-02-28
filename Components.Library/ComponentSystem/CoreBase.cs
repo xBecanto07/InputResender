@@ -13,6 +13,17 @@ namespace Components.Library {
 		private readonly List<string> DelayedMessages = new ();
 		public enum LogLevel { None, Error, Warning, Info, Debug, All }
 		public event Action<string> OnError, OnMessage;
+		private event Action<ComponentInfo> _componentAdded;
+		public event Action<ComponentInfo> OnComponentAdded {
+			add {
+				lock ( Components ) {
+					foreach ( var comp in Components ) value.Invoke ( comp.Value );
+				}
+				_componentAdded += value;
+			}
+			remove => _componentAdded -= value;
+		}
+		public event Action<ComponentInfo> OnComponentRemoved;
 
 		public class ComponentInfo {
 			public readonly ComponentBase Component;
@@ -105,10 +116,12 @@ namespace Components.Library {
 				compInfo.GroupID = perTypeID;
 			}
 			Components.Add ( retKey, compInfo );
+			_componentAdded?.Invoke ( compInfo );
 			return retKey;
 		}
 		public void Register ( ComponentInfo compInfo ) {
 			if ( Components.ContainsKey ( compInfo.GlobalID ) ) throw new ArgumentException ( $"There is another component already registered under key {compInfo.GlobalID}" );
+			_componentAdded?.Invoke ( compInfo );
 			Components.Add ( compInfo.GlobalID, compInfo );
 		}
 
@@ -152,11 +165,13 @@ namespace Components.Library {
 			var info = this[component];
 			//if ( info == null ) throw new KeyNotFoundException ( "Given component is not registered!" );
 			if ( info == null ) return;
+			OnComponentRemoved?.Invoke ( info );
 			Components.Remove ( info.GlobalID );
 		}
 
 		public void Close () {
 			foreach ( var component in Components ) {
+				OnComponentRemoved?.Invoke ( component.Value );
 				component.Value.Component.Clear ();
 			}
 			Components.Clear ();

@@ -12,6 +12,16 @@ public class CommandProcessor : ComponentBase, IDisposable {
 	public ArgParser.ErrLvl ArgErrorLevel = ArgParser.ErrLvl.Full;
 	public bool SafeMode { get; set; } = false;
 
+	private event Action<ACommand> _onCommandAdded;
+	public event Action<ACommand> OnCommandAdded {
+		add {
+			foreach ( var cmd in registeredCmds ) value ( cmd );
+			_onCommandAdded += value;
+		}
+		remove => _onCommandAdded -= value;
+	}
+	public event Action<ACommand> OnCommandRemoved;
+
 	public override int ComponentVersion => 1;
 	public override StateInfo Info => null;
 	protected override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
@@ -46,6 +56,17 @@ public class CommandProcessor : ComponentBase, IDisposable {
 
 	public bool AddCommand ( ACommand cmd ) {
 		if ( registeredCmds.Contains ( cmd ) ) return false;
+		foreach ( var regCmd in registeredCmds ) {
+			if ( regCmd.GetType () == cmd.GetType () ) {
+				return false;
+				//throw new ArgumentException ( $"Another instance of command of type '{cmd.GetType().Name}' is already registered." );
+			}
+			if (regCmd.CallName == cmd.CallName) {
+				return false;
+				throw new ArgumentException ( $"Another instance of command with callname '{cmd.CallName}' is already registered." );
+			}
+		}
+		_onCommandAdded?.Invoke ( cmd );
 		return registeredCmds.Add ( cmd );
 	}
 
@@ -62,7 +83,11 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		if ( parCmd == null ) throw new ArgumentException ( $"Parent command '{args.String ( 0, "Parent command" )}' not found." );
 		var newCmd = modifyFcn ( parCmd );
 		if ( newCmd == null ) return;
-		if ( registeredCmds.Contains ( parCmd ) ) registeredCmds.Remove ( parCmd );
+		if ( registeredCmds.Contains ( parCmd ) ) {
+			registeredCmds.Remove ( parCmd );
+			OnCommandRemoved?.Invoke ( parCmd );
+		}
+		_onCommandAdded?.Invoke ( newCmd );
 		registeredCmds.Add ( newCmd );
 	}
 

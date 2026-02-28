@@ -3,6 +3,7 @@ using Components.Interfaces.Commands;
 using Components.Library;
 using Components.Library.ComponentSystem;
 using InputResender.Commands;
+using InputResender.WebUI.Commands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +21,7 @@ public class FactoryCommandsLoader : ACommandLoader {
 		{ typeof(PWDCommand), () => new PWDCommand () },
 		{ typeof(AutoCmdsCommand), () => new AutoCmdsCommand () },
 		{ typeof(LoaderCommand), () => new LoaderCommand () },
+		{ typeof(BlazorManagerCommand), () => new BlazorManagerCommand () },
 	};
 	private static Dictionary<Type, (string, Func<ACommand, ACommand>)> NewSubCommandList = new () {
 		{ typeof (CoreCreatorCommand), ("core", ( ACommand parent ) => {

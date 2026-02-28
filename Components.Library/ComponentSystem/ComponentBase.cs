@@ -38,6 +38,8 @@ namespace Components.Library {
 		}
 		public T Fetch<T> ( string opCode ) => (T)Fetch ( opCode, typeof ( T ) );
 
+		public virtual ComponentUIParametersInfo GetUIDescription () { return null; }
+
 		public abstract StateInfo Info { get; }
 		public abstract class StateInfo {
 			protected const string BR = "\r\n";
