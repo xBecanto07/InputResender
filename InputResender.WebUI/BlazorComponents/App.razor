@@ -1,5 +1,6 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@inject IJSRuntime jsRuntime
+<!DOCTYPE html>
+<html lang="en" data-theme="@EnvHolder.SelectedTheme">
 
 <head>
     <meta charset="utf-8"/>
@@ -7,8 +8,7 @@
     <base href="/"/>
     <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]"/>
     <link rel="stylesheet" href="@Assets["app.css"]"/>
-    @* <link rel="stylesheet" href="@Assets["InputResender.WebUI.styles.css"]"/> *@
-    <link rel="stylesheet" href="@Assets["BlazorStyle.css"]"/>
+    <script src="@Assets["scripts.js"]"></script>
     <ImportMap/>
     <link rel="icon" type="image/png" href="favicon.png"/>
     <HeadOutlet/>
@@ -20,3 +20,18 @@
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter ( Name = "EnviHolder" )]
+    public EnvironmentHolder EnvHolder { get; set; }
+
+    protected override void OnInitialized () {
+        if (EnvHolder == null) return;
+        EnvHolder.JSRuntime = jsRuntime;
+        EnvHolder.RedrawRequested += RequestRedraw;
+    }
+
+    public void RequestRedraw () {
+        InvokeAsync ( StateHasChanged ).Wait ();
+    }
+}

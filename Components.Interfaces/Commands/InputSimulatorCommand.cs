@@ -1,4 +1,5 @@
 ﻿using Components.Library;
+using Components.Library.ComponentSystem;
 using InputResender.Commands;
 using System;
 using System.Collections.Generic;
@@ -117,5 +118,47 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 			// Not allowing other arguments after first key
 		}
 		return keys;
+	}
+
+	public override ComponentUIParametersInfo GetUIDescription () {
+		var keyCodes = new UI_TextField.Factory ()
+			.WithName ( "KeyCodes" )
+			.WithLabel ( "KeyCodes" )
+			.WithDescription ( "The key codes to simulate (Windows-style key codes). For multiple keys, separate with comma." )
+			.WithInitialValue ( string.Empty )
+			.Build<UI_TextField> ();
+		var actionSel = new UI_DropDown.Factory ()
+			.WithSelectionAcceptor ()
+			.WithInitialValue ( (0, Enum.GetNames<VKChange> ().ToList ()) )
+			.WithName ( "ActionSel" )
+			.WithLabel ( "Action" )
+			.WithDescription ( "The type of input event to simulate." )
+			.Build<UI_DropDown> ();
+		var resultField = new UI_TextField.Factory ()
+			.WithName ( "Result" )
+			.WithLabel ( "Result" )
+			.WithDescription ( "The result of the last simulation command." )
+			.WithInitialValue ( "Not executed yet." )
+			.ForceDynamic ()
+			.Build<UI_TextField> ();
+		var simulateButton = new UI_ActionButton.Factory ()
+			.WithOnClick ( () => {
+				var core = GetCore ( LastContext );
+				string actionStr = actionSel.Value.options[actionSel.Value.selID];
+				string cmd = $"sim {actionStr.ToLower ()} {keyCodes.Value}";
+				string cmdRes = core.Fetch<CommandProcessor> ().ProcessLine ( cmd ).Message;
+				resultField.ApplyValue ( cmdRes );
+			} )
+			.WithName ( "Simulate" )
+			.WithLabel ( "Simulate" )
+			.WithDescription ( "Send the specified input events." )
+			.Build<UI_ActionButton> ();
+		return new ComponentUIParametersInfo.Factory ()
+			.WithDefaultID ()
+			.AddParameters ( actionSel, keyCodes, simulateButton, resultField )
+			.WithComponentType ( GetType () )
+			.WithName ( "Input Simulator Command" )
+			.WithDescription ( "Command for simulating user hardware input" )
+			.Build () as ComponentUIParametersInfo;
 	}
 }

@@ -21,8 +21,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.ServiceTests"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Components.LibraryTests", "Components.LibraryTests\Components.LibraryTests.csproj", "{ACB99D67-2C42-4284-8CBE-62268F7CEAD6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.AndroidServer", "InputResender.AndroidServer\InputResender.AndroidServer.csproj", "{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.OSDependent.Windows", "InputResender.OSDependent.Windows\InputResender.OSDependent.Windows.csproj", "{77C17755-8DC9-4DF1-A920-405E84AFAACF}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InputResender.SandboxCmd", "InputResender.SandboxCmd\InputResender.SandboxCmd.csproj", "{5DC422D1-1217-4A4D-8E6F-559EED6C9768}"
@@ -160,24 +158,6 @@ Global
 		{ACB99D67-2C42-4284-8CBE-62268F7CEAD6}.Release|ARM64.Build.0 = Release|Any CPU
 		{ACB99D67-2C42-4284-8CBE-62268F7CEAD6}.Release|x64.ActiveCfg = Release|Any CPU
 		{ACB99D67-2C42-4284-8CBE-62268F7CEAD6}.Release|x64.Build.0 = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|ARM64.ActiveCfg = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|ARM64.Build.0 = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|ARM64.Deploy.0 = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|x64.Build.0 = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Debug|x64.Deploy.0 = Debug|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|Any CPU.Deploy.0 = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|ARM64.ActiveCfg = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|ARM64.Build.0 = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|ARM64.Deploy.0 = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|x64.ActiveCfg = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|x64.Build.0 = Release|Any CPU
-		{EB69333C-C96F-4CF7-AC8E-1D276AFF086B}.Release|x64.Deploy.0 = Release|Any CPU
 		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77C17755-8DC9-4DF1-A920-405E84AFAACF}.Debug|Any CPU.Deploy.0 = Debug|Any CPU

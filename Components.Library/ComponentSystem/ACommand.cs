@@ -1,4 +1,5 @@
-﻿using InputResender.Commands;
+﻿using Components.Library.ComponentSystem;
+using InputResender.Commands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,8 +22,34 @@ public abstract class ACommand {
 	public virtual string Help { get => BasicHelp (); }
 	protected virtual bool PrintHelpOnEmpty { get; } = false;
 	protected virtual int ArgsOffset => 0;
+	public CommandProcessor.CmdContext LastContext;
 
-	public virtual ComponentUIParametersInfo GetUIDescription () { return null; }
+	public virtual ComponentUIParametersInfo GetUIDescription () {
+		// Should subcommands be on separate UI pages? Or fit into one and just use a separator between? 🤔
+		Dictionary<string, (ACommand cmd, ComponentUIParametersInfo ui)> parameters = new ();
+		foreach ( var subCmd in subCommands ) {
+			var ui = subCmd.Value.GetUIDescription ();
+			if ( ui != null )
+				parameters.Add ( subCmd.Key, (subCmd.Value, ui) );
+		}
+		if (parameters.Count == 0) return null;
+
+		var ret = new ComponentUIParametersInfo.Factory ();
+		foreach ( var par in parameters ) {
+			var sep = new UI_Separator.Factory ()
+				.WithName ( par.Key )
+				.WithLabel ( par.Value.ui.Name )
+				.WithDescription ( par.Value.cmd.Description )
+				.Build ();
+			ret.AddParameters ( sep, par.Value.ui );
+		}
+
+		return ret.WithDefaultID ()
+			.WithComponentType ( GetType () )
+			.WithName ( CallName )
+			.WithDescription ( Description )
+			.Build () as ComponentUIParametersInfo;
+	}
 
 	//protected string BasicCallName ( bool includeAlts ) =>
 	//	(string.IsNullOrEmpty ( parentCommandHelp ) ? string.Empty : parentCommandHelp + " ") + commandNames.First () + (includeAlts && commandNames.Count > 1 ? $"[.|{string.Join ( "|", commandNames.Skip ( 1 ) )}]" : string.Empty);
@@ -140,6 +167,7 @@ public abstract class ACommand {
 				if ( rquiresValues && !localContext.Args.HasValue ( i, true ) ) return new CommandResult ( new Exception ( $"Argument #{i} requires a value but is not provided." ) );
 			}
 		}
+		LastContext = localContext;
 		return ExecIner ( localContext );
 	}
 
@@ -227,10 +255,13 @@ public abstract class ACommand {
 	}
 	protected CoreBase GetCore ( CommandProcessor.CmdContext context ) => GetCore<CoreBase> ( context );
 	protected Core GetCore<Core> ( CommandProcessor.CmdContext context ) where Core : CoreBase {
-		var core = context.CmdProc.GetVar<Core> ( CoreManagerCommand.ActiveCoreVarName );
-		if ( core == null ) throw new Exception ( "No active core available." );
+		var core = context.CmdProc?.GetVar<Core> ( CoreManagerCommand.ActiveCoreVarName );
+		if ( core == null )
+			throw new Exception ( "No active core available." );
 		return core;
 	}
+
+	protected Core GetCore<Core> () where Core : CoreBase => GetCore<Core> ( LastContext );
 }
 
 

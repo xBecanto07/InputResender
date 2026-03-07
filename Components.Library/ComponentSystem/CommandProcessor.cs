@@ -15,7 +15,9 @@ public class CommandProcessor : ComponentBase, IDisposable {
 	private event Action<ACommand> _onCommandAdded;
 	public event Action<ACommand> OnCommandAdded {
 		add {
-			foreach ( var cmd in registeredCmds ) value ( cmd );
+			foreach ( var cmd in registeredCmds ) {
+				value ( cmd );
+			}
 			_onCommandAdded += value;
 		}
 		remove => _onCommandAdded -= value;
@@ -134,6 +136,13 @@ public class CommandProcessor : ComponentBase, IDisposable {
 			if ( core == null ) return new ClassCommandResult<CoreBase> ( null, "No active core." );
 			if (Owner == core) return new ClassCommandResult<CoreBase> ( core, "Active core already ownes this context." );
 			ChangeOwner ( core );
+			CmdContext tmpContext = new ( this, line, 2, console, args );
+			foreach ( var regCmd in registeredCmds ) {
+				// Assign self as 'last known context' for all new commands.
+				// Prefer already existing context.
+				if ( regCmd.LastContext.CmdProc == null )
+					regCmd.LastContext = tmpContext;
+			}
 			return new ClassCommandResult<CoreBase> ( core, "Active core is now owner of this context." );
 		}
 

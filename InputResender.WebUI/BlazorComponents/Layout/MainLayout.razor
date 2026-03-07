@@ -18,15 +18,15 @@
             @Body
         </article>
     </main>
-
-    <footer>
-        <ul>
-            @foreach(string err in EnvHolder.Errors) {
-                <li>@err</li>
-            }
-        </ul>
-    </footer>
 </div>
+
+<footer>
+    <ul>
+        @foreach(string msg in EnvHolder.Footer) {
+            <li>@msg</li>
+        }
+    </ul>
+</footer>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

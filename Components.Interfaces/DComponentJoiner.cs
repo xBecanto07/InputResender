@@ -169,12 +169,12 @@ public class VComponentJoiner : DComponentJoiner {
 				dsc += $"\n Step {i} {(success ? "OK" : "FAIL")} {pipeline[i - 1]} -> {pipeline[i]} (Result: {newData})";
 				if ( !success ) {
 					dsc += $"\nPipeline stopped after failed step #{i - 1}";
-					Owner.PushDelayedMsg ( dsc );
+					//Owner.PushDelayedMsg ( dsc );
 					return i - 1;
 				}
 			}
 			dsc += "\nPipeline finished";
-			Owner.PushDelayedMsg ( dsc );
+			//Owner.PushDelayedMsg ( dsc );
 			return pipeline.Count;
 		}
 		dsc = target == null ? string.Empty : $" -> {target.Name}";

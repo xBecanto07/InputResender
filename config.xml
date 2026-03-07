@@ -8,7 +8,7 @@
     <initCmds>
       <C0>loadall</C0>
       <C1>clear</C1>
-      <C2>safemode on</C2>
+      <C2>safemode off</C2>
       <C3>core new</C3>
       <C4>core own</C4>
       <C5>conns force init</C5>
@@ -46,5 +46,45 @@
       <S6>hook add Pipeline Keydown KeyUp</S6>
       <S7>sim keydown R</S7>
     </TestSclAutorun>
+    <Shared>
+      <Sh0>windows load --force</Sh0>
+      <Sh1>windows msgs start</Sh1>
+      <Sh2>hook manager start</Sh2>
+      <Sh3>load sclModules</Sh3>
+      <Sh4>load joiners</Sh4>
+      <Sh5>SIP force</Sh5>
+    </Shared>
+    <Client>
+      <Cl0>auto run Shared</Cl0>
+      <Cl1>pipeline new Recver DPacketSender DDataSigner DInputSimulator SHookManager</Cl1>
+      <Cl3>password add blue</Cl3>
+      <Cl4>network hostlist</Cl4>
+    </Client>
+    <Client2>
+      <Cl0>auto run Shared</Cl0>
+      <Cl1>pipeline new Recver DPacketSender DDataSigner DInputSimulator DInputSimulator</Cl1>
+      <Cl2>pipeline new HookManagerInputProcess SHookManager DInputMerger DInputProcessor</Cl2>
+      <Cl3>password add blue</Cl3>
+      <Cl4>network hostlist</Cl4>
+    </Client2>
+    <Server>
+      <Se0>auto run Shared</Se0>
+      <Se1>pipeline new ReadInputAndProcess DInputReader DInputMerger VScriptedInputProcessor</Se1>
+      <Se2>pipeline new Sender DInputProcessor DDataSigner DPacketSender</Se2>
+      <Se3>seclav parse MorseCode.scl</Se3>
+      <Se4>SIP assign MorseCode.scl</Se4>
+      <Se6>password add blue</Se6>
+      <Se7>target set 192.168.72.12:45256</Se7>
+    </Server>
+    <Server2>
+      <Se0>auto run Shared</Se0>
+      <Se1>pipeline new ReadInputAndProcess DInputReader DInputMerger VScriptedInputProcessor</Se1>
+      <Se2>pipeline new Sender DInputProcessor DDataSigner DPacketSender</Se2>
+      <Se3>seclav parse MorseCode.scl</Se3>
+      <Se4>SIP assign MorseCode.scl</Se4>
+      <Se5>hook add Pipeline Keydown KeyUp</Se5>
+      <Se6>password add blue</Se6>
+      <Se7>target set 192.168.72.12:45256</Se7>
+    </Server2>
   </AutoCommands>
 </Config>

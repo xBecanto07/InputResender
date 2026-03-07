@@ -4,6 +4,8 @@ using RetT = Components.Library.ClassCommandResult<Components.Library.CoreBase>;
 
 namespace InputResender.Commands;
 public class CoreManagerCommand : ACommand {
+	private CommandProcessor.CmdContext lastContext;
+
 	public const string ActiveCoreVarName = "ActCore";
 	public enum Act { Create, Select, Delete, List }
 	override public string Description => "Offers access to Core functionalities";
@@ -20,6 +22,7 @@ public class CoreManagerCommand : ACommand {
 	public CoreManagerCommand () : base ( null, CommandNames, InterCommands ) {}
 
 	protected override RetT ExecIner ( CommandProcessor.CmdContext context ) {
+		lastContext = context;
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"act" => "core act: Prints the name of the active core.",
 			"typeof" => "core typeof <Type>\n\tType: Subtype of ComponentBase to find what specific variant of the component is registered in active core.",

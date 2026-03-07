@@ -14,6 +14,8 @@ using Microsoft.Extensions.Hosting;
 using System.IO;
 //using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace InputResender.WebUI;
 public class VWebServerBlazor : DWebServer {
@@ -54,6 +56,10 @@ public class VWebServerBlazor : DWebServer {
 			services.AddHttpClient ();
 			services.AddRazorComponents ()
 				.AddInteractiveServerComponents ();
+		} );
+		webBuilder.ConfigureLogging ( logging => {
+			logging.ClearProviders ();
+			logging.SetMinimumLevel ( LogLevel.Warning );
 		} );
 		webBuilder.Configure ( app => {
 			app.UseStaticFiles ();
@@ -101,43 +107,6 @@ public class VWebServerBlazor : DWebServer {
 	private string GetAutoCmdStatus () {
 		var res = Owner.Fetch<CommandProcessor> ()?.ProcessLine ( "autocmd list" );
 		return res?.Message;
-		/*
-Automatic command groups:
-[0] initCmds:
-	# 0 |> loadall
-	# 1 |> clear
-	# 2 |> safemode on
-	# 3 |> core new
-	# 4 |> core own
-	# 5 |> conns force init
-	# 6 |> loglevel all
-	# 7 |> network callback recv print
-	# 8 |> network callback newconn print
-[1] setupPipes:
-	# 0 |> hook manager start
-	# 1 |> pipeline new Sender DInputProcessor DDataSigner DPacketSender
-	# 2 |> pipeline new Recver DPacketSender DDataSigner DInputSimulator
-	# 3 |> pipeline new InputProcess DInputReader DInputMerger DInputProcessor
-	# 4 |> pipeline new HookManagerInputProcess SHookManager DInputMerger DInputProcessor
-[2] testSimKey:
-	# 0 |> hook add Print Keydown KeyUp
-	# 1 |> sim keypress R
-[3] printWinKey:
-	# 0 |> windows load --force
-	# 1 |> windows msgs start
-	# 2 |> hook add Print Keydown KeyUp
-[4] startListener:
-	# 0 |> help
-[5] TestSclAutorun:
-	# 0 |> load sclModules
-	# 1 |> load joiners
-	# 2 |> seclav parse SIPtest.scl
-	# 3 |> SIP force
-	# 4 |> SIP assign SIPtest.scl
-	# 5 |> auto run setupPipes
-	# 6 |> hook add Pipeline Keydown KeyUp
-	# 7 |> sim keydown R
-		 */
 	}
 	
 	private string FindRootDir () {
@@ -163,3 +132,4 @@ Automatic command groups:
 		throw new Exception ( $"Could not find '{RootDirectory}' directory in any parent of the application base directory." );
 	}
 }
+

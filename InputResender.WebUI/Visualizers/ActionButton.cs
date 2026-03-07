@@ -1,5 +1,5 @@
 ﻿using System;
-using Components.Library;
+using Components.Library.ComponentSystem;
 
 namespace InputResender.WebUI.Visualizers;
 public class ActionButton (UI_ActionButton uiActionButton) : IBlazorVisualizer (uiActionButton) {

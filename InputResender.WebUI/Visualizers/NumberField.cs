@@ -1,6 +1,6 @@
 ﻿using System;
-using Components.Library;
 using System.Collections.Generic;
+using Components.Library.ComponentSystem;
 
 namespace InputResender.WebUI.Visualizers;
 public class NumberField<T> : IBlazorVisualizer where T : struct, IComparable, IConvertible {

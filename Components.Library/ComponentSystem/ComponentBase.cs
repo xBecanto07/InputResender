@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using Components.Library.ComponentSystem;
+using System.Collections;
 
 namespace Components.Library {
 	public abstract class ComponentBase {

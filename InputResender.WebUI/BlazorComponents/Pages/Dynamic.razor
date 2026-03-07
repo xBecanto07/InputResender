@@ -1,16 +1,18 @@
 ﻿@page "/dynamic/{ComponentName}"
 
-@using Components.Library
 @using Components.Interfaces
+@using Components.Library
+@using Components.Library.ComponentSystem
 @using InputResender.WebUI.Visualizers
 @rendermode InteractiveServer
 
 <h3>@Component.ComponentName</h3>
 <label>@Component.ComponentID</label>
 
+
 @foreach (var (paramName, param) in Visualizers)
 {
-	<div class="form-group" @onclick="Update">
+	<div class=@GetLineClass() @onclick="Update">
 		<label>@param.Label: </label>
 		@switch ( param ) {
 		case TextField { IsReadonly: true } textField:
@@ -20,6 +22,10 @@
 			<input type="text" @bind="textField.Value" @oninput="textField.Apply"/>
 			break;
 		case ListView listView: {
+			if (listView.Items == null) {
+				<p>Loading...</p>
+				break;
+			}
 			<ul @onload="listView.UpdateValue">
 				@foreach ( string line in listView.Items ) {
 					<li>@line</li>
@@ -40,7 +46,8 @@
 			</select>
 			break;
 		case Separator separator:
-			<hr/><h4>@separator.Label</h4><hr/>
+			var render = separator.Render ();
+			@render
 			break;
 		case ActionButton actionBtn:
 			<button @onclick="actionBtn.Click">@actionBtn.Label</button>
@@ -52,41 +59,52 @@
 	</div>
 }
 
-<button @onclick="Execute">Execute</button>
-<button @onclick="Update">Update</button>
-
 @code {
 	[CascadingParameter(Name = "EnviHolder")]
 	private EnvironmentHolder EnvHolder { get; set; }
 	[Parameter]
 	public string ComponentName { get; set; }
+	int LineIndex = 0;
 
-	private ComponentUIParametersInfo Component;
+	private ComponentUIParametersInfo Component, LastComponent = null;
 	private readonly Dictionary<string, IBlazorVisualizer> Visualizers = [];
 
-	protected override void OnInitialized () {
-		if ( !EnvHolder.ComponentUIs.TryGetValue ( ComponentName, out Component ) )
-			return;
+	protected override void OnParametersSet () { Init (); }
+	protected override void OnInitialized () { Init (); }
 
-		foreach ( var uiParam in Component.Parameters ) {
-			switch ( uiParam ) {
-			case UI_TextField textField: Visualizers.Add ( uiParam.Name, new TextField ( textField ) ); break;
-			case UI_ListView listView: Visualizers.Add ( uiParam.Name, new ListView ( listView ) ); break;
-			case UI_IntField intField: Visualizers.Add ( uiParam.Name, new NumberField<int> ( intField ) ); break;
-			case UI_DropDown dropDown: Visualizers.Add ( uiParam.Name, new DropDownList ( dropDown ) ); break;
-			case UI_ActionButton actionBtn: Visualizers.Add ( uiParam.Name, new ActionButton ( actionBtn ) ); break;
-			case UI_Separator separator: Visualizers.Add ( uiParam.Name, new Separator ( separator ) ); break;
-			default:
-				EnvHolder.Errors.Add ( $"Unsupported parameter type '{uiParam.Type}' for parameter '{uiParam.Name}' in component '{Component.ComponentName}'" );
-				continue;
+	private string GetLineClass () {
+		LineIndex++;
+		return $"form-group-{LineIndex % 2}";
+	}
+
+	private void Init () {
+		lock (Visualizers) {
+			LineIndex = 0;
+			if ( !EnvHolder.ComponentUIs.TryGetValue ( ComponentName, out Component ) ) return;
+			if ( Component == LastComponent ) return;
+			LastComponent = Component;
+
+			Visualizers.Clear ();
+			foreach ( var uiParam in Component.Parameters ) {
+				switch ( uiParam ) {
+				case UI_TextField textField:    Visualizers.Add ( uiParam.Name, new TextField ( textField ) ); break;
+				case UI_ListView listView:      Visualizers.Add ( uiParam.Name, new ListView ( listView ) ); break;
+				case UI_IntField intField:      Visualizers.Add ( uiParam.Name, new NumberField<int> ( intField ) ); break;
+				case UI_DropDown dropDown:      Visualizers.Add ( uiParam.Name, new DropDownList ( dropDown ) ); break;
+				case UI_ActionButton actionBtn: Visualizers.Add ( uiParam.Name, new ActionButton ( actionBtn ) ); break;
+				case UI_Separator separator:    Visualizers.Add ( uiParam.Name, new Separator ( separator ) ); break;
+				default:
+					EnvHolder.PushFooterMsg ( $"Unsupported parameter type '{uiParam.Type}' for parameter '{uiParam.Name}' in component '{Component.ComponentName}'" );
+					continue;
+				}
 			}
+
+			foreach ( var vis in Visualizers ) { vis.Value.OnValueChanged += () => InvokeAsync ( StateHasChanged ); }
+
+			RequestUpdate ();
 		}
 
-		foreach (var vis in Visualizers ) {
-			vis.Value.OnValueChanged += () => InvokeAsync ( StateHasChanged );
-		}
-
-		Update ();
+		EnvHolder.RedrawRequested += RequestUpdate;
 	}
 
 	private async Task Execute() {
@@ -94,10 +112,16 @@
 		// Zobraz výsledky
 	}
 
+	public void RequestUpdate () => Update ().Wait ();
 	private async Task Update () {
+		System.DateTime now = System.DateTime.Now;
+		LineIndex = 0;
 		foreach ( var vis in Visualizers ) {
 			vis.Value.RequestUpdate ();
 		}
+		System.TimeSpan elapsed = System.DateTime.Now - now;
+		EnvHolder.PushFooterMsg ( $"Updated component '{Component.ComponentName}' in {elapsed.TotalMilliseconds:F2} ms" );
+		await InvokeAsync ( StateHasChanged );
 	}
 
 	/*

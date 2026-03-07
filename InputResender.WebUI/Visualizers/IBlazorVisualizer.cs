@@ -1,5 +1,5 @@
 ﻿using System;
-using Components.Library;
+using Components.Library.ComponentSystem;
 
 namespace InputResender.WebUI.Visualizers;
 public abstract class IBlazorVisualizer {
@@ -12,7 +12,7 @@ public abstract class IBlazorVisualizer {
 		Name = parameter.Name;
 		Label = parameter.Label;
 		Description = parameter.Description;
-		parameter.OnDataChanged += UpdateValue;
+		parameter.OnDataChanged += ( _ ) => UpdateValue ();
 	}
 
 	public void RequestUpdate () {

@@ -1,4 +1,5 @@
 ﻿using Components.Library;
+using Components.Library.ComponentSystem;
 
 namespace Components.Interfaces.Commands;
 public class PipelineCommand : ACommand {
@@ -90,49 +91,44 @@ public class PipelineCommand : ACommand {
 	}
 
 	public override ComponentUIParametersInfo GetUIDescription () {
-		var timeInfo = new UI_TextField (
-			"TimeInfo", "Current Time",
-			"Shows current date and time to demonstrate dynamic UI updates.",
-			() => DateTime.Now.ToString ( "yyyy-MM-dd HH:mm:ss" )
-			);
-		var groupList = new UI_DropDown (
-			"GroupList", "Pipeline Groups",
-			"List of created pipeline groups. Use the 'list' subcommand to refresh this list.",
-			() => CreatedPipelines.Select ( p => p.name ).ToList (),
-			( oldVal, newVal ) => {
-				if ( CreatedPipelines.Count == 0 ) return ( false, "No pipelines created." );
-				if ( newVal < 0 || newVal >= CreatedPipelines.Count )
-					return ( false, $"Selection index '{newVal}' is out of range (0-{CreatedPipelines.Count - 1})." );
-				return ( true, null );
-			},
-			(newVal) => {} );
-			var compList = new UI_ListView (
-			"ComponentList", "Group Content",
-			"List of components in the selected pipeline group. Use the 'list' subcommand to refresh this list.",
-			() => {
-				if ( CreatedPipelines.Count == 0 ) return ["No pipelines created."];
-				int selID = groupList.Value.Item1;
-				if ( selID < 0 || selID >= CreatedPipelines.Count )
-					return [$"Selection index '{selID}' is out of range (0-{CreatedPipelines.Count - 1})."];
-				var selected = CreatedPipelines[selID];
-				if ( selected.name == null ) return ["Invalid selection."];
-				return selected.dsc.Split ( ", " ).ToList ();
-			} );
-		groupList.OnDataChanged += compList.NotifyDataChanged;
-		var pipelineCnt = new UI_IntField (
-			"PipelineCount", "Total Pipelines",
-			"Total number of created pipelines.",
-			() => CreatedPipelines.Count
-			);
-		ComponentUIParametersInfo ret = new (
-			"Pipeline Command",
-			$"#{MyID}",
-			"Command to manage component pipelines. Use subcommands to create, list, delete, or expand pipelines.",
-			GetType (),
-			[timeInfo, groupList, compList, pipelineCnt],
-			null,
-			null
-			);
+		var timeInfo = new UI_TextField.Factory ()
+			.WithName ( "TimeInfo2" )
+			.WithLabel ( "Current Time (Static)" )
+			.WithDescription ( "Shows the time when the UI was created, demonstrating static UI values." )
+			.WithPureUpdater ( () => DateTime.Now.ToString ( "yyyy-MM-dd HH:mm:ss" ) )
+			.Build ();
+		var groupList = new UI_DropDown.Factory ()
+			.WithOptionUpdator ( () => CreatedPipelines.Select ( p => p.name ).ToList () )
+			.WithEmptyOption ()
+			.WithName ( "GroupList2" )
+			.WithLabel ( "Pipeline Groups (Dynamic)" )
+			.WithDescription ( "List of created pipeline groups, demonstrating dynamic UI values. Use the 'list' subcommand to refresh this list." )
+			.ForceDynamic ()
+			.AssertDynamic ()
+			.Build<UI_DropDown> ();
+		var compList = new UI_ListView.Factory ()
+			.UpdatedByDropDown ( groupList, ( selID ) => {
+				if (selID < 0 || selID >= CreatedPipelines.Count) return ["No group selected."];
+				return CreatedPipelines[selID].dsc.Split ( ", " ).ToList ();
+				})
+			.WithName ( "ComponentList2" )
+			.WithLabel ( "Group Content" )
+			.WithDescription ( "List of components in the selected pipeline group, demonstrating dependent UI values. Use the 'list' subcommand to refresh this list." )
+			.Build ();
+		var pipelineCnt = new UI_IntField.Factory ()
+			.WithName ( "PipelineCount" )
+			.WithLabel ( "Total Pipelines" )
+			.WithDescription ( "Total number of created pipelines, demonstrating dynamic UI values. Use the 'list' subcommand to refresh this count." )
+			.WithPureUpdater ( () => CreatedPipelines.Count )
+			.Build ();
+
+		var ret = new ComponentUIParametersInfo.Factory ()
+			.WithGroupID ( MyID )
+			.WithComponentType ( GetType () )
+			.AddParameters ( timeInfo, groupList, compList, pipelineCnt )
+			.WithName ( "Pipeline Command" )
+			.WithDescription ( "Command to manage component pipelines. Use subcommands to create, list, delete, or expand pipelines." )
+			.Build () as ComponentUIParametersInfo;
 		RegisteredUIs.Add ( ret );
 		return ret;
 	}

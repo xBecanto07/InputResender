@@ -1,4 +1,5 @@
 ﻿using Components.Library;
+using Components.Library.ComponentSystem;
 using InputResender.Commands;
 using SeClav;
 using System;
@@ -85,6 +86,76 @@ public class SeClavRunnerCommand : ACommand {
 		default: return new CommandResult ( $"Unknown subcommand '{context.SubAction}'." );
 		}
 	}
+
+	public override ComponentUIParametersInfo GetUIDescription () {
+		var parsingSeparator = new UI_Separator.Factory ()
+			.WithName ( "ParsingSeparator" )
+			.WithLabel ( "Parsing" )
+			.WithDescription ( "Separator for parsing section" )
+			.Build ();
+		var scriptPath = new UI_TextField.Factory ()
+			.WithName ( "ScriptPath" )
+			.WithLabel ( "Script Path" )
+			.WithDescription ( "Path to the SeClav script to parse or run" )
+			.WithInitialValue ( "-- Script Path --" )
+			.ForceDynamic ()
+			.Build<UI_TextField> ();
+		var parseButton = new UI_ActionButton.Factory ()
+			.WithOnClick ( () => {
+					string cmd = $"{CallName} parse \"{scriptPath.Value}\"";
+					var core = GetCore ( LastContext );
+					string cmdRes = core.Fetch<CommandProcessor> ().ProcessLine ( cmd ).Message;
+					scriptPath.ApplyValue ( cmdRes );
+				}
+			)
+			.WithName ( "ParseButton" )
+			.WithLabel ( "Parse Script" )
+			.WithDescription ( "Parse the specified SeClav script" )
+			.Build ();
+
+		var parsedListing = new UI_ListView.Factory ()
+			.WithName ( "ParsedScripts" )
+			.WithLabel ( "Parsed Scripts" )
+			.WithDescription ( "List of parsed SeClav scripts" )
+			.WithPureUpdater ( () => ParsedScripts.Keys.ToList () )
+			.Build ();
+		var parsedScriptsSelector = new UI_DropDown.Factory ()
+			.WithOptionUpdator ( () => ParsedScripts.Keys.ToList () )
+			.WithName ( "ParsedScriptsSelector" )
+			.WithLabel ( "Parsed Script Info" )
+			.WithDescription ( "Select a parsed script to view its information" )
+			.Build<UI_DropDown> ();
+		var parsedScriptInfo = new UI_ListView.Factory ()
+			.UpdatedByDropDown ( parsedScriptsSelector, ( selID ) => {
+					if ( !ParsedScripts.TryGetValue ( parsedScriptsSelector.Value.options.ElementAt ( parsedScriptsSelector.Value.selID ), out var parsed ) )
+						return ["Selected script is not available."];
+
+					return [$"Name: {parsed.ScriptName}", $"Commands: {parsed.ParsedScript.Commands.Count}", $"Data Types: {parsed.ParsedScript.DataTypes.Count}", $"Errors: {parsed.Errors.Count}"];
+				}
+			)
+			.WithName ( "ParsedScriptInfo" )
+			.WithLabel ( "Parsed Script Information" )
+			.WithDescription ( "Gets the info of the parsed script information." )
+			.Build ();
+
+		var managerSeparator = new UI_Separator.Factory ()
+			.AsMajor ()
+			.WithName ( "ManagerSeparator" )
+			.WithLabel ( "Module Manager" )
+			.WithDescription ( "Separator for module manager section" )
+			.Build ();
+		var managerUI = ModuleManager.GetUIDescription ();
+		var ret = new ComponentUIParametersInfo.Factory ()
+			.WithGroupID ( 0 )
+			.WithComponentType ( GetType () )
+			.AddParameters ( parsingSeparator, scriptPath, parseButton, parsedListing, parsedScriptsSelector, parsedScriptInfo, managerSeparator )
+			.AddParameters ( managerUI.Parameters.ToArray () )
+			.WithName ( "SeClav Runner Command" )
+			.WithLabel ( "UI for SeClav Runner Command" )
+			.WithDescription ( "Command for parsing and running SeClav scripts" )
+			.Build () as ComponentUIParametersInfo;
+		return ret;
+	}
 }
 
 public class SeClavModuleManagerCommand : ACommand {
@@ -168,4 +239,47 @@ public class SeClavModuleManagerCommand : ACommand {
 
 	public IModuleInfo ModuleLoader ( string moduleName )
 		=> availableModules.TryGetValue ( moduleName, out var module ) ? module : null;
+
+
+	public override ComponentUIParametersInfo GetUIDescription () {
+		var moduleList = new UI_ListView.Factory ()
+			.WithName ( "ModuleList" )
+			.WithLabel ( "Available Modules" )
+			.WithDescription ( "List of available modules for SeClav scripts" )
+			.WithPureUpdater ( () => availableModules.Keys.ToList () )
+			.Build ();
+		var separatorAboveInfo = new UI_Separator.Factory ()
+			.WithName ( "SeparatorAboveInfo" )
+			.WithLabel ( "Separator" )
+			.WithDescription ( "Separator before module info" )
+			.Build ();
+		var moduleInfoSel = new UI_DropDown.Factory ()
+			.WithOptionUpdator ( () => availableModules.Keys.ToList () )
+			.WithName ( "ModuleInfoSel" )
+			.WithLabel ( "Module Info" )
+			.WithDescription ( "Select a module to view its information" )
+			.Build<UI_DropDown> ();
+		var moduleInfo = new UI_ListView.Factory ()
+			.UpdatedByDropDown ( moduleInfoSel, ( selID ) => {
+					if ( !availableModules.TryGetValue ( moduleInfoSel.Value.options.ElementAt ( moduleInfoSel.Value.selID ), out var module ) )
+						return ["Selected module is not available."];
+					return [$"Name: {module.Name}"
+						, $"Description: {module.Description}"
+						, $"Commands: {string.Join ( ", ", module.Commands )}"
+						, $"Data Types: {string.Join ( ", ", module.DataTypes )}"];
+				})
+			.WithName ( "ModuleInfo" )
+			.WithLabel ( "Module Information" )
+			.WithDescription ( "Detailed information about the selected module" )
+			.Build ();
+		var ret = new ComponentUIParametersInfo.Factory ()
+			.WithGroupID ( 0 )
+			.WithComponentType ( GetType () )
+			.AddParameters ( moduleList, separatorAboveInfo, moduleInfoSel, moduleInfo )
+			.WithName ( "Input Simulator Command" )
+			.WithLabel ( "UI for simulating user hardware input" )
+			.WithDescription ( "Command for simulating user hardware input" )
+			.Build () as ComponentUIParametersInfo;
+		return ret;
+	}
 }
