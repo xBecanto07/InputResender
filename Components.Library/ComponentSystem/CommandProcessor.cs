@@ -3,8 +3,9 @@ using System;
 using System.Collections.Generic;
 
 namespace Components.Library;
-public class CommandProcessor : ComponentBase, IDisposable {
-	private readonly HashSet<ACommand> registeredCmds = new ();
+
+public class CommandProcessor<CoreT> : ComponentBase<CoreT>, IDisposable where CoreT : CoreBase {
+	private readonly HashSet<DCommand<CoreT>> registeredCmds = new ();
 	private Action<string> WriteLine;
 	private Dictionary<string, object> Vars = new ();
 
@@ -12,8 +13,8 @@ public class CommandProcessor : ComponentBase, IDisposable {
 	public ArgParser.ErrLvl ArgErrorLevel = ArgParser.ErrLvl.Full;
 	public bool SafeMode { get; set; } = false;
 
-	private event Action<ACommand> _onCommandAdded;
-	public event Action<ACommand> OnCommandAdded {
+	private event Action<DCommand<CoreT>> _onCommandAdded;
+	public event Action<DCommand<CoreT>> OnCommandAdded {
 		add {
 			foreach ( var cmd in registeredCmds ) {
 				value ( cmd );
@@ -22,7 +23,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		}
 		remove => _onCommandAdded -= value;
 	}
-	public event Action<ACommand> OnCommandRemoved;
+	public event Action<DCommand<CoreT>> OnCommandRemoved;
 
 	public override int ComponentVersion => 1;
 	public override StateInfo Info => null;
@@ -38,7 +39,8 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		(nameof ( LoadAllCommands ), typeof ( string )),
 	};
 
-	public CommandProcessor ( Action<string> writeLine ) {
+	public CommandProcessor ( CoreT owner, Action<string> writeLine )
+		: base ( owner ) {
 		WriteLine = writeLine;
 	}
 
@@ -56,7 +58,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		GC.SuppressFinalize ( this );
 	}
 
-	public bool AddCommand ( ACommand cmd ) {
+	public bool AddCommand ( DCommand<CoreT> cmd ) {
 		if ( registeredCmds.Contains ( cmd ) ) return false;
 		foreach ( var regCmd in registeredCmds ) {
 			if ( regCmd.GetType () == cmd.GetType () ) {
@@ -72,16 +74,16 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		return registeredCmds.Add ( cmd );
 	}
 
-	public ACommand GetCommandInstance<T> () where T : ACommand {
+	public DCommand<CoreT> GetCommandInstance<T> () where T : DCommand<CoreT> {
 		if (registeredCmds.FirstOrDefault(c => c is T) is T cmd) return cmd;
 		throw new ArgumentException ( $"Command of type {typeof ( T ).Name} not found." );
 	}
 
 	/// <summary>Find a command based on a callname. This command is passed to callback function. If this function returns null, no more processing is done. If some reference is returned, it will be either added or replaced in 1st level command list. Removing command is not supported since no use-case has been provided.</summary>
-	public void ModifyCommand ( string line, Func<ACommand, ACommand> modifyFcn ) {
+	public void ModifyCommand ( string line, Func<DCommand<CoreT>, DCommand<CoreT>> modifyFcn ) {
 		ArgParser args = new ( line, WriteLine );
 		int argPos = 0;
-		var parCmd = ACommand.Search ( args, registeredCmds, ref argPos );
+		var parCmd = DCommand<CoreT>.Search ( args, registeredCmds, ref argPos );
 		if ( parCmd == null ) throw new ArgumentException ( $"Parent command '{args.String ( 0, "Parent command" )}' not found." );
 		var newCmd = modifyFcn ( parCmd );
 		if ( newCmd == null ) return;
@@ -102,9 +104,9 @@ public class CommandProcessor : ComponentBase, IDisposable {
 
 	public CommandResult LoadAllCommands () {
 		System.Text.StringBuilder SB = new ();
-		HashSet<ACommandLoader> loaders = new ();
+		HashSet<ACommandLoader<CoreT>> loaders = new ();
 		foreach ( var cmd in registeredCmds ) {
-			if ( cmd is ACommandLoader loader ) loaders.Add ( loader );
+			if ( cmd is ACommandLoader<CoreT> loader ) loaders.Add ( loader );
 		}
 		foreach ( var loader in loaders ) {
 			var res = ProcessLine ( loader.CallName );
@@ -132,7 +134,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		if ( args.ArgC == 0 ) return new CommandResult ( string.Empty, false );
 
 		if (args.String (0, null) == "core" && args.String(1, null) == "own") {
-			var core = GetVar<CoreBase> ( CoreManagerCommand.ActiveCoreVarName );
+			var core = GetVar<CoreBase> ( CoreManagerCommand<CoreBase>.ActiveCoreVarName );
 			if ( core == null ) return new ClassCommandResult<CoreBase> ( null, "No active core." );
 			if (Owner == core) return new ClassCommandResult<CoreBase> ( core, "Active core already ownes this context." );
 			ChangeOwner ( core );
@@ -147,11 +149,11 @@ public class CommandProcessor : ComponentBase, IDisposable {
 		}
 
 		int argPos = 0;
-		var cmd = ACommand.Search ( args, registeredCmds, ref argPos );
+		var cmd = DCommand<CoreT>.Search ( args, registeredCmds, ref argPos );
 		if ( cmd == null ) return new ErrorCommandResult ( null, new ArgumentException ( $"Command '{args.String ( 0, "Command" )}' not found." ) );
 
 		// Try to find a good way how to reuse already created ArgParser while allowing to specify argPos
-		CommandProcessor.CmdContext context = new ( this, line, argPos, console, args );
+		CmdContext context = new ( this, line, argPos, console, args );
 		if ( !SafeMode ) return cmd.Execute ( context );
 		else {
 			try {
@@ -187,7 +189,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 
 	/// <summary>Contains important info to process a command. <para>Please note, that changing any of these values might result in unexpected behaviour. Use as readonly info, unless explicitly stated otherwise for given field.</para></summary>
 	public struct CmdContext {
-		public readonly CommandProcessor CmdProc;
+		public readonly CommandProcessor<CoreT> CmdProc;
 		public readonly string Line;
 		public readonly int ArgID;
 		public readonly ArgParser Args;
@@ -211,7 +213,7 @@ public class CommandProcessor : ComponentBase, IDisposable {
 
 		private readonly Dictionary<int, (string, string)> loadedArgs;
 
-		public CmdContext ( CommandProcessor context, string line, int argID = 0, ConsoleManager console = null, ArgParser args = null ) {
+		public CmdContext ( CommandProcessor<CoreT> context, string line, int argID = 0, ConsoleManager console = null, ArgParser args = null ) {
 			loadedArgs = new ();
 			CmdProc = context;
 			Line = line ?? string.Empty;

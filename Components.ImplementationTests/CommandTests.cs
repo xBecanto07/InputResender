@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Components.ImplementationTests; 
 public class ConnectionManagerCommandTest : CommandTestBaseVCore {
-	public ConnectionManagerCommandTest () : base ( new ConnectionManagerCommand () ) { }
+	public ConnectionManagerCommandTest () : base ( owner => new ConnectionManagerCommand ( owner ) ) { }
 
 	[Fact]
 	public void TestList () {
@@ -27,7 +27,7 @@ public class ConnectionManagerCommandTest : CommandTestBaseVCore {
 }
 
 public class HookManagerCommandTest : CommandTestBaseMCore {
-	public HookManagerCommandTest () : base ( new HookManagerCommand () ) { }
+	public HookManagerCommandTest () : base ( owner => new HookManagerCommand ( owner ) ) { }
 
 	[Fact]
 	public void TestManager () {

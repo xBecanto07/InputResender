@@ -2,7 +2,7 @@
 using Components.Library.ComponentSystem;
 
 namespace Components.Interfaces.Commands;
-public class PipelineCommand : ACommand {
+public class PipelineCommand : DCommand<DMainAppCore> {
 	private readonly List<(object key, string name, string dsc)> CreatedPipelines = [];
 	private readonly HashSet<ComponentUIParametersInfo> RegisteredUIs = [];
 	private readonly int MyID;
@@ -16,13 +16,13 @@ public class PipelineCommand : ACommand {
 		, ("new", null) , ("expand", null)
 		];
 
-	public PipelineCommand ( string parentDsc = null )
-		: base ( parentDsc, CommandNames, InterCommands ) {
+	public PipelineCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) {
 		MyID = base.GetHashCode () & 0xFFFF;
 		//StackTrace = new System.Diagnostics.StackTrace ( 0, true );
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"list" => CallName + " list: List all registered pipelines",
 			"delete" => CallName + " delete <ID>: Delete a pipeline entry\n\tID: The ID of the entry to delete",
@@ -38,7 +38,7 @@ public class PipelineCommand : ACommand {
 		}
 		case "delete": {
 			var selected = FindElement ( context, context.ArgID + 1, CreatedPipelines, ( id, x ) => id == x.name, "Target" );
-			var joiner = Fetch<DComponentJoiner> ( context );
+			var joiner = Owner.Fetch<DComponentJoiner> ();
 			joiner.UnregisterPipeline ( selected.obj.key );
 			CreatedPipelines.RemoveAt ( selected.id );
 			foreach ( var ui in RegisteredUIs )
@@ -50,7 +50,7 @@ public class PipelineCommand : ACommand {
 			if ( string.IsNullOrEmpty ( name ) ) return new CommandResult ( "Name cannot be empty." );
 
 			var core = GetCore<DMainAppCore> ( context );
-			var joiner = Fetch<DComponentJoiner> ( context, core );
+			var joiner = Owner.Fetch<DComponentJoiner> ();
 
 			List<ComponentSelector> selectors = [];
 			string desc = "";
@@ -70,7 +70,7 @@ public class PipelineCommand : ACommand {
 			var selected = FindElement ( context, context.ArgID + 1, CreatedPipelines, ( id, x ) => id == x.name, "Target" );
 
 			var core = GetCore<DMainAppCore> ( context );
-			var joiner = Fetch<DComponentJoiner> ( context, core );
+			var joiner = core.Fetch<DComponentJoiner> ();
 
 			List<string> compNames = selected.obj.dsc.Split ( ", " ).ToList ();
 			for ( int i = context.ArgID + 2; i < context.Args.ArgC; i++ ) {

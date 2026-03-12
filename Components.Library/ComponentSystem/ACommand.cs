@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Components.Library;
-public abstract class ACommand {
+public abstract class DCommand<CoreT> : ComponentBase<CoreT> where CoreT : CoreBase {
 	public static readonly IReadOnlyCollection<string> HelpSwitches = ["-h", "?", "-?", "--help"];
 	protected virtual int RequiredUnnamedArgs => 0;
 	public int RequiredArgC => RequiredUnnamedArgs + requiredSwitches.Count + requiredPositionals.Count;
@@ -14,7 +14,7 @@ public abstract class ACommand {
 	private readonly HashSet<string> commandNames = new ();
 	protected readonly HashSet<string> requiredSwitches = new ();
 	protected readonly Dictionary<int, bool> requiredPositionals = new ();
-	private readonly Dictionary<string, ACommand> subCommands = new ();
+	private readonly Dictionary<string, DCommand<CoreT>> subCommands = new ();
 	private readonly HashSet<string> interCommands = new ();
 	// InterCommand is only registered string switch that 'should' change behaviour inside the command. But SubCommand will switch to another command (i.e. different Object
 	public abstract string Description { get; }
@@ -22,11 +22,28 @@ public abstract class ACommand {
 	public virtual string Help { get => BasicHelp (); }
 	protected virtual bool PrintHelpOnEmpty { get; } = false;
 	protected virtual int ArgsOffset => 0;
-	public CommandProcessor.CmdContext LastContext;
+	public CommandProcessor<CoreT>.CmdContext LastContext;
 
-	public virtual ComponentUIParametersInfo GetUIDescription () {
+	// ComponentBase requirements
+	// While version should be specified in the Variant, it is not used for anything yet.
+	// Thus to simplify the code it will stay here and derived classes can overwrite it.
+	// Later on it could be deleted and force derived Variants to specify their own version.
+	public override int ComponentVersion => 1;
+	protected override IReadOnlyList<(string opCode, Type opType)> AddCommands () => [
+		(nameof(Execute), typeof(CommandResult) ),
+		(nameof(SubCommand), typeof(bool) ),
+		(nameof(Cleanup), typeof(CommandResult) ),
+		(nameof(Search), typeof(DCommand<CoreT>) ),
+	];
+	public override StateInfo Info => new CommandStateInfo ( this );
+	public class CommandStateInfo : StateInfo {
+		public CommandStateInfo ( ComponentBase owner ) : base ( owner ) { }
+		public override string AllInfo () => $"{GeneralInfo}Command: {((DCommand<CoreT>)Owner).CallName}";
+	}
+
+	public override ComponentUIParametersInfo GetUIDescription () {
 		// Should subcommands be on separate UI pages? Or fit into one and just use a separator between? 🤔
-		Dictionary<string, (ACommand cmd, ComponentUIParametersInfo ui)> parameters = new ();
+		Dictionary<string, (DCommand<CoreT> cmd, ComponentUIParametersInfo ui)> parameters = new ();
 		foreach ( var subCmd in subCommands ) {
 			var ui = subCmd.Value.GetUIDescription ();
 			if ( ui != null )
@@ -93,11 +110,12 @@ public abstract class ACommand {
 	}
 
 	/// <summary>Used to access help of parent command. If null, it's considered the root command. When not command 'history' is not known, it is recommended to provide constructor to your command accepting string parameter and passing it to base constructor.</summary>
-	public ACommand ( string parentHelp
+	public DCommand ( CoreT owner
+		, string parentHelp
 		, IReadOnlyList<string> cmdNames
 		, IReadOnlyList<(string, Type)> interCmds
-		, params (string subCmd, ACommand cmd)[] subCmdInstances
-		) {
+		, params (string subCmd, DCommand<CoreT> cmd)[] subCmdInstances
+		) : base ( owner ) {
 		parentCommandHelp = parentHelp ?? string.Empty;
 		if ( cmdNames == null || cmdNames.Count == 0 ) throw new ArgumentException ( "At least one command name must be provided.", nameof ( cmdNames ) );
 		ArgumentNullException.ThrowIfNull ( interCmds, nameof ( interCmds ) );
@@ -112,12 +130,12 @@ public abstract class ACommand {
 		}
 	}
 
-	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd ) {
+	protected static void RegisterSubCommand<T> ( DCommand<T> owner, DCommand<T> nwCmd ) where T : CoreBase {
 		ArgumentNullException.ThrowIfNull ( owner );
 		foreach ( string name in nwCmd.commandNames )
 			RegisterSubCommand ( owner, nwCmd, name );
 	}
-	protected static void RegisterSubCommand ( ACommand owner, ACommand nwCmd, string name ) {
+	protected static void RegisterSubCommand<T> ( DCommand<T> owner, DCommand<T> nwCmd, string name ) where T : CoreBase {
 		ArgumentNullException.ThrowIfNull ( owner );
 		if ( string.IsNullOrEmpty ( name ) )
 			name = nwCmd.commandNames.First ();
@@ -130,7 +148,7 @@ public abstract class ACommand {
 			owner.subCommands.Add ( name, nwCmd );
 		}
 	}
-	protected void RegisterSubCommand (ACommand nwCmd, string name ) {
+	protected void RegisterSubCommand ( DCommand<CoreT> nwCmd, string name ) {
 		if ( string.IsNullOrEmpty ( name ) )
 			name = nwCmd.commandNames.First ();
 		interCommands.Remove ( name );
@@ -143,7 +161,7 @@ public abstract class ACommand {
 		}
 	}
 
-	public virtual CommandResult Execute ( CommandProcessor.CmdContext context ) {
+	public virtual CommandResult Execute ( CommandProcessor<CoreT>.CmdContext context ) {
 		var localContext = context.Sub ( ArgsOffset );
 		// empty string should never reach this point, but better to catch any wrongly defined commands
 		int extraArgs = localContext.Args.ArgC - localContext.ArgID;
@@ -171,7 +189,7 @@ public abstract class ACommand {
 		return ExecIner ( localContext );
 	}
 
-	public virtual bool SubCommand ( ArgParser args, out ACommand cmd, ref int argID ) {
+	public virtual bool SubCommand ( ArgParser args, out DCommand<CoreT> cmd, ref int argID ) {
 		string subCmd = args.String ( argID, null ); // This method is returning bool, so it must allow non-existance of subcommand. If subcommand is required, it should be handled as 'if (!SubCommand(...)) return new ErrorCommandResult(...);'.
 		argID++;
 		if ( !string.IsNullOrEmpty ( subCmd ) && subCommands.TryGetValue ( subCmd, out cmd ) ) return true;
@@ -180,18 +198,18 @@ public abstract class ACommand {
 		return false;
 	}
 
-	protected virtual CommandResult ExecIner ( CommandProcessor.CmdContext context ) => new ( $"{context.ParentAction}.{context.SubAction} command ({CallName}) not implemented." );
-	protected virtual CommandResult ExecCleanup ( CommandProcessor.CmdContext context ) => null;
-	public CommandResult Cleanup ( CommandProcessor.CmdContext context ) => ExecCleanup ( context );
+	protected virtual CommandResult ExecIner ( CommandProcessor<CoreT>.CmdContext context ) => new ( $"{context.ParentAction}.{context.SubAction} command ({CallName}) not implemented." );
+	protected virtual CommandResult ExecCleanup ( CommandProcessor<CoreT>.CmdContext context ) => null;
+	public CommandResult Cleanup ( CommandProcessor<CoreT>.CmdContext context ) => ExecCleanup ( context );
 
-	public static ACommand Search ( ArgParser args, ICollection<ACommand> commands, ref int argID ) {
+	public static DCommand<T> Search<T> ( ArgParser args, ICollection<DCommand<T>> commands, ref int argID ) where T : CoreBase {
 		string command = args.String ( argID, "Command" );
 		argID++;
-		foreach ( ACommand cmd in commands ) {
+		foreach ( DCommand<T> cmd in commands ) {
 			if ( !cmd.commandNames.Contains ( command ) ) continue;
-			ACommand ret = cmd;
+			DCommand<T> ret = cmd;
 			// It depends on the command itself how it will process subcommands. It can be selected by implementing the SubCommand for unified selection process in this static method (probably later replaced by a service), or it can be done in the Execute method (e.g. switch (args.String(1, "SubCommand" )) { case "sub1": return Sub2Command.Execute (args, 2); ... }).
-			while ( ret.SubCommand ( args, out ACommand sub, ref argID ) ) ret = sub;
+			while ( ret.SubCommand ( args, out DCommand<T> sub, ref argID ) ) ret = sub;
 			return ret;
 		}
 		return null;
@@ -215,7 +233,7 @@ public abstract class ACommand {
 	protected static string EnumPar<T> ( string paramName, string pre = "/n/t" ) where T : struct, Enum => $"\n\t{paramName}: {{{string.Join ( "|", Enum.GetNames<T> () )}}}";
 
 	//protected static T FindElement<T> ( string ID, List<T> list, bool shouldThrow = true ) => FindElement ( ID, list, ( id, x ) => x.ToString () == id, shouldThrow );
-	protected static (int id, T obj) FindElement<T> ( CommandProcessor.CmdContext context, int index, IEnumerable<T> list, Func<string, T, bool> selector, string throwName = null ) {
+	protected static (int id, T obj) FindElement<T> ( CommandProcessor<CoreT>.CmdContext context, int index, IEnumerable<T> list, Func<string, T, bool> selector, string throwName = null ) {
 		bool shouldThrow = throwName != null;
 		throwName ??= "ID";
 		string ID = context.Args.String ( index, throwName, 1, shouldThrow );
@@ -245,24 +263,28 @@ public abstract class ACommand {
 		return (-1, default);
 	}
 
-	protected T Fetch<T> ( CommandProcessor.CmdContext context, CoreBase core = null ) where T : ComponentBase
-		=> Fetch<CoreBase, T> ( context, core );
-	protected T Fetch<Core, T> ( CommandProcessor.CmdContext context, Core core = null ) where T : ComponentBase where Core : CoreBase {
-		core ??= GetCore<Core> ( context );
-		var comp = core.Fetch<T> ();
+	[Obsolete("Use Fetch provided by Owner core instead, e.g. Owner.Fetch<T>() instead of Fetch<T>(context)")]
+	protected T Fetch<T> () where T : ComponentBase {
+		var comp = Owner.Fetch<T> ();
 		if ( comp == null ) throw new Exception ( $"No component of type '{typeof(T).Name}' available in core." );
 		return comp;
 	}
-	protected CoreBase GetCore ( CommandProcessor.CmdContext context ) => GetCore<CoreBase> ( context );
-	protected Core GetCore<Core> ( CommandProcessor.CmdContext context ) where Core : CoreBase {
-		var core = context.CmdProc?.GetVar<Core> ( CoreManagerCommand.ActiveCoreVarName );
-		if ( core == null )
-			throw new Exception ( "No active core available." );
-		return core;
-	}
 
-	protected Core GetCore<Core> () where Core : CoreBase => GetCore<Core> ( LastContext );
+	// Legacy methods for backward compatibility - prefer using Owner property directly
+	[Obsolete("Use Owner property directly instead of GetCore(context)")]
+	protected CoreBase GetCore ( CommandProcessor<CoreT>.CmdContext context ) => Owner;
+	[Obsolete("Use Owner property directly instead of GetCore()")]
+	protected Core GetCore<Core> ( CommandProcessor<CoreT>.CmdContext context ) where Core : CoreBase => Owner as Core ?? throw new InvalidCastException ( $"Owner is not of type {typeof(Core).Name}" );
+	[Obsolete("Use Owner property directly instead of GetCore()")]
+	protected Core GetCore<Core> () where Core : CoreBase => Owner as Core ?? throw new InvalidCastException ( $"Owner is not of type {typeof(Core).Name}" );
+	protected Core GetActiveCore<Core> () => Owner.Fetch<CommandProcessor<CoreT>> ().GetVar<Core> ( CoreManagerCommand<CoreT>.ActiveCoreVarName );
 }
+
+// Type alias for backward compatibility - While a good idea, we want this change to be breaking to enforce proper usage.
+/*public abstract class ACommand : DCommand<CoreBase> {
+	public ACommand ( CoreBase owner, string parentHelp, IReadOnlyList<string> cmdNames, IReadOnlyList<(string, Type)> interCmds, params (string subCmd, DCommand<CoreBase> cmd)[] subCmdInstances )
+		: base ( owner, parentHelp, cmdNames, interCmds, subCmdInstances ) { }
+}*/
 
 
 public class CommandResult {

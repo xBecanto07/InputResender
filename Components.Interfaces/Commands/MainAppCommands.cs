@@ -5,7 +5,7 @@ using InputResender.Services.NetClientService.InMemNet;
 using System.Net;
 
 namespace Components.Interfaces;
-public class PasswordManagerCommand : ACommand {
+public class PasswordManagerCommand : DCommand<DMainAppCore> {
 	public override string Description => "Password management";
 
 	private static List<string> CommandNames = ["password", "pw"];
@@ -14,17 +14,17 @@ public class PasswordManagerCommand : ACommand {
 		  ("print", null),
 	 ];
 
-	public PasswordManagerCommand ( ACommand parent = null )
-		: base ( parent?.CallName, CommandNames, InterCommands ) {}
+	public PasswordManagerCommand ( DMainAppCore owner, DCommand<DMainAppCore> parent = null )
+		: base ( owner, parent?.CallName, CommandNames, InterCommands ) {}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if (TryPrintHelp(context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"add" => $"{context.ParentAction} add <password>: Set password\n\t<password>: Password to set\n\tExample: {context.ParentAction} add myPassword",
 			"print" => $"{context.ParentAction} print: Print current password (hashed)",
 			_ => null
 		}, out var helpRes ) ) return helpRes;
 
-		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		switch ( context.SubAction ) {
 		case "add":
 			if ( string.IsNullOrWhiteSpace ( context[1, "password"] ) ) return new CommandResult ( "Password cannot be empty." );
@@ -38,22 +38,22 @@ public class PasswordManagerCommand : ACommand {
 	}
 }
 
-public class TargetManagerCommand : ACommand {
+public class TargetManagerCommand : DCommand<DMainAppCore> {
 	protected INetPoint TargetEP;
 	public override string Description => "Target management";
 
 	private static List<string> CommandNames = ["target", "tEP"];
 	private static List<(string, System.Type)> InterCommands = [("set", null)];
 
-	public TargetManagerCommand ( ACommand parent = null )
-		: base ( parent?.CallName, CommandNames, InterCommands ) { }
+	public TargetManagerCommand ( DMainAppCore owner, DCommand<DMainAppCore> parent = null )
+		: base ( owner, parent?.CallName, CommandNames, InterCommands ) { }
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if (TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"set" => $"{context.ParentAction} set <EndPoint>: Set target end point\n\tEndPoint: IP end point or InMemNet point",
 			_ => null
 		}, out var helpRes ) ) return helpRes;
-		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		switch ( context.SubAction ) {
 		case "set":
 			if ( context[1, "Target end point"] == "none" ) {
@@ -92,7 +92,7 @@ public class TargetManagerCommand : ACommand {
 	}
 }
 
-public class HookCallbackManagerCommand : ACommand {
+public class HookCallbackManagerCommand : DCommand<DMainAppCore> {
 	public const string CBVarName = "HookCallback";
 	public override string Description => "Input hook callback selector";
 
@@ -103,14 +103,14 @@ public class HookCallbackManagerCommand : ACommand {
 		  ("active", null),
 	 ];
 
-	public HookCallbackManagerCommand ( ACommand parent = null )
-		: base ( parent?.CallName, CommandNames, InterCommands ) { }
+	public HookCallbackManagerCommand ( DMainAppCore owner, DCommand<DMainAppCore> parent = null )
+		: base ( owner, parent?.CallName, CommandNames, InterCommands ) { }
 
 	readonly Action<DictionaryKey, HInputEventDataHolder>[] PossibleCallbacks = new[] {
 		PrintCB
 	};
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if (TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"list" => $"{context.ParentAction} list: List available callbacks",
 			"set" => $"{context.ParentAction} set <Callback_name>: Set active callback\n\t<Callback_name>: Name or ID of the callback to set",

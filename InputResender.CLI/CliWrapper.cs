@@ -1,13 +1,15 @@
 ﻿using Components.Library;
 using System;
 using System.Threading.Tasks;
+using Components.Interfaces;
+using InputResender.Commands;
 
 namespace InputResender.CLI;
 public class CliWrapper {
 	public const string CLI_VAR_NAME = "CLIobj";
 	// Both console and cmdProc don't necessary need to be readonly, but it should be ensured that it won't change during processing of single command. If need arises, some approach to enable changing it between calls can be added.
 	public readonly ConsoleManager Console;
-	public readonly CommandProcessor CmdProc;
+	public readonly CommandProcessor<DMainAppCore> CmdProc;
 	public bool VerboseMode = false;
 
 	public event Action<string, CommandResult> OnCommandProcessed;
@@ -15,9 +17,13 @@ public class CliWrapper {
 	private bool PrintStart => Config.ResponsePrintFormat == Config.PrintFormat.Normal
 		|| Config.ResponsePrintFormat == Config.PrintFormat.Full;
 
-	public CliWrapper ( ConsoleManager console ) {
+	public CliWrapper ( DMainAppCore core, ConsoleManager console ) {
 		Console = console ?? throw new ArgumentNullException ( nameof ( console ) );
-		CmdProc = new ( Console.WriteLine );
+		CmdProc = core.Fetch<CommandProcessor<DMainAppCore>> ();
+		if ( CmdProc == null ) {
+			CmdProc = new ( core, Console.WriteLine );
+			CmdProc.SetVar ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName, core );
+		}
 		Console.OnIdle += FlushDelayedMessages;
 	}
 

@@ -1,4 +1,5 @@
 ﻿using Components.Interfaces;
+﻿using Components.Interfaces;
 using Components.Library;
 using InputResender.Commands;
 using InputResender.Services.NetClientService;
@@ -6,11 +7,11 @@ using InputResender.Services;
 using static Components.Interfaces.DPacketSender;
 
 namespace Components.Implementations;
-public class ConnectionManagerCommand : ACommand {
+public class ConnectionManagerCommand : DCommand<DMainAppCore> {
 	enum CBSel { None, Print }
 	CBSel CBSelector = CBSel.Print;
 	override public string Description => "Connection manager.";
-	private CommandProcessor.CmdContext lastContext;
+	private CommandProcessor<DMainAppCore>.CmdContext lastContext;
 
 	private static List<string> CommandNames = ["conns"];
 	private static List<(string, Type)> InterCommands = [
@@ -21,10 +22,10 @@ public class ConnectionManagerCommand : ACommand {
 		  ("force", null)
 	 ];
 
-	public ConnectionManagerCommand ( string parent = null )
-		: base ( parent, CommandNames, InterCommands ) {}
+	public ConnectionManagerCommand ( DMainAppCore owner, string parent = null )
+		: base ( owner, parent, CommandNames, InterCommands ) {}
 
-	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	override protected CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"list" => $"{context.ParentAction} list: List active connections",
 			"send" => $"{context.ParentAction} send <Target> <Data>: Send data to target\n\tTarget: Remote EP of any existing connection\n\tData: Data to send",
@@ -34,7 +35,7 @@ public class ConnectionManagerCommand : ACommand {
 			_ => $"Unknown action '{context.SubAction}'."
 		}, out var helpRes ) ) return helpRes;
 
-		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		var core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		if ( core.Fetch<DPacketSender> () is not VPacketSender sender ) {
 			if (context.SubAction == "force" && context.Args.String(context.ArgID + 1, null) == "init") {
 				new VPacketSender ( core );
@@ -104,7 +105,7 @@ public class ConnectionManagerCommand : ACommand {
 		}
 	}
 
-	protected NetworkConnection FindConn ( VPacketSender sender, CommandProcessor.CmdContext context, int argID, out CommandResult errMsg ) {
+	protected NetworkConnection FindConn ( VPacketSender sender, CommandProcessor<DMainAppCore>.CmdContext context, int argID, out CommandResult errMsg ) {
 		try {
 			(int _, var ret) = FindElement ( context, argID + 1, sender.ActiveConns.Keys, (id, x) => x.FullNetworkPath == id, "Target" );
 			errMsg = null;

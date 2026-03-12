@@ -34,7 +34,7 @@ public abstract class DUIFactory : ComponentBase<CoreBase> {
 	};
 
 	public abstract void RegisterComponentUI ( ComponentBase owner, ComponentUIParametersInfo info );
-	public abstract void RegisterCommandUI ( ACommand cmd, ComponentUIParametersInfo info );
+	public abstract void RegisterCommandUI ( DCommand<DMainAppCore> cmd, ComponentUIParametersInfo info );
 	public abstract void UnregisterComponentUI ( ComponentBase owner );
 	public abstract void UnregisterCommandUI ( ComponentBase owner );
 }

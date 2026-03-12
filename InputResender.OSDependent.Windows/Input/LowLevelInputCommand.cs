@@ -1,9 +1,10 @@
 ﻿using Components.Library;
 using System.Collections.Generic;
 using System.Linq;
+using Components.Interfaces;
 
 namespace InputResender.WindowsGUI;
-public class LowLevelInputCommand : ACommand {
+public class LowLevelInputCommand : DCommand<DMainAppCore> {
 	override public string Description => "Low level hook (Win) access.";
 	//override public string Help => $"Usage: {parentCommandHelp} inpll list <Selector> - {Description}\n\tSelector: (events|hooks|errors)";
 	protected override bool PrintHelpOnEmpty => true;
@@ -11,11 +12,11 @@ public class LowLevelInputCommand : ACommand {
 	private static List<string> CommandNames = ["inpll"];
 	private static List<(string, System.Type)> InterCommands = [("list", null)];
 
-	public LowLevelInputCommand ( ACommand parent )
-		: base ( parent?.CallName, CommandNames, InterCommands ) {
+	public LowLevelInputCommand ( DCommand<DMainAppCore> parent )
+		: base ( parent.Owner, parent.CallName, CommandNames, InterCommands ) {
 	}
 
-	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	override protected CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => CallName + " list <Selector>\n\tSelector: (events|hooks|errors)", out var helpRes ) ) return helpRes;
 
 		VWinLowLevelLibs LLInput = context.CmdProc.Owner.Fetch<VWinLowLevelLibs> ();

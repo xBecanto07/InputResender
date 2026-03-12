@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Components.Library; 
-public class BasicCommands : ACommand {
+public class BasicCommands<CoreT> : DCommand<CoreT> where CoreT : CoreBase {
 	override public string Description => "Basic commands.";
 	protected override int ArgsOffset => -1;
 	override public string Help => "help - Show this help." + Environment.NewLine +
@@ -33,14 +33,14 @@ public class BasicCommands : ACommand {
 		];
 	private static List<(string, Type)> InterCommands = [];
 
-	public BasicCommands ( Action<string> print, Action clear, Action exit )
-		: base ( null, CommandNames, InterCommands ) {
+	public BasicCommands ( CoreT owner, Action<string> print, Action clear, Action exit )
+		: base ( owner, null, CommandNames, InterCommands ) {
 		Print = print;
 		Clear = clear;
 		Exit = exit;
 	}
 
-	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	override protected CommandResult ExecIner ( CommandProcessor<CoreT>.CmdContext context ) {
 		// Remember that these are individual commands, so ArgID will be -1 compared to 'norma' subcommand.
 		switch ( context.SubAction ) {
 		case "help": {

@@ -1,23 +1,23 @@
 ﻿namespace Components.Library;
 
-public abstract class ACommandLoader : ACommand {
+public abstract class ACommandLoader<CoreT> : DCommand<CoreT> where CoreT : CoreBase {
 	public const string BaseLoadCmdName = "load-cmd";
 	private string CmdGroupName { get; init; }
 	public override string Description => $"Dynamically add '{CmdGroupName}' commands to the command processor";
 	public override string Help => $"{parentCommandHelp} {CallName}";
-	public ACommandLoader (string cmdGroupName)
-		: base ( null, [BaseLoadCmdName + '-' + cmdGroupName], [] ) => CmdGroupName = BaseLoadCmdName + '-' + cmdGroupName;
+	public ACommandLoader ( CoreT owner, string cmdGroupName)
+		: base ( owner, null, [BaseLoadCmdName + '-' + cmdGroupName], [] ) => CmdGroupName = BaseLoadCmdName + '-' + cmdGroupName;
 
-	protected abstract IReadOnlyCollection<Func<ACommand>> NewCommands { get; }
-	protected virtual IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => null;
+	protected abstract IReadOnlyCollection<Func<CoreT, DCommand<CoreT>>> NewCommands { get; }
+	protected virtual IReadOnlyCollection<(string, Func<DCommand<CoreT>, DCommand<CoreT>>)> NewSubCommands => null;
 
 	// Note that created command might not be actually added to the context
-	protected sealed override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected sealed override CommandResult ExecIner ( CommandProcessor<CoreT>.CmdContext context ) {
 		string ret = string.Empty;
-		Dictionary<string, ACommand> commands = new ();
-		Dictionary<string, Func<ACommand, ACommand>> subCommands = new ();
-		Dictionary<string, ACommandLoader> cmdLoaders = new ();
-		Queue<ACommandLoader> newLoaders = new ();
+		Dictionary<string, DCommand<CoreT>> commands = new ();
+		Dictionary<string, Func<DCommand<CoreT>, DCommand<CoreT>>> subCommands = new ();
+		Dictionary<string, ACommandLoader<CoreT>> cmdLoaders = new ();
+		Queue<ACommandLoader<CoreT>> newLoaders = new ();
 
 		PushCmds ( this );
 
@@ -41,14 +41,14 @@ public abstract class ACommandLoader : ACommand {
 
 		return new CommandResult ( ret );
 
-		void PushCmds ( ACommandLoader loader ) {
+		void PushCmds ( ACommandLoader<CoreT> loader ) {
 			if ( loader.NewCommands != null ) {
 				foreach ( var cmdAdder in loader.NewCommands ) {
-					ACommand cmd = cmdAdder ();
+					DCommand<CoreT> cmd = cmdAdder ( Owner );
 					if ( cmd == null ) continue;
 					if ( commands.ContainsKey ( cmd.CallName ) ) continue;
 
-					if ( cmd is ACommandLoader loaderCmd ) newLoaders.Enqueue ( loaderCmd );
+					if ( cmd is ACommandLoader<CoreT> loaderCmd ) newLoaders.Enqueue ( loaderCmd );
 					else commands.Add ( cmd.CallName, cmd );
 				}
 			}

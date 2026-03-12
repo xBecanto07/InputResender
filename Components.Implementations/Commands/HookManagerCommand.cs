@@ -4,7 +4,7 @@ using InputResender.Commands;
 
 namespace Components.Implementations;
 // Better question than is: Does the 'newer' version needs to be under Implementations? On what variant and how it depends?
-public class HookManagerCommand : ACommand {
+public class HookManagerCommand : DCommand<DMainAppCore> {
 	public enum CallbackFcn { None, Print, Aggregate, Fcn, Pipeline, AutoCmd, SCL }
 	Dictionary<CoreBase, SHookManager> hookManagerComponents = [];
 	List<string> aggregatedEvetns = new ();
@@ -22,11 +22,11 @@ public class HookManagerCommand : ACommand {
 	 ];
 
 	// Cmd example: "hook add print keydown mousemove"
-	public HookManagerCommand ( string parentDsc = null )
-		: base ( parentDsc, CommandNames, InterCommands ) { }
+	public HookManagerCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) { }
 
-	protected override CommandResult ExecCleanup ( CommandProcessor.CmdContext context ) {
-		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+	protected override CommandResult ExecCleanup ( CommandProcessor<DMainAppCore>.CmdContext context ) {
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		if ( core == null ) {
 			foreach ( var comp in hookManagerComponents.Values )
 				comp.hookCallback?.Unregister ();
@@ -40,7 +40,7 @@ public class HookManagerCommand : ACommand {
 
 	bool debugMode = false;
 
-	private (DHookManager, List<VKChange>) ParseVKChanges ( DMainAppCore core, CommandProcessor.CmdContext context, int offset ) {
+	private (DHookManager, List<VKChange>) ParseVKChanges ( DMainAppCore core, CommandProcessor<DMainAppCore>.CmdContext context, int offset ) {
 		List<VKChange> actionList = new ();
 		for ( int i = context.ArgID + offset; i < context.Args.ArgC; i++ ) {
 			var act = context.Args.EnumC<VKChange> ( i, i == context.ArgID + offset ? "Action" : null );
@@ -64,8 +64,8 @@ public class HookManagerCommand : ACommand {
 		return string.Join ( ", ", hookInfo );
 	}
 
-	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
-		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+	override protected CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		var HMComp = GetComp ( core );
 		switch ( context.SubAction ) {
 		case "manager": {
@@ -171,7 +171,7 @@ public class HookManagerCommand : ACommand {
 	public class SHookManager : ComponentMock {
 		public HCallbackHolder<DHookManager.HookCallback> hookCallback;
 		public CallbackFcn CbFcn = CallbackFcn.None;
-		public CommandProcessor.CmdContext lastContext;
+		public CommandProcessor<DMainAppCore>.CmdContext lastContext;
 
 		public SHookManager ( CoreBase newOwner ) : base ( newOwner ) {
 		}

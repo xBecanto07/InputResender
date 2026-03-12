@@ -220,7 +220,7 @@ namespace Components.Library {
 			OnError?.Invoke ( msg );
 		}
 		public void FlushDelayedMsgs ( Action<string> printer = null ) {
-			var cmdProc = Fetch<CommandProcessor> ();
+			var cmdProc = Fetch<CommandProcessor<CoreBase>> ();
 			if ( cmdProc == null ) return;
 
 			lock ( DelayedMessages ) {

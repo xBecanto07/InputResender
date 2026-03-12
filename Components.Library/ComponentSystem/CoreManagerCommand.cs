@@ -1,10 +1,8 @@
 ﻿using Components.Library;
-using System.Linq;
-using RetT = Components.Library.ClassCommandResult<Components.Library.CoreBase>;
 
 namespace InputResender.Commands;
-public class CoreManagerCommand : ACommand {
-	private CommandProcessor.CmdContext lastContext;
+public class CoreManagerCommand<CoreT> : DCommand<CoreT> where CoreT : CoreBase {
+	private CommandProcessor<CoreT>.CmdContext lastContext;
 
 	public const string ActiveCoreVarName = "ActCore";
 	public enum Act { Create, Select, Delete, List }
@@ -19,9 +17,9 @@ public class CoreManagerCommand : ACommand {
 		  ("list", null),
 	 ];
 
-	public CoreManagerCommand () : base ( null, CommandNames, InterCommands ) {}
+	public CoreManagerCommand ( CoreT owner ) : base ( owner, null, CommandNames, InterCommands ) {}
 
-	protected override RetT ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override ClassCommandResult<CoreT> ExecIner ( CommandProcessor<CoreT>.CmdContext context ) {
 		lastContext = context;
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"act" => "core act: Prints the name of the active core.",
@@ -30,18 +28,18 @@ public class CoreManagerCommand : ACommand {
 			_ => null
 		}, out var helpRes ) ) return new ( null, helpRes.Message );
 
-		var core = context.CmdProc.GetVar<CoreBase> ( ActiveCoreVarName );
-		if ( core == null ) return new RetT ( null, "No active core." );
+		var core = context.CmdProc.GetVar<CoreT> ( ActiveCoreVarName );
+		if ( core == null ) return new ( null, "No active core." );
 
 		switch ( context.SubAction ) {
 		case "act":
-			return new RetT ( core, $"Active core: '{core.Name}'" );
+			return new ( core, $"Active core: '{core.Name}'" );
 		case "typeof":
 			Type reqType = MdxExtensions.FindType ( context[1, "Type"] );
-			if ( reqType == null ) return new RetT ( core, $"Invalid type name: {context[1]}" );
+			if ( reqType == null ) return new ( core, $"Invalid type name: {context[1]}" );
 			var reqComp = core.Fetch ( reqType );
-			if ( reqComp == null ) return new RetT ( core, $"Component of type {reqType.Name} not found." );
-			return new RetT ( core, $"For definition '{reqType.Name}' was found variant '{reqComp.GetType ().Name}'." );
+			if ( reqComp == null ) return new ( core, $"Component of type {reqType.Name} not found." );
+			return new ( core, $"For definition '{reqType.Name}' was found variant '{reqComp.GetType ().Name}'." );
 		case "list":
 			System.Text.StringBuilder SB = new ();
 			SB.AppendLine ( $"Core '{core.Name}' has following components:" );
@@ -53,7 +51,7 @@ public class CoreManagerCommand : ACommand {
 				compID++;
 			}
 			return new ( core, SB.ToString () );
-		default: return new RetT ( core, $"Invalid action '{context.SubAction}' for '{context.ParentAction}'." );
+		default: return new ( core, $"Invalid action '{context.SubAction}' for '{context.ParentAction}'." );
 		}
 	}
 }

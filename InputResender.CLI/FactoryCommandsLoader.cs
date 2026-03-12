@@ -7,57 +7,61 @@ using InputResender.WebUI.Commands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Components.Interfaces;
 
 namespace InputResender.CLI; 
-public class FactoryCommandsLoader : ACommandLoader {
-	private static Dictionary<Type, Func<ACommand>> NewCommandList = new () {
-		{ typeof(CoreManagerCommand), () => new CoreManagerCommand () },
-		{ typeof(ConnectionManagerCommand), () => new ConnectionManagerCommand () },
-		{ typeof(ComponentCommandLoader), () => new ComponentCommandLoader () },
-		{ typeof(ContextVarCommands), () => new ContextVarCommands () },
-		{ typeof(InputCommandsLoader), () => new InputCommandsLoader () },
-		{ typeof(SeClavCommandLoader), () => new SeClavCommandLoader () },
-		{ typeof(DebugCommand), () => new DebugCommand () },
-		{ typeof(PWDCommand), () => new PWDCommand () },
-		{ typeof(AutoCmdsCommand), () => new AutoCmdsCommand () },
-		{ typeof(LoaderCommand), () => new LoaderCommand () },
-		{ typeof(BlazorManagerCommand), () => new BlazorManagerCommand () },
+public class FactoryCommandsLoader : ACommandLoader<DMainAppCore> {
+	private static Dictionary<Type, Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommandList = new () {
+		{ typeof(CoreManagerCommand<DMainAppCore>), ( core ) => new CoreManagerCommand<DMainAppCore> ( core ) },
+		{ typeof(ConnectionManagerCommand), ( core ) => new ConnectionManagerCommand ( core ) },
+		{ typeof(ComponentCommandLoader), ( core ) => new ComponentCommandLoader ( core ) },
+		{ typeof(ContextVarCommands<DMainAppCore>), ( core ) => new ContextVarCommands<DMainAppCore> ( core ) },
+		{ typeof(InputCommandsLoader), ( core ) => new InputCommandsLoader ( core ) },
+		{ typeof(SeClavCommandLoader), ( core ) => new SeClavCommandLoader ( core ) },
+		{ typeof(DebugCommand), ( core ) => new DebugCommand ( core ) },
+		{ typeof(PWDCommand), ( core ) => new PWDCommand ( core ) },
+		{ typeof(AutoCmdsCommand), ( core ) => new AutoCmdsCommand ( core ) },
+		{ typeof(LoaderCommand), ( core ) => new LoaderCommand ( core ) },
+		{ typeof(BlazorManagerCommand), ( core ) => new BlazorManagerCommand ( core ) },
 	};
-	private static Dictionary<Type, (string, Func<ACommand, ACommand>)> NewSubCommandList = new () {
-		{ typeof (CoreCreatorCommand), ("core", ( ACommand parent ) => {
-			if ( parent is CoreManagerCommand cmdCore )
-				RegisterSubCommand ( cmdCore, new CoreCreatorCommand ( parent.CallName ) );
+	private static Dictionary<Type, (string, Func<DCommand<DMainAppCore>, DCommand<DMainAppCore>>)> NewSubCommandList = new () {
+		{ typeof (CoreCreatorCommand), ("core", ( parent ) => {
+			RegisterSubCommand ( parent, new CoreCreatorCommand ( parent.Owner, parent.CallName ) );
 			return null;
 		} ) },
 	};
 
-	public FactoryCommandsLoader () : base ( "generalCmds" ) { }
-	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => NewCommandList.Values;
+	public FactoryCommandsLoader ( DMainAppCore owner ) : base ( owner, "generalCmds" ) { }
+	protected override IReadOnlyCollection<Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommands => NewCommandList.Values.Select<Func<DMainAppCore, DCommand<DMainAppCore>>, Func<DMainAppCore, DCommand<DMainAppCore>>>( f => core => f((DMainAppCore)core) ).ToList();
 
-	protected override IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => NewSubCommandList.Values;
+	protected override IReadOnlyCollection<(string, Func<DCommand<DMainAppCore>, DCommand<DMainAppCore>>)> NewSubCommands => NewSubCommandList.Values;
 }
 
-public class InputCommandsLoader : ACommandLoader {
-	public InputCommandsLoader () : base ( "inputCmds" ) { }
-	private static Dictionary<Type, Func<ACommand>> NewCommandList = new () {
-		{ typeof(InputSimulatorCommand), () => new InputSimulatorCommand () },
-		{ typeof(HookManagerCommand), () => new HookManagerCommand () },
-		{ typeof(ScriptedInputProcessorCommand), () => new ScriptedInputProcessorCommand () },
+public class InputCommandsLoader : ACommandLoader<DMainAppCore> {
+	public InputCommandsLoader ( DMainAppCore owner ) : base ( owner, "inputCmds" ) { }
+	private static Dictionary<Type, Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommandList = new () {
+		{ typeof(InputSimulatorCommand), ( core ) => new InputSimulatorCommand ( core ) },
+		{ typeof(HookManagerCommand), ( core ) => new HookManagerCommand ( core ) },
+		{ typeof(ScriptedInputProcessorCommand), ( core ) => new ScriptedInputProcessorCommand ( core ) },
 	};
-	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => NewCommandList.Values;
+	protected override IReadOnlyCollection<Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommands
+		=> NewCommandList.Values.Select<Func<DMainAppCore, DCommand<DMainAppCore>>, Func<DMainAppCore, DCommand<DMainAppCore>>>( f
+			=> core => f((DMainAppCore)core) ).ToList();
 }
 
-public class SeClavCommandLoader : ACommandLoader {
-	public SeClavCommandLoader () : base ( "seclavCmds" ) { }
-	private static Dictionary<Type, Func<ACommand>> NewCommandList = new () {
-		{ typeof(SeClavRunnerCommand), () => new SeClavRunnerCommand (Config.LoadFileContent) },
+public class SeClavCommandLoader : ACommandLoader<DMainAppCore> {
+	public SeClavCommandLoader ( DMainAppCore owner ) : base ( owner, "seclavCmds" ) { }
+	private static Dictionary<Type, Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommandList = new () {
+		{ typeof(SeClavRunnerCommand), ( core ) => new SeClavRunnerCommand ( core, Config.LoadFileContent ) },
 	};
-	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => NewCommandList.Values;
+	protected override IReadOnlyCollection<Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommands
+		=> NewCommandList.Values.Select<Func<DMainAppCore, DCommand<DMainAppCore>>, Func<DMainAppCore, DCommand<DMainAppCore>>>( f
+			=> core => f((DMainAppCore)core) ).ToList();
 }
 
 
 
-public class LoaderCommand : ACommand {
+public class LoaderCommand : DCommand<DMainAppCore> {
 	public override string Description => "Loads various components, commands, data or configurations.";
 
 	private static List<string> CommandNames = ["load"];
@@ -65,11 +69,11 @@ public class LoaderCommand : ACommand {
 		("sclModules", null)
 		, ("joiners", null)
 		];
-	public LoaderCommand ( string parentDsc = null )
-		: base (parentDsc, CommandNames, InterCommands ) {
+	public LoaderCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) {
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"sclModules" => CallName + " sclModules: Load SeClav modules known to the system.",
 			"joiners" => CallName + " joiners: Load known component joiners into the system.",

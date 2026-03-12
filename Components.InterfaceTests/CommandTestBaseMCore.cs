@@ -4,11 +4,12 @@ using Components.Interfaces;
 using InputResender.Commands;
 
 namespace Components.InterfaceTests; 
-public class CommandTestBaseMCore : CommandTestBase {
-	public CommandTestBaseMCore ( ACommand testedCmd ) : base ( testedCmd ) {}
+public class CommandTestBaseMCore : CommandTestBase<DMainAppCore> {
+	protected static DMainAppCore CreateCore () => DMainAppCore.CreateMock ();
+	public CommandTestBaseMCore ( CommandFactory testedCmd, DMainAppCore owner = null ) : base ( owner ?? CreateCore (), testedCmd ) {}
 
 	public void SetMCore ( DMainAppCore.CompSelect selector ) {
 		DMainAppCore core = DMainAppCore.CreateMock ();
-		CmdProc.SetVar ( CoreManagerCommand.ActiveCoreVarName, core );
+		CmdProc.SetVar ( ActiveCoreVarName, core );
 	}
 }

@@ -13,12 +13,14 @@ using Components.Implementations;
 using InputResender.UnitTests.IntegrationTests;
 using System.Linq;
 using System.Threading;
+using Components.Interfaces;
 
 namespace InputResender.UnitTests.SystemTests;
 public abstract class BaseSystemTest : IDisposable {
 	readonly CliWrapper MainCliWrapper;
 	readonly StandardStream StdStream;
 	readonly Task MainTask;
+	readonly DMainAppCore Core;
 	readonly ITestOutputHelper Output;
 	bool closing = false;
 
@@ -39,7 +41,8 @@ public abstract class BaseSystemTest : IDisposable {
 		if ( di == null )
 			throw new Exception ( "Could not find config.xml or SIPtest.scl in any parent directory of the current directory." );
 
-		MainCliWrapper = new ( StdStream.ConsoleWrapper );
+		Core = DMainAppCoreFactory.CreateDefault ();
+		MainCliWrapper = new ( Core, StdStream.ConsoleWrapper );
 		MainCliWrapper.OnCommandProcessed += ( cmd, res ) => {
 			lock ( CmdResults ) {
 				CmdResults.Add ( (cmd, res) );
@@ -48,7 +51,7 @@ public abstract class BaseSystemTest : IDisposable {
 
 		Program.StartMain (
 			[$"cfg={di.FullName.Replace ( "\\", "\\\\" )}"]
-			, new TopLevelLoader ( StdStream.ConsoleWrapper )
+			, new TopLevelLoader ( Core, StdStream.ConsoleWrapper )
 			, MainCliWrapper );
 
 		MainTask = new ( () => {

@@ -10,6 +10,7 @@ using System;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
 using Components.Implementations;
+using Components.Interfaces;
 
 namespace InputResender.UnitTests.IntegrationTests;
 public class BaseIntegrationTest : IDisposable {
@@ -52,13 +53,14 @@ public class BaseIntegrationTest : IDisposable {
 	}
 
 	private readonly BlockingCollection<string> StdIn, StdOut, StdErr;
-	public ConsoleManager console;
-	public CliWrapper cliWrapper;
+	public readonly ConsoleManager console;
+	public readonly CliWrapper cliWrapper;
+	public readonly DMainAppCore Core;
 	public readonly List<CommandResult> CommandResults = new ();
 	public ITestOutputHelper Output;
 	public string Pre;
 
-	public CoreBase Core => cliWrapper.CmdProc?.Owner;
+	//public CoreBase Core => cliWrapper.CmdProc?.Owner;
 
 	public BaseIntegrationTest ( string pre, ITestOutputHelper output, params string[] initCmds ) {
 		Pre = pre ?? string.Empty;
@@ -67,11 +69,12 @@ public class BaseIntegrationTest : IDisposable {
 		StdOut = new ();
 		StdErr = new ();
 		console = new ( StdOut.Add, StdIn.Take, Write, null, null );
-		cliWrapper = new ( console );
+		Core = DMainAppCoreFactory.CreateDefault ();
+		cliWrapper = new ( Core, console );
 
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
-		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( console.WriteLine, console.Clear, () => throw new System.NotImplementedException () ) );
-		cliWrapper.CmdProc.AddCommand ( new TopLevelLoader () );
+		cliWrapper.CmdProc.AddCommand ( new BasicCommands<DMainAppCore> ( Core, console.WriteLine, console.Clear, () => throw new System.NotImplementedException () ) );
+		cliWrapper.CmdProc.AddCommand ( new TopLevelLoader ( Core ) );
 		//cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
 		//cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader () );
 		//cliWrapper.CmdProc.AddCommand ( new SeClavCommandLoader () );
@@ -89,8 +92,6 @@ public class BaseIntegrationTest : IDisposable {
 	public void Dispose () {
 		if ( Core != null ) Core.OnError -= WriteError;
 		cliWrapper.CmdProc.Dispose ();
-		cliWrapper = null;
-		console = null;
 		StdIn.Dispose ();
 		StdOut.Dispose ();
 		StdErr.Dispose ();

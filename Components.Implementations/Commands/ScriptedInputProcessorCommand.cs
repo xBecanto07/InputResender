@@ -6,7 +6,7 @@ using InputResender.Commands;
 using SeClav;
 
 namespace Components.Implementations; 
-public class ScriptedInputProcessorCommand : ACommand {
+public class ScriptedInputProcessorCommand : DCommand<DMainAppCore> {
 	public override string Description => "Command to access scripted-based input processor.";
 
 	private static List<string> CommandNames = ["SIP"];
@@ -16,11 +16,11 @@ public class ScriptedInputProcessorCommand : ACommand {
 		, ("assign", null)
 		];
 
-	public ScriptedInputProcessorCommand ( string parentDsc = null )
-		: base (parentDsc, CommandNames, InterCommands ) {
+	public ScriptedInputProcessorCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) {
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"status" => CallName + " status: Get the current status of the Scripted Input Processor.",
 			"force" => CallName + " force: Force to use SIP as input processor.",
@@ -31,7 +31,7 @@ public class ScriptedInputProcessorCommand : ACommand {
 		//var SCLcmder = context.CmdProc.GetCommandInstance<Interfaces.Commands.SeClavRunnerCommand> ();
 		switch ( context.SubAction ) {
 		case "status": {
-			DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+			DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 			if ( core == null ) return new CommandResult ( "No active core found." );
 			var sip = core.Fetch<DInputProcessor> ();
 			if ( sip == null || sip is not VScriptedInputProcessor scriptedSIP )
@@ -41,7 +41,7 @@ public class ScriptedInputProcessorCommand : ACommand {
 			return new CommandResult ( $"SIP running, assigned {(scriptedSIP.Script.IsUsingModule ( Components.Implementations.VScriptedInputProcessor.SCL_Module.ModuleName ) ? "integratable" : "non-integratable")} script '{scriptedSIP.Script.ScriptName}'." );
 		}
 		case "force": {
-			DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+			DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 			if ( core == null ) return new CommandResult ( "No active core found." );
 			var sip = core.Fetch<DInputProcessor> ();
 			if ( sip != null && sip is VScriptedInputProcessor )
@@ -56,7 +56,7 @@ public class ScriptedInputProcessorCommand : ACommand {
 			if ( string.IsNullOrEmpty ( scriptName ) )
 				return new CommandResult ( "ScriptName cannot be empty." );
 
-			DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+			DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 			if ( core == null ) return new CommandResult ( "No active core found." );
 			var sip = core.Fetch<DInputProcessor> ();
 			if ( sip == null || sip is not VScriptedInputProcessor scriptedSIP )

@@ -27,8 +27,8 @@ public class PipelinesTest {
 		Output = output;
 		sender = NetworkConnectionTest.InitTestObj ( output, "sender", null );
 		receiver = NetworkConnectionTest.InitTestObj ( output, "receiver", null );
-		var senderCore = sender.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
-		var receiverCore = receiver.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		var senderCore = sender.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
+		var receiverCore = receiver.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		senderCore.OnMessage += SenderPrintMsg;
 		receiverCore.OnMessage += ReceiverPrintMsg;
 		senderCore.LogFcn = SenderLogMsg;
@@ -119,8 +119,11 @@ public class PipelinesTest {
 		lock ( VWinLowLevelLibs.EventList )
 			VWinLowLevelLibs.EventList.Clear ();
 
-		var senderProbe = sender.Core.Fetch<VWinLowLevelLibs> ().InstallProbe ( false, [VKChange.KeyDown, VKChange.KeyUp], KeyCode.P );
-		var receiverProbe = receiver.Core.Fetch<VWinLowLevelLibs> ().InstallProbe ( false, [VKChange.KeyDown, VKChange.KeyUp], KeyCode.P );
+		var senderLLLibs = sender.Core.Fetch<VWinLowLevelLibs> () ?? new VWinLowLevelLibs ( sender.Core );
+		var receiverLLLibs = receiver.Core.Fetch<VWinLowLevelLibs> () ?? new VWinLowLevelLibs ( receiver.Core );
+
+		var senderProbe = senderLLLibs.InstallProbe ( false, [VKChange.KeyDown, VKChange.KeyUp], KeyCode.P );
+		var receiverProbe = receiverLLLibs.InstallProbe ( false, [VKChange.KeyDown, VKChange.KeyUp], KeyCode.P );
 
 		sender.AssertExec ( "sim keydown P", "Sent 1 key down events." );
 		List<(DateTime, int)> log = [];
@@ -181,7 +184,7 @@ public class PipelinesTest {
 		joiner.RegisterPipeline ( selectors );
 	}
 	private DComponentJoiner FetchJoiner (BaseIntegrationTest agent) {
-		var Core = agent.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		var Core = agent.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		var joiner = Core.Fetch<DComponentJoiner> ();
 		joiner.Should ().NotBeNull ();
 		return joiner;

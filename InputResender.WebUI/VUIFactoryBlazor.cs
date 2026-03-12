@@ -1,16 +1,15 @@
-﻿using Components.Library;
-using Components.Interfaces.UI;
-using InputResender.Services.NetClientService;
-using InputResender.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Components.Library;
+using Components.Interfaces.UI;
+using Components.Interfaces;
 using Components.Library.ComponentSystem;
 
 namespace InputResender.WebUI;
 public class VUIFactoryBlazor : DUIFactory {
 	private readonly Dictionary<ComponentBase, ComponentUIParametersInfo> ComponentElements = [];
-	private readonly Dictionary<ACommand, ComponentUIParametersInfo> CommandElements = [];
+	private readonly Dictionary<DCommand<DMainAppCore>, ComponentUIParametersInfo> CommandElements = [];
 	public IReadOnlyList<ComponentUIParametersInfo> GetAllUiGroups () {
 		var ret = ComponentElements.Values.ToList ();
 		ret.AddRange ( CommandElements.Values.ToList () );
@@ -25,7 +24,7 @@ public class VUIFactoryBlazor : DUIFactory {
 		if ( component == null || component.Component == null )
 			return;
 
-		if ( component.Component is CommandProcessor cmdProc )
+		if ( component.Component is CommandProcessor<DMainAppCore> cmdProc )
 			cmdProc.OnCommandAdded += AskCommandForUI;
 
 		var info = component.Component.GetUIDescription ();
@@ -33,7 +32,7 @@ public class VUIFactoryBlazor : DUIFactory {
 			return;
 		RegisterComponentUI ( component.Component, info );
 	}
-	private void AskCommandForUI ( ACommand cmd ) {
+	private void AskCommandForUI ( DCommand<DMainAppCore> cmd ) {
 		if ( cmd == null )
 			return;
 		var info = cmd.GetUIDescription ();
@@ -48,7 +47,7 @@ public class VUIFactoryBlazor : DUIFactory {
 		if ( !ComponentElements.TryAdd ( owner, info ) )
 			throw new InvalidOperationException ( "Component element already registered." );
 	}
-	public override void RegisterCommandUI ( ACommand cmd, ComponentUIParametersInfo info ) {
+	public override void RegisterCommandUI ( DCommand<DMainAppCore> cmd, ComponentUIParametersInfo info ) {
 		ArgumentNullException.ThrowIfNull ( cmd );
 		ArgumentNullException.ThrowIfNull ( info );
 		if ( !CommandElements.TryAdd ( cmd, info ) )

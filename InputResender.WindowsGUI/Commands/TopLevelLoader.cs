@@ -3,25 +3,27 @@ using InputResender.OSDependent.Windows;
 using InputResender.WindowsGUI;
 using System;
 using System.Collections.Generic;
+using Components.Interfaces;
 
 namespace InputResender.WindowsGUI.Commands;
-public class TopLevelLoader : ACommandLoader {
+public class TopLevelLoader : ACommandLoader<DMainAppCore> {
 	readonly ConsoleManager consoleManager;
-	public TopLevelLoader (ConsoleManager console = null) : base ("TopLevel") { consoleManager = console; }
+	public TopLevelLoader ( DMainAppCore owner, ConsoleManager console = null)
+		: base ( owner, "TopLevel") { consoleManager = console; }
 
-	private static Dictionary<Type, Func<ACommand>> NewCommandList ( TopLevelLoader self ) => new () {
-		{ typeof(CLI.FactoryCommandsLoader), ()=> new CLI.FactoryCommandsLoader ()},
-		{ typeof(GUICommands), () => new GUICommands ()},
-		{ typeof(ComponentVisualizer.ComponentVisualizerCommands), () => new ComponentVisualizer.ComponentVisualizerCommands ()},
-		{ typeof ( WindowsCommands ), () => new WindowsCommands ( self.consoleManager )},
+	private static Dictionary<Type, Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommandList ( TopLevelLoader self ) => new () {
+		{ typeof(CLI.FactoryCommandsLoader), ( core ) => new CLI.FactoryCommandsLoader ( core )},
+		{ typeof(GUICommands), ( core ) => new GUICommands ( core )},
+		{ typeof(ComponentVisualizer.ComponentVisualizerCommands), ( core ) => new ComponentVisualizer.ComponentVisualizerCommands ( core )},
+		{ typeof ( WindowsCommands ), ( core ) => new WindowsCommands ( core, self.consoleManager )},
 	};
-	private static Dictionary<Type, (string, Func<ACommand, ACommand>)> NewSubCommandList = new () {
-		{ typeof (LowLevelInputCommand), ("hook", ( ACommand parent ) => {
+	private static Dictionary<Type, (string, Func<DCommand<DMainAppCore>, DCommand<DMainAppCore>>)> NewSubCommandList = new () {
+		{ typeof (LowLevelInputCommand), ("hook", ( DCommand<DMainAppCore> parent ) => {
 			RegisterSubCommand ( parent, new LowLevelInputCommand ( parent ) );
 			return null;
 		}) },
 	};
 
-	protected override IReadOnlyCollection<Func<ACommand>> NewCommands => NewCommandList ( this ).Values;
-	protected override IReadOnlyCollection<(string, Func<ACommand, ACommand>)> NewSubCommands => NewSubCommandList.Values;
+	protected override IReadOnlyCollection<Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommands => NewCommandList ( this ).Values;
+	protected override IReadOnlyCollection<(string, Func<DCommand<DMainAppCore>, DCommand<DMainAppCore>>)> NewSubCommands => NewSubCommandList.Values;
 }

@@ -1,5 +1,6 @@
 ﻿using Components.Library;
 using Components.Library.ComponentSystem;
+using Components.Interfaces;
 using InputResender.Commands;
 using SeClav;
 using System;
@@ -7,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Components.Interfaces.Commands;
-public class SeClavRunnerCommand : ACommand {
+public class SeClavRunnerCommand : DCommand<DMainAppCore> {
 	public readonly SeClavModuleManagerCommand ModuleManager;
 	private readonly Dictionary<string, SCLScriptHolder> ParsedScripts;
 	private readonly Func<string, string> FileLoader;
@@ -25,15 +26,15 @@ public class SeClavRunnerCommand : ACommand {
 		, ("run", null)
 		];
 
-	public SeClavRunnerCommand ( Func<string, string> fileLoader, string parentDsc = null ) : base ( parentDsc, CommandNames, InterCommands ) {
+	public SeClavRunnerCommand ( DMainAppCore owner, Func<string, string> fileLoader, string parentDsc = null ) : base ( owner, parentDsc, CommandNames, InterCommands ) {
 		ArgumentNullException.ThrowIfNull ( fileLoader );
 
 		FileLoader = fileLoader;
-		ModuleManager = new ( CallName );
+		ModuleManager = new ( owner, CallName );
 		ParsedScripts = new ();
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"parse" => CallName + " parse <Script>: Parse a SeClav script\n\tScript: The script to run, enclosed in quotes",
 			"run" => CallName + " run <Script> [force]: Run a previously parsed SeClav script\n\tScript: The script to run, enclosed in quotes\n\tforce: Optional hint to force reparse if the script was already parsed",
@@ -104,7 +105,7 @@ public class SeClavRunnerCommand : ACommand {
 			.WithOnClick ( () => {
 					string cmd = $"{CallName} parse \"{scriptPath.Value}\"";
 					var core = GetCore ( LastContext );
-					string cmdRes = core.Fetch<CommandProcessor> ().ProcessLine ( cmd ).Message;
+					string cmdRes = core.Fetch<CommandProcessor<DMainAppCore>> ().ProcessLine ( cmd ).Message;
 					scriptPath.ApplyValue ( cmdRes );
 				}
 			)
@@ -158,7 +159,7 @@ public class SeClavRunnerCommand : ACommand {
 	}
 }
 
-public class SeClavModuleManagerCommand : ACommand {
+public class SeClavModuleManagerCommand : DCommand<DMainAppCore> {
 	private readonly Dictionary<string, IModuleInfo> loadedModules = [];
 	private readonly Dictionary<string, IModuleInfo> availableModules = [];
 
@@ -172,14 +173,14 @@ public class SeClavModuleManagerCommand : ACommand {
 		, ("info", null)
 		];
 
-	public SeClavModuleManagerCommand ( string parentDsc = null )
-		: base (parentDsc, CommandNames, InterCommands ) {
+	public SeClavModuleManagerCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) {
 		loadedModules = [];
 		availableModules = [];
 		// Maybe should contain command to search DLL for modules?
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"list" => CallName + " list: List all registered modules",
 			"add" => CallName + " add <ModuleName>: Add a module to the valid modules list\n\tModuleName: Name of the module to add",

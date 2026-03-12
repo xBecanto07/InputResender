@@ -6,15 +6,21 @@ using InputResender.Services;
 
 namespace InputResender.CLI;
 public static class Program {
-	public static void StartMain ( string[] args, ACommandLoader TLLoader, CliWrapper cliWrapper ) {
+	public static void StartMain ( string[] args, ACommandLoader<DMainAppCore> TLLoader, CliWrapper cliWrapper ) {
 		ArgParser parser = new ( string.Join ( " ", args ), cliWrapper.Console.WriteLine );
 		if ( !Config.Load ( parser.String ( "cfg", null ) ) )
 			Config.Save (); // Couldn't load configuration, save the current one
 
+		DMainAppCore core = cliWrapper.CmdProc.Owner;
+		if ( core == null )
+			throw new InvalidOperationException (
+				"Provided CliWrapper does not have an owner set for its CommandProcessor!"
+			);
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
-		cliWrapper.CmdProc.AddCommand ( new BasicCommands ( cliWrapper.Console.WriteLine, cliWrapper.Console.Clear, () => { /* Cleanup is done after main loop */ } ) );
-		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader () );
-		cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader () );
+
+		cliWrapper.CmdProc.AddCommand ( new BasicCommands<DMainAppCore> ( core, cliWrapper.Console.WriteLine, cliWrapper.Console.Clear, () => { /* Cleanup is done after main loop */ } ) );
+		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader ( core ) );
+		cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader ( core ) );
 		if ( TLLoader != null ) cliWrapper.CmdProc.AddCommand ( TLLoader );
 
 		var startCommands = Config.FetchAutoCommands ( Config.AutostartName );
@@ -37,8 +43,8 @@ public static class Program {
 		cliWrapper.Console.WriteLine ( "Program closed." );
 	}
 
-	public static void Main ( string[] args, ACommandLoader TLLoader, ConsoleManager console ) {
-		CliWrapper cliWrapper = new ( console );
+	public static void Main ( string[] args, DMainAppCore core, ACommandLoader<DMainAppCore> TLLoader, ConsoleManager console ) {
+		CliWrapper cliWrapper = new ( core, console );
 		StartMain ( args, TLLoader, cliWrapper );
 		MainRun ( cliWrapper );
 	}

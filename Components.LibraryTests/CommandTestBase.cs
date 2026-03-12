@@ -1,16 +1,29 @@
 ﻿using FluentAssertions;
 using Components.Library;
 using System;
+using System.Collections.Generic;
 using InputResender.Commands;
 
-namespace Components.LibraryTests; 
-public class CommandTestBase {
-	protected CommandProcessor CmdProc;
-	System.Text.StringBuilder SB = new ();
+namespace Components.LibraryTests;
+public class CommandTestBase<CoreT> where CoreT : CoreBase {
+	public delegate DCommand<CoreT> CommandFactory ( CoreT owner );
+	public delegate DCommand<CoreT> CommandFactoryOut ( CoreT owner, out object refObj );
+	protected string ActiveCoreVarName => CoreManagerCommand<CoreT>.ActiveCoreVarName;
+	protected readonly CommandProcessor<CoreT> CmdProc;
+	protected readonly CoreT Owner;
+	protected readonly object HelperObj;
+	readonly System.Text.StringBuilder SB = new ();
 
-	public CommandTestBase (ACommand testedCmd) {
-		CmdProc = new ( (s) => SB.AppendLine ( s ) );
-		CmdProc.AddCommand ( testedCmd );
+	public CommandTestBase ( CoreT core, CommandFactory testedCmdGetter ) {
+		Owner = core;
+		CmdProc = new ( Owner, (s) => SB.AppendLine ( s ) );
+		CmdProc.AddCommand ( testedCmdGetter ( Owner ) );
+	}
+	public CommandTestBase ( CoreT core, Func<CoreT, object> refObjGetter, Func<object, CoreT, DCommand<CoreT>> testedCmdGetter ) {
+		Owner = core;
+		CmdProc = new ( Owner, (s) => SB.AppendLine ( s ) );
+		HelperObj = refObjGetter ( Owner );
+		CmdProc.AddCommand ( testedCmdGetter ( HelperObj, Owner ) );
 	}
 
 	public CommandResult AssertCorrectMsg ( string line, string expected ) {
@@ -45,5 +58,8 @@ public class CommandTestBase {
 			.Message.Should ().Be ( errMsg );
 	}
 
-	protected void AssertMissingCore ( string cmd ) => AssertThrow<ArgumentException> ( cmd, $"Variable '{CoreManagerCommand.ActiveCoreVarName}' not found." );
+	protected void AssertMissingCore ( string cmd )
+		=> AssertThrow<ArgumentException> ( cmd
+			, $"Variable '{ActiveCoreVarName}' not found."
+		);
 }

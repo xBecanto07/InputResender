@@ -14,6 +14,7 @@ using Microsoft.Extensions.Hosting;
 using System.IO;
 //using System.Net.Http;
 using System.Threading.Tasks;
+using Components.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -89,7 +90,7 @@ public class VWebServerBlazor : DWebServer {
 	
 	private record struct CmdGroupInfo ( int Id, string Name );
 	private List<CmdGroupInfo> GetAutoCmdList () {
-		var res = Owner.Fetch<CommandProcessor> ()?.ProcessLine ( "autocmd list" );
+		var res = Owner.Fetch<CommandProcessor<DMainAppCore>> ()?.ProcessLine ( "autocmd list" );
 		if ( res == null ) return null;
 		List<CmdGroupInfo> groups = [];
 		foreach ( var line in res.Message.Split ( ['\r', '\n'], StringSplitOptions.RemoveEmptyEntries ) ) {
@@ -105,7 +106,7 @@ public class VWebServerBlazor : DWebServer {
 		//return json;
 	}
 	private string GetAutoCmdStatus () {
-		var res = Owner.Fetch<CommandProcessor> ()?.ProcessLine ( "autocmd list" );
+		var res = Owner.Fetch<CommandProcessor<DMainAppCore>> ()?.ProcessLine ( "autocmd list" );
 		return res?.Message;
 	}
 	

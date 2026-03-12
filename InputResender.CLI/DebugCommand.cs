@@ -1,19 +1,20 @@
 ﻿using Components.Library;
+using Components.Interfaces;
 using System;
 using System.Collections.Generic;
 
 namespace InputResender.CLI; 
-public class DebugCommand : ACommand {
+public class DebugCommand : DCommand<DMainAppCore> {
 	override public string Description => "Debugging commands";
 
 	private static List<string> CommandNames = ["debug"];
 	private static List<(string, Type)> InterCommands = [("throw", null)];
 
-	public DebugCommand ( ACommand parent = null )
-		: base ( parent?.CallName, CommandNames, InterCommands ) {;
+	public DebugCommand ( DMainAppCore owner, DCommand<DMainAppCore> parent = null )
+		: base ( owner, parent?.CallName, CommandNames, InterCommands ) {
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"throw" => "debug throw: Throws an exception",
 			_ => null

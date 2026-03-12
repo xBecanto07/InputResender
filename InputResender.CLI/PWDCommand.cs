@@ -1,19 +1,20 @@
 ﻿using Components.Library;
 using System;
 using System.Collections.Generic;
+using Components.Interfaces;
 
 namespace InputResender.CLI;
-public class PWDCommand : ACommand {
+public class PWDCommand : DCommand<DMainAppCore> {
 	public override string Description => "Command for Working Directory management";
 	private static List<string> CommandNames = ["pwd"];
 	private static List<(string, Type)> InterCommands = [
 		("set", null)
 		];
 
-	public PWDCommand ( string parentDsc = null )
-		: base ( parentDsc, CommandNames, InterCommands ) { }
+	public PWDCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) { }
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( context.Args.ArgC < context.ArgID + 1 )
 			return new CommandResult ( "HomePath=" + Config.HomePath );
 

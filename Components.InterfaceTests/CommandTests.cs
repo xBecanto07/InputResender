@@ -9,11 +9,10 @@ using Components.LibraryTests;
 using Components.Interfaces.Commands;
 
 namespace Components.InterfaceTests; 
-public class PasswordManagerTest : CommandTestBaseMCore {
+public class PasswordManagerTest () : CommandTestBaseMCore ( owner => new PasswordManagerCommand ( owner ) ) {
 	const string EmptyPasswordHash = "-B";
 	const string Password = "asdf";
 	//const string PasswordHash = "0/€4f";
-	public PasswordManagerTest () : base ( new PasswordManagerCommand () ) { }
 
 	[Fact]
 	public void HappyFlow() {
@@ -26,9 +25,7 @@ public class PasswordManagerTest : CommandTestBaseMCore {
 	}
 }
 
-public class TargetManagerTest : CommandTestBaseMCore {
-	public TargetManagerTest () : base ( new TargetManagerCommand () ) { }
-
+public class TargetManagerTest () : CommandTestBaseMCore ( owner => new TargetManagerCommand ( owner ) ) {
 	[Fact]
 	public void Disconnect () {
 		AssertMissingCore ( "target set none" );
@@ -44,9 +41,8 @@ public class TargetManagerTest : CommandTestBaseMCore {
 	}
 }
 
-public class HookCallbackManagerCommandTest : CommandTestBase {
-	public HookCallbackManagerCommandTest () : base ( new HookCallbackManagerCommand () ) { }
-
+public class HookCallbackManagerCommandTest ()
+	: CommandTestBaseMCore ( owner => new HookCallbackManagerCommand ( owner ) ) {
 	[Fact]
 	public void HappyFlow () {
 		AssertCorrectMsg ( "hookcb active", "No active callback." );
@@ -77,9 +73,7 @@ public class HookCallbackManagerCommandTest : CommandTestBase {
 }
 
 // Is CommandTestBaseMCore duplicated?
-public class NetworkManagerCommandTest : CommandTestBaseMCore {
-	public NetworkManagerCommandTest () : base ( new NetworkManagerCommand () ) { }
-
+public class NetworkManagerCommandTest () : CommandTestBaseMCore ( owner => new NetworkManagerCommand ( owner ) ) {
 	[Fact]
 	public void Hostlist () {
 		AssertMissingCore ( "network hostlist" );

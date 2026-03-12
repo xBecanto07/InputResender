@@ -51,7 +51,7 @@ public partial class ComponentVisualizer : Form {
 
 
 
-	public class ComponentVisualizerCommands : ACommand {
+	public class ComponentVisualizerCommands : DCommand<DMainAppCore> {
 		ComponentVisualizer visualizer;
 
 		public override string Description => "Manages visualizer of active core";
@@ -64,12 +64,12 @@ public partial class ComponentVisualizer : Form {
 			  ("status", null),
 		 ];
 
-		public ComponentVisualizerCommands ( string parentHelp = null )
-			: base (parentHelp, CommandNames, InterCommands ) {
+		public ComponentVisualizerCommands ( DMainAppCore owner, string parentHelp = null )
+			: base ( owner, parentHelp, CommandNames, InterCommands ) {
 			requiredPositionals.Add ( 0, false );
 		}
 
-		protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+		protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 			//if (TryPrintHelp (context.Args, context.ArgID + 1, () => $"{context.ParentAction} visualizer (start|stop|update|status): Manage visualizer of active core", out var helpRes1 ) ) return helpRes1;
 
 			if (TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {

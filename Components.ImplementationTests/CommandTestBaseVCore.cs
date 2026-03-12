@@ -6,12 +6,15 @@ using InputResender.Commands;
 using Components.InterfaceTests;
 
 namespace Components.ImplementationTests;
-public class CommandTestBaseVCore : CommandTestBaseMCore {
-	public CommandTestBaseVCore ( ACommand testedCmd ) : base ( testedCmd ) { }
+public class CommandTestBaseVCore (
+	CommandTestBase<DMainAppCore>.CommandFactory testedCmd
+	, DMainAppCore.CompSelect selector = DMainAppCore.CompSelect.None
+)
+	: CommandTestBaseMCore ( testedCmd, new DMainAppCoreFactory ().CreateVMainAppCore ( selector ) ) {
 
 	public void SetVCore ( DMainAppCore.CompSelect selector ) {
 		DMainAppCoreFactory factory = new ();
 		DMainAppCore core = factory.CreateVMainAppCore ( selector );
-		CmdProc.SetVar ( CoreManagerCommand.ActiveCoreVarName, core );
+		CmdProc.SetVar ( CoreManagerCommand<CoreBaseMock> .ActiveCoreVarName, core );
 	}
 }

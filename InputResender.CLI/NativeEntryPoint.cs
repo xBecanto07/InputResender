@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using Components.Interfaces;
 using Components.Library;
 
 public static class NativeEntryPoint {
@@ -49,7 +50,7 @@ public static class NativeEntryPoint {
 }
 
 internal struct NativeSession {
-	public CommandProcessor cmdProcessor;
+	public CommandProcessor<DMainAppCore> cmdProcessor;
 	GCHandle gcHandle;
 	IntPtr pointer;
 	

@@ -8,7 +8,7 @@ using System.Windows.Forms;
 using RetT = Components.Library.ClassCommandResult<InputResender.WindowsGUI.MainScreen>;
 
 namespace InputResender.WindowsGUI.Commands;
-public class GUICommands : ACommand {
+public class GUICommands : DCommand<DMainAppCore> {
     public static string MainFormVarName = "MainForm";
     public static string MainFormThreadVarName = "MainFormThread";
     private MainScreen mainScreen;
@@ -21,12 +21,12 @@ public class GUICommands : ACommand {
 		  ("stop", null),
 	 ];
 
-	public GUICommands ( string parentHelp = null )
-      : base ( parentHelp, CommandNames, InterCommands ) {
+	public GUICommands ( DMainAppCore owner, string parentHelp = null )
+      : base ( owner, parentHelp, CommandNames, InterCommands ) {
         requiredPositionals.Add ( 0, false ); // Start/Stop (maybe more later)
     }
 
-    override protected RetT ExecIner ( CommandProcessor.CmdContext context ) {
+    override protected RetT ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
         if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
             "start" => $"{context.ParentAction} gui start: Starts the GUI",
             "stop" => $"{context.ParentAction} gui stop: Stops the GUI",
@@ -41,7 +41,7 @@ public class GUICommands : ACommand {
 		};
     }
 
-    private RetT StartGUI ( CommandProcessor cmdProc ) {
+    private RetT StartGUI ( CommandProcessor<DMainAppCore> cmdProc ) {
 		if ( mainScreen != null ) return new RetT ( mainScreen, "Main screen is already running." );
 		var core = cmdProc.GetVar<DMainAppCore> ( "ActCore" );
 
@@ -54,7 +54,7 @@ public class GUICommands : ACommand {
 		return new RetT ( mainScreen, "Main screen started." );
 	}
 
-    private RetT StopGUI (CommandProcessor cmdProc) {
+    private RetT StopGUI (CommandProcessor<DMainAppCore> cmdProc) {
 		if ( mainScreen == null ) return new RetT ( null, "Main screen is not running." );
         var closedScreen = mainScreen;
 		mainScreen.RequestStop ();
@@ -70,10 +70,10 @@ public class GUICommands : ACommand {
 		return new RetT ( closedScreen, "Main screen stopped." );
 	}
 
-    private void RunGUI ( DMainAppCore core, CommandProcessor context ) {
+    private void RunGUI ( DMainAppCore core, CommandProcessor<DMainAppCore> context ) {
     }
 
-    public static void ShowWindow ( Form form, CommandProcessor context ) {
+    public static void ShowWindow ( Form form, CommandProcessor<DMainAppCore> context ) {
         try {
             var mainForm = context.GetVar<Form> ( MainFormVarName );
             if ( mainForm != null ) {

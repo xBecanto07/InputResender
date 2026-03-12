@@ -6,11 +6,15 @@ using System.Collections.Generic;
 using Xunit;
 
 namespace Components.LibraryTests; 
-public class BasicCommandTest : CommandTestBase {
+public class BasicCommandTest : CommandTestBase<CoreBaseMock> {
 	BasicCommandsWrapper CmdWrapper;
 
-	public BasicCommandTest () : this ( new BasicCommandsWrapper () ) { }
-	private BasicCommandTest (BasicCommandsWrapper cmdWrapper ) : base (cmdWrapper.command) { CmdWrapper = cmdWrapper; }
+	public BasicCommandTest () : base ( new CoreBaseMock ()
+		, core => new BasicCommandsWrapper ( core )
+		, ( obj, _ ) => (obj as BasicCommandsWrapper)?.command
+	) {
+		CmdWrapper = HelperObj as BasicCommandsWrapper;
+	}
 
 	[Fact]
 	public void PrintCommand () {
@@ -35,20 +39,21 @@ public class BasicCommandTest : CommandTestBase {
 		CmdWrapper.exits = 0;
 	}
 
-	internal class BasicCommandsWrapper {
+	internal class BasicCommandsWrapper  {
 		public readonly List<string> prints = new ();
 		public int clears = 0;
 		public int exits = 0;
-		public readonly BasicCommands command;
+		public readonly BasicCommands<CoreBaseMock> command;
 
-		public BasicCommandsWrapper () {
-			command = new BasicCommands ( prints.Add, () => clears++, () => exits++ );
+		public BasicCommandsWrapper ( CoreBaseMock owner ) {
+			command = new ( owner, prints.Add, () => clears++, () => exits++ );
 		}
 	}
 }
 
-public class ContextVarCommandTest : CommandTestBase {
-	public ContextVarCommandTest () : base ( new ContextVarCommands () ) { }
+public class ContextVarCommandTest ()
+	: CommandTestBase<CoreBaseMock> ( new CoreBaseMock (), owner
+		=> new ContextVarCommands<CoreBaseMock> ( owner ) ) {
 
 	[Fact]
 	public void GetNonexistingVar () {
@@ -76,14 +81,14 @@ public class ContextVarCommandTest : CommandTestBase {
 	}
 }
 
-public class CoreManagerCommandTest : CommandTestBase {
-	public CoreManagerCommandTest () : base ( new CoreManagerCommand () ) { }
-
+public class CoreManagerCommandTest ()
+	: CommandTestBase<CoreBaseMock> ( new CoreBaseMock (), owner
+		=> new CoreManagerCommand<CoreBaseMock> ( owner ) ) {
 	[Fact]
 	public void ActiveCore () {
 		AssertMissingCore ( "core act" );
 		CoreBaseMock mockCore = new ();
-		CmdProc.SetVar ( CoreManagerCommand.ActiveCoreVarName, mockCore );
+		CmdProc.SetVar ( CoreManagerCommand<CoreBaseMock>.ActiveCoreVarName, mockCore );
 		AssertCorrectMsg ( "core act TestCore", $"Active core: '{mockCore.Name}'" );
 	}
 
@@ -91,7 +96,7 @@ public class CoreManagerCommandTest : CommandTestBase {
 	public void TypeofCoreCompoent () {
 		AssertMissingCore ( "core typeof " + nameof ( ComponentMock ) );
 		CoreBaseMock mockCore = new ();
-		CmdProc.SetVar ( CoreManagerCommand.ActiveCoreVarName, mockCore );
+		CmdProc.SetVar ( CoreManagerCommand<CoreBaseMock>.ActiveCoreVarName, mockCore );
 		AssertCorrectMsg("core typeof asdf", "Invalid type name: asdf" );
 		AssertCorrectMsg("core typeof " + nameof ( ComponentMock ), $"Component of type {nameof ( ComponentMock )} not found." );
 		// TODO: Bug where fetch seems to not work properly in this scenario. It works fine when using proper core (e.g.: with VMainAppCore, calling 'core typeof DInputReader' returns: 'For definition 'DInputReader' was found variant 'VInputReader_KeyboardHook'.').

@@ -11,6 +11,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Components.Implementations;
+using Components.Interfaces;
 
 namespace InputResender.WindowsGUI; 
 public partial class ConsoleWindow : Form {
@@ -65,8 +67,9 @@ public partial class ConsoleWindow : Form {
 
 	private void ConsoleWindow_Load ( object sender, EventArgs e ) {
 		console = new ( WriteLine, ReadLine, Write, Clear, ReadKey, OverwriteLine );
-		cliWrapper = new ( console );
-		InputResender.CLI.Program.StartMain ( [], new TopLevelLoader (), cliWrapper );
+		DMainAppCore initalCore = DMainAppCoreFactory.CreateDefault ();
+		cliWrapper = new ( initalCore, console );
+		InputResender.CLI.Program.StartMain ( [], new TopLevelLoader ( initalCore ), cliWrapper );
 		Task.Delay ( 50 ).Wait ();
 		lock ( generalLock ) {
 			if (lineWaiter != null) {

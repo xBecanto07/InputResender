@@ -54,7 +54,7 @@ namespace Components.Library {
 		}
 	}
 	public abstract class ComponentBase<CoreType> : ComponentBase where CoreType : CoreBase {
-		public ComponentBase (CoreType newOwner) { ChangeOwner ( newOwner ); }
+		public ComponentBase (CoreType newOwner) { base.ChangeOwner ( newOwner ); }
 		public new virtual CoreType Owner { get; protected set; }
 		protected override void ChangeOwner ( CoreBase newOwner ) { Owner = (CoreType)newOwner; base.ChangeOwner ( newOwner ); }
 	}

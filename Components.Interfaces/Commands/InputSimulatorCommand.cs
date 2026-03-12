@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 
 namespace Components.Interfaces.Commands; 
-public class InputSimulatorCommand : ACommand {
+public class InputSimulatorCommand : DCommand<DMainAppCore> {
 	public override string Description => "Can simulate user hardware input";
 
 	private HHookInfo virtualKeyboardHook = null; // Bad naming, HHookInfo is just a 'input event context' 😉
@@ -18,8 +18,8 @@ public class InputSimulatorCommand : ACommand {
 		  ("keypress", null),
 	 ];
 
-	public InputSimulatorCommand ( string parentDsc = null )
-		: base ( parentDsc, CommandNames, InterCommands ) {}
+	public InputSimulatorCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) {}
 
 	/*public static HKeyboardEventDataHolder KeyPress ( ComponentBase owner, KeyCode key, VKChange press, int deviceID = 1 ) {
 	HHookInfo hookInfo = new HHookInfo ( owner, deviceID, press );
@@ -36,7 +36,7 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 	return new HMouseEventDataHolder ( owner, hookInfo, X, Y );
 }*/
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		//if (TryPrintHelp(context.Args, context.ArgID + 1, () => "sim <Action> [Options]\n\tAction: {mousemove|keydown|keyup|keypress}\n\tOptions: Action specific options", out var helpRes ) ) return helpRes;
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"mousemove" => $"sim mousemove [-x <Xaxis>] [-y <Yaxis>]: Simulate mouse move event\n\t-x <Xaxis> = 0: X axis movement\n\t-y <Yaxis> = 0: Y axis movement",
@@ -46,10 +46,9 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 			_ => null
 		}, out var helpRes ) ) return helpRes;
 
-		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
-		DInputSimulator sim = core.Fetch<DInputSimulator> ();
+		DInputSimulator sim = Owner.Fetch<DInputSimulator> ();
 		if ( sim == null ) throw new Exception ( "No InputSimulater registered in core" );
-		DHookManager hookManager = core.Fetch<DHookManager> ();
+		DHookManager hookManager = Owner.Fetch<DHookManager> ();
 		if ( hookManager == null ) throw new Exception ( "No HookManager registered in core" );
 
 
@@ -98,7 +97,7 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		}
 	}
 
-	int Simulate ( CommandProcessor.CmdContext context, int offset, DInputSimulator sim, bool keyDown, bool keyUp, HHookInfo hInfo) {
+	int Simulate ( CommandProcessor<DMainAppCore>.CmdContext context, int offset, DInputSimulator sim, bool keyDown, bool keyUp, HHookInfo hInfo) {
 		List<KeyCode> keys = GetKeysFromArgs ( context, offset );
 
 		List<HInputEventDataHolder> events = [];
@@ -111,7 +110,7 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		return sim.Simulate ( [.. events] );
 	}
 
-	public static List<KeyCode> GetKeysFromArgs (CommandProcessor.CmdContext context, int offset) {
+	public static List<KeyCode> GetKeysFromArgs (CommandProcessor<DMainAppCore>.CmdContext context, int offset) {
 		List<KeyCode> keys = [context.Args.EnumC<KeyCode> ( context.ArgID + offset, "Key", true )];
 		for ( int i = context.ArgID + offset + 1; i < context.Args.ArgC; i++ ) {
 			keys.Add ( context.Args.EnumC<KeyCode> ( i, "Key", true ) );
@@ -146,7 +145,7 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 				var core = GetCore ( LastContext );
 				string actionStr = actionSel.Value.options[actionSel.Value.selID];
 				string cmd = $"sim {actionStr.ToLower ()} {keyCodes.Value}";
-				string cmdRes = core.Fetch<CommandProcessor> ().ProcessLine ( cmd ).Message;
+				string cmdRes = core.Fetch<CommandProcessor<DMainAppCore>> ().ProcessLine ( cmd ).Message;
 				resultField.ApplyValue ( cmdRes );
 			} )
 			.WithName ( "Simulate" )

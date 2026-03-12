@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Components.Library.ComponentSystem;
-public class ContextVarCommands : ACommand {
+public class ContextVarCommands<CoreT> : DCommand<CoreT> where CoreT : CoreBase {
 	private static List<string> CommandNames = ["context"];
 	private static List<(string, Type)> InterCommands = [
 		  ("set", null),
@@ -15,10 +15,10 @@ public class ContextVarCommands : ACommand {
 	 ];
 
 	override public string Description => "Context variable access commands.";
-	public ContextVarCommands ( string parentDsc = null )
-		: base ( parentDsc, CommandNames, InterCommands ) {}
+	public ContextVarCommands ( CoreT owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) {}
 
-	override protected CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	override protected CommandResult ExecIner ( CommandProcessor<CoreT>.CmdContext context ) {
 		switch ( context.SubAction ) {
 		case "set": {
 			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "context set <Variable type> <Variable name> <Variable value>\n\tVariable type: Type of variable: <string>\n\tVariable name: Name of the variable\n\tVariable value: Value to be assigned", out var helpRes ) ) return helpRes;

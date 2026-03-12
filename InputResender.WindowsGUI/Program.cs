@@ -1,6 +1,8 @@
 //#define VirtConsole
 using System;
 using System.Windows.Forms;
+using Components.Implementations;
+using Components.Interfaces;
 using Components.Library;
 using InputResender.WindowsGUI.Commands;
 
@@ -12,9 +14,10 @@ internal static class Program {
 		ApplicationConfiguration.Initialize ();
 		Application.Run ( new ConsoleWindow () );
 #else
+		DMainAppCore initalCore = DMainAppCoreFactory.CreateDefault ();
 		ConsoleManager console = new ( Console.WriteLine, Console.ReadLine, Console.Write, Console.Clear, () => Console.ReadKey ( true ).KeyChar, OverwriteConsoleLine );
 		console.WriteLine ( "Starting Windows version ..." );
-		InputResender.CLI.Program.Main ( args, new TopLevelLoader ( console ), console );
+		InputResender.CLI.Program.Main ( args, initalCore, new TopLevelLoader ( initalCore, console ), console );
 #endif
 	}
 

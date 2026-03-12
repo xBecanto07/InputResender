@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 
 namespace InputResender.OSDependent.Windows; 
-public class WindowsCommands : ACommand {
+public class WindowsCommands : DCommand<DMainAppCore> {
 	readonly ConsoleManager consoleManager;
 
 	override public string Description => "Offers access to Windows specific functionalities";
@@ -18,11 +18,11 @@ public class WindowsCommands : ACommand {
 		  ("msgs", null),
 	 ];
 
-	public WindowsCommands ( ConsoleManager console ) : base ( null, CommandNames, InterCommands ) {
+	public WindowsCommands ( DMainAppCore owner, ConsoleManager console ) : base ( owner, null, CommandNames, InterCommands ) {
 		consoleManager = console;
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"load" => $"{context.ParentAction} windows load [--force]: Loads Windows specific dependencies",
 			"msgs" => $"{context.ParentAction} windows msgs <start|stop>: Starts processing windows message events",
@@ -31,7 +31,7 @@ public class WindowsCommands : ACommand {
 		switch ( context.SubAction ) {
 		case "load":
 			context.Args.RegisterSwitch ( 'F', "force", null );
-			var actCore = context.CmdProc.GetVar<CoreBase> ( CoreManagerCommand.ActiveCoreVarName );
+			var actCore = context.CmdProc.GetVar<CoreBase> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 			if ( actCore.IsRegistered<DLowLevelInput> () ) {
 				var llInput = actCore.Fetch<DLowLevelInput> ();
 				if ( llInput.GetType () == typeof ( VWinLowLevelLibs ) ) {

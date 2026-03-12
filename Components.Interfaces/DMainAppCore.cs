@@ -97,6 +97,10 @@ public abstract class DMainAppCore : CoreBase {
 			);
 }
 
+// Question is whether the 'MainAppCore' should even be used or just treat it as some dynamic blob. 🤔
+public abstract class DMainAppCommand ( DMainAppCore owner, string parentHelp = null, List<string> commandNames = null, List<(string, Type)> interCommands = null )
+	: DCommand<DMainAppCore> ( owner, parentHelp, commandNames, interCommands );
+
 
 public class MMainAppCore : DMainAppCore {
 	public MMainAppCore ( Func<DMainAppCore, DEventVector> CreateEventVector,

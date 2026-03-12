@@ -2,9 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Components.Interfaces;
 
 namespace InputResender.CLI;
-public class AutoCmdsCommand : ACommand {
+public class AutoCmdsCommand : DCommand<DMainAppCore> {
 	public override string Description => "Manage automatic commands that run on specific events";
 	protected override bool PrintHelpOnEmpty => true;
 	private static List<string> CommandNames = ["auto", "autocmd", "autocmds"];
@@ -13,9 +14,9 @@ public class AutoCmdsCommand : ACommand {
 		("run", null),
 		("load", null)
 		];
-	public AutoCmdsCommand ( string parentDsc = null )
-		: base ( parentDsc, CommandNames, InterCommands ) { }
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	public AutoCmdsCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) { }
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"list" => CallName + " list: List all automatic commands",
 			"run" => CallName + " run <Name>: Run command group\n\tName: The name of the command group to run",

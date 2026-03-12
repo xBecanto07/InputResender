@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Components.Interfaces;
 using Xunit;
 using Outputter = Xunit.Abstractions.ITestOutputHelper;
 using SBld = System.Text.StringBuilder;
@@ -25,7 +26,7 @@ public class GlobalCommandListTest {
 
 	[Fact]
 	public void CommandsCanBeCorrectlyDetected () {
-		GlobalCommandList CommandList = new ();
+		GlobalCommandList<DMainAppCore> CommandList = new ();
 		// Check potential correctness of CommandList data and check existance of some known commands and loaders at random (to ensure the reflection actually worked, not a full check that all commands are present).
 
 		// Also should test that callname of subcommand is same as its registered callname in the parent.
@@ -36,8 +37,8 @@ public class GlobalCommandListTest {
 		L.OnlyHaveUniqueItems ();
 		L.OnlyContain ( t => t != null );
 		L.OnlyContain ( t => !t.IsAbstract );
-		L.OnlyContain ( t => t.IsSubclassOf ( typeof ( ACommandLoader ) ) );
-		L.Contain ( GlobalCommandList.LoadersExamples );
+		L.OnlyContain ( t => t.IsSubclassOf ( typeof ( ACommandLoader<DMainAppCore> ) ) );
+		L.Contain ( GlobalCommandList<DMainAppCore>.LoadersExamples );
 
 		FluentAssertions.Collections.GenericDictionaryAssertions<IDictionary<Type, List<Type>>, Type, List<Type>> F = CommandList.Loaders.Should ();
 		F.NotBeNull ();
@@ -49,17 +50,17 @@ public class GlobalCommandListTest {
 		var Fi = F.Subject.Values.SelectMany ( v => v ).Should ();
 		Fi.OnlyContain ( t => t != null );
 		Fi.OnlyContain ( t => !t.IsAbstract );
-		Fi.OnlyContain ( t => t.IsSubclassOf ( typeof ( ACommand ) ) );
+		Fi.OnlyContain ( t => t.IsSubclassOf ( typeof ( DCommand<DMainAppCore> ) ) );
 
 		var T = CommandList.AllCallNames.Keys.Should ();
 		T.NotBeNull ();
 		T.NotBeEmpty ();
 		T.OnlyContain ( t => t != null );
 		T.OnlyContain ( t => !t.IsAbstract );
-		T.OnlyContain ( t => t.IsSubclassOf ( typeof ( ACommand ) ) );
-		T.OnlyContain ( t => !t.IsSubclassOf ( typeof ( ACommandLoader ) ) );
+		T.OnlyContain ( t => t.IsSubclassOf ( typeof ( DCommand<DMainAppCore> ) ) );
+		T.OnlyContain ( t => !t.IsSubclassOf ( typeof ( ACommandLoader<DMainAppCore> ) ) );
 		T.OnlyHaveUniqueItems ();
-		T.Contain ( GlobalCommandList.CommandTypeExamples );
+		T.Contain ( GlobalCommandList<DMainAppCore>.CommandTypeExamples );
 
 		var N = CommandList.AllCallNames.Should ();
 		N.NotBeNull ();
@@ -81,7 +82,7 @@ public class GlobalCommandListTest {
 		var A = C.Subject.Values.SelectMany ( v => v ).Should ();
 		A.OnlyContain ( t => !string.IsNullOrWhiteSpace ( t ) );
 
-		foreach ( (Type type, string cmd) in GlobalCommandList.CommandsExamples ) {
+		foreach ( (Type type, string cmd) in GlobalCommandList<DMainAppCore>.CommandsExamples ) {
 			CommandList.CommandList.Should ().ContainKey ( type )
 				.WhoseValue.Contains ( cmd );
 		}
@@ -92,19 +93,19 @@ public class GlobalCommandListTest {
 		AssertLoaderContainsCommand ( typeof ( InputCommandsLoader ), typeof ( InputSimulatorCommand ) );
 		AssertLoaderContainsCommand ( typeof ( TopLevelLoader ), typeof ( GUICommands ) );
 		AssertLoaderContainsCommand ( typeof ( TopLevelLoader ), typeof ( LowLevelInputCommand ) );
-		AssertSpecificCallname ( typeof ( BasicCommands ), "safemode" );
-		AssertSpecificCallname ( typeof ( Components.Library.ComponentSystem.ContextVarCommands ), "context" );
+		AssertSpecificCallname ( typeof ( BasicCommands<DMainAppCore> ), "safemode" );
+		AssertSpecificCallname ( typeof ( Components.Library.ComponentSystem.ContextVarCommands<DMainAppCore> ), "context" );
 		AssertSpecificCallname ( typeof ( Components.Interfaces.Commands.SeClavRunnerCommand ), "seclav" );
 		AssertSpecificCallname ( typeof ( Components.Interfaces.Commands.SeClavModuleManagerCommand ), "seclav module" );
 		AssertSpecificCallname ( typeof ( Components.Implementations.CoreCreatorCommand ), "core create" );
 		AssertSpecificCallname ( typeof ( InputResender.WindowsGUI.LowLevelInputCommand ), "hook inpll" );
 
-		AssertSpecificCommands ( typeof ( CoreManagerCommand )
+		AssertSpecificCommands ( typeof ( CoreManagerCommand<CoreBase> )
 			, ["core", "core act", "core typeof", "core list"]
 			, typeof ( CoreCreatorCommand ) );
 		AssertSpecificCommands ( typeof ( CoreCreatorCommand )
 			, ["core new", "core create", "core new comp", "core create comp"]
-			, typeof ( CoreManagerCommand ) );
+			, typeof ( CoreManagerCommand<DMainAppCore> ) );
 
 		void AssertSpecificCallname (Type cmdType, string callName)
 			=> CommandList.AllCallNames
@@ -180,7 +181,7 @@ public class GlobalCommandListTest {
 }
 
 public class GlobalCommandTest : BaseIntegrationTest {
-	static readonly GlobalCommandList CommandList = new GlobalCommandList ();
+	static readonly GlobalCommandList<DMainAppCore> CommandList = new ();
 	public Outputter Output;
 	/*
 	HELP EXAMPLE:
@@ -247,7 +248,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 
 	[Fact]
 	public void AllCommandsCanBeLoaded () {
-		List<Type> loaded = [typeof ( FactoryCommandsLoader ), typeof ( BasicCommands ), typeof(TopLevelLoader)];
+		List<Type> loaded = [typeof ( FactoryCommandsLoader ), typeof ( BasicCommands<DMainAppCore> ), typeof(TopLevelLoader)];
 		List<Type> waiting = CommandList.AllCallNames.Keys.Select ( t => t ).ToList ();
 		waiting.AddRange ( CommandList.Loaders.Keys );
 		foreach ( var T in loaded ) waiting.Remove ( T );
@@ -338,7 +339,7 @@ public class GlobalCommandTest : BaseIntegrationTest {
 	public void HelpAvailable_P ( string command, Type owner ) {
 		string helpMsg = null;
 		command += ' ';
-		foreach ( string hs in ACommand.HelpSwitches ) {
+		foreach ( string hs in DCommand<CoreBase>.HelpSwitches ) {
 			string cmd = command + hs;
 			if ( helpMsg == null ) Output?.WriteLine ( $" > {cmd}" );
 			var res = cliWrapper.ProcessLine ( cmd );

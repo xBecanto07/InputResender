@@ -14,9 +14,10 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms.VisualStyles;
+using InputResender.WebUI.Commands;
 
 namespace InputResender.UnitTests;
-internal class GlobalCommandList {
+internal class GlobalCommandList<CoreT> where CoreT : CoreBase {
 	public static readonly List<Type> allCmdTypes = [
 		typeof( ConnectionManagerCommand ),
 		typeof( CoreCreatorCommand ),
@@ -35,9 +36,9 @@ internal class GlobalCommandList {
 		typeof( PipelineCommand ),
 		typeof( SeClavRunnerCommand ),
 		typeof( SeClavModuleManagerCommand ),
-		typeof( BasicCommands ),
-		typeof( ContextVarCommands ),
-		typeof( CoreManagerCommand ),
+		typeof( BasicCommands<CoreT> ),
+		typeof( ContextVarCommands<CoreT> ),
+		typeof( CoreManagerCommand<CoreT> ),
 		typeof( DebugCommand ),
 		typeof( FactoryCommandsLoader ),
 		typeof( LoaderCommand ),
@@ -45,6 +46,7 @@ internal class GlobalCommandList {
 		typeof( AutoCmdsCommand ),
 		typeof( InputCommandsLoader ),
 		typeof( SeClavCommandLoader ),
+		typeof( BlazorManagerCommand ),
 		typeof( LowLevelInputCommand ),
 		typeof( WindowsCommands ),
 		typeof( GUICommands ),
@@ -62,9 +64,9 @@ internal class GlobalCommandList {
 		typeof ( GUICommands ),
 		typeof ( WindowsCommands ),
 		typeof ( LowLevelInputCommand ),
-		typeof ( CoreManagerCommand ),
+		typeof ( CoreManagerCommand<CoreT> ),
 		typeof ( ConnectionManagerCommand ),
-		typeof ( ContextVarCommands ),
+		typeof ( ContextVarCommands<CoreT> ),
 		typeof ( DebugCommand ),
 		typeof ( CoreCreatorCommand ),
 		typeof ( NetworkManagerCommand ),
@@ -87,10 +89,10 @@ internal class GlobalCommandList {
 		( typeof(SeClavRunnerCommand), "seclav parse" ),
 		( typeof(SeClavRunnerCommand), "seclav module list" ),
 		( typeof(SeClavRunnerCommand), "seclav module info" ),
-		( typeof(BasicCommands), "safemode" ),
-		( typeof(BasicCommands), "help" ),
-		( typeof(BasicCommands), "exit" ),
-		( typeof(BasicCommands), "loglevel" ),
+		( typeof(BasicCommands<CoreT>), "safemode" ),
+		( typeof(BasicCommands<CoreT>), "help" ),
+		( typeof(BasicCommands<CoreT>), "exit" ),
+		( typeof(BasicCommands<CoreT>), "loglevel" ),
 	];
 	/*public readonly Dictionary<Type, List<string>> CommandList = new () {
 		{ typeof (ConnectionManagerCommand), ["conns", "conns list", "conns send", "conns close", "conns callback"] },
@@ -176,7 +178,7 @@ internal class GlobalCommandList {
 		//}
 
 		foreach ( Type type in allCmdTypes ) {
-			if ( type.IsSubclassOf ( typeof ( ACommandLoader ) ) ) {
+			if ( type.IsSubclassOf ( typeof ( ACommandLoader<CoreT> ) ) ) {
 				ProcessLoader ( type );
 			} else {
 				ProcessCommand ( type );
@@ -251,11 +253,11 @@ internal class GlobalCommandList {
 	private void ProcessLoader ( Type loader ) {
 		List<Type> newCmdList;
 		try {
-			var newCmdDict = GetField<KeyValuePair<Type, Func<ACommand>>> ( loader, "NewCommandList", "Loader" );
+			var newCmdDict = GetField<KeyValuePair<Type, Func<CoreT, DCommand<CoreT>>>> ( loader, "NewCommandList", "Loader" );
 			newCmdList = newCmdDict.Select ( kvp => kvp.Key ).ToList ();
 		} catch ( Exception e1 ) {
 			try {
-				var newCmdDict = GetMethodListSimple<KeyValuePair<Type, Func<ACommand>>> ( loader, "NewCommandList", "Loader" );
+				var newCmdDict = GetMethodListSimple<KeyValuePair<Type, Func<CoreT, DCommand<CoreT>>>> ( loader, "NewCommandList", "Loader" );
 				newCmdList = newCmdDict.Select ( kvp => kvp.Key ).ToList ();
 			} catch ( Exception e2 ) {
 				throw new AggregateException ( $"Error when loading commands from loader '{loader}'", e1, e2 );
@@ -264,7 +266,7 @@ internal class GlobalCommandList {
 
 		List<(string, Type)> subCommands = [];
 		try {
-			var newSubCmdList = GetField<KeyValuePair<Type, (string, Func<ACommand, ACommand>)>> ( loader, "NewSubCommandList", "Loader" );
+			var newSubCmdList = GetField<KeyValuePair<Type, (string, Func<DCommand<CoreT>, DCommand<CoreT>>)>> ( loader, "NewSubCommandList", "Loader" );
 			//newCmdList.AddRange ( newSubCmdList.Select ( kvp => kvp.Key ) );
 			foreach ( var subCmd in newSubCmdList ) {
 				newCmdList.Add ( subCmd.Key );
@@ -291,7 +293,7 @@ internal class GlobalCommandList {
 			var newCmdList = Loaders[loader];
 			List<Type> origTypes = [.. newCmdList];
 			foreach ( Type cmdT in origTypes ) {
-				if ( cmdT.IsSubclassOf ( typeof ( ACommandLoader ) ) ) continue;
+				if ( cmdT.IsSubclassOf ( typeof ( ACommandLoader<CoreT> ) ) ) continue;
 				AddInnerCommands ( newCmdList, cmdT, adHocSubs );
 			}
 		}
@@ -318,7 +320,7 @@ internal class GlobalCommandList {
 
 		foreach ( (string cmd, Type nextCmd) in interCmds ) {
 			if ( nextCmd != null ) {
-				if ( !nextCmd.IsSubclassOf ( typeof ( ACommand ) ) ) throw new Exception ( $"Command '{cmdType}' has invalid inter command type '{nextCmd}'. It must be derived from 'ACommand'." );
+				if ( !nextCmd.IsSubclassOf ( typeof ( DCommand<CoreT> ) ) ) throw new Exception ( $"Command '{cmdType}' has invalid inter command type '{nextCmd}'. It must be derived from 'ACommand'." );
 				if (! allCmdTypes.Contains(nextCmd))
 					errors.Add ( $"Command '{cmdType}' has inter command for '{cmd}', which points to '{nextCmd}', which is not in the list of known command types." );
 			}

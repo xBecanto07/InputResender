@@ -10,7 +10,7 @@ using InputResender.Services.NetClientService;
 using System.Net;
 
 namespace InputResender.WebUI.Commands;
-public class BlazorManagerCommand : ACommand {
+public class BlazorManagerCommand : DCommand<DMainAppCore> {
 	public override string Description => "Command to manage the Blazor server.";
 
 	private static List<string> CommandNames = ["Blazor", "blazor"];
@@ -19,18 +19,18 @@ public class BlazorManagerCommand : ACommand {
 		, ("stop", null)
 		];
 
-	public BlazorManagerCommand ( string parentDsc = null )
-		: base (parentDsc, CommandNames, InterCommands ) {
+	public BlazorManagerCommand ( DMainAppCore owner, string parentDsc = null )
+		: base ( owner, parentDsc, CommandNames, InterCommands ) {
 	}
 
-	protected override CommandResult ExecIner ( CommandProcessor.CmdContext context ) {
+	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"start" => CallName + " start [Address] [Port]: Start the Blazor server at the specified address and port.",
 			"stop" => CallName + " stop: Stop the Blazor server.",
 			_ => null
 		}, out var helpRes ) ) return helpRes;
 
-		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand.ActiveCoreVarName );
+		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		if ( core == null ) return new CommandResult ( "No active core found." );
 		var webFactory = core.Fetch<VUIFactoryBlazor> ();
 		webFactory ??= new VUIFactoryBlazor ( core );
