@@ -63,7 +63,9 @@ public abstract class DMainAppCore : CoreBase {
 			else {
 				var comp = creator ( this );
 				if ( comp == null ) return; // Component was intented to not be created, otherwise the creator itself should throw exception
-				if ( !IsRegistered<T> () ) Register ( comp );
+				if ( !IsRegistered<T> () )
+					throw new NotSupportedException( $"Component '{name}' is not registered in the core. Make sure that the creator function is correct and that the component properly registers itself in the core." );
+					//Register ( comp );
 			}
 		}
 	}

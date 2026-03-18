@@ -1,5 +1,4 @@
 <Config>
-  <HomePath>C:\Maldus\Projects\InputResender</HomePath>
   <AutostartName>initCmds</AutostartName>
   <PrintAutoCommands>T</PrintAutoCommands>
   <MaxOnelinerLength>125</MaxOnelinerLength>
@@ -10,16 +9,19 @@
       <C1>clear</C1>
       <C2>safemode off</C2>
       <C3>core new</C3>
-      <C4>core own</C4>
-      <C5>conns force init</C5>
-      <C6>loglevel all</C6>
-      <C7>network callback recv print</C7>
-      <C8>network callback newconn print</C8>
+      <C4>core migrate act own skipSame</C4>
+      <C5>core destroy</C5>
+      <C6>core activate</C6>
+      <C7>conns force init</C7>
+      <C8>loglevel all</C8>
+      <C9>network callback recv print</C9>
+      <C10>network callback newconn print</C10>
     </initCmds>
     <setupPipes>
       <P0>hook manager start</P0>
       <P1>pipeline new Sender DInputProcessor DDataSigner DPacketSender</P1>
-      <P2>pipeline new Recver DPacketSender DDataSigner DInputSimulator DInputSimulator</P2>
+      <P2>pipeline new RecverSender DPacketSender DDataSigner DInputSimulator DInputSimulator</P2>
+      <P2>pipeline new RecverCallback NetworkCallbacks DDataSigner DInputSimulator DInputSimulator</P2>
       <P2>pipeline new LocalCallback DInputProcessor DInputSimulator SHookManager</P2>
       <P3>pipeline new InputProcess DInputReader DInputMerger DInputProcessor</P3>
       <P4>pipeline new HookManagerInputProcess SHookManager DInputMerger DInputProcessor</P4>
@@ -53,16 +55,17 @@
       <Sh3>load sclModules</Sh3>
       <Sh4>load joiners</Sh4>
       <Sh5>SIP force</Sh5>
+      <Sh6>network callback recv pipeline</Sh6>
     </Shared>
     <Client>
       <Cl0>auto run Shared</Cl0>
-      <Cl1>pipeline new Recver DPacketSender DDataSigner DInputSimulator SHookManager</Cl1>
+      <Cl1>pipeline new Recver NetworkCallbacks DDataSigner DInputSimulator SHookManager</Cl1>
       <Cl3>password add blue</Cl3>
       <Cl4>network hostlist</Cl4>
     </Client>
     <Client2>
       <Cl0>auto run Shared</Cl0>
-      <Cl1>pipeline new Recver DPacketSender DDataSigner DInputSimulator DInputSimulator</Cl1>
+      <Cl1>pipeline new Recver NetworkCallbacks DDataSigner DInputSimulator DInputSimulator</Cl1>
       <Cl2>pipeline new HookManagerInputProcess SHookManager DInputMerger DInputProcessor</Cl2>
       <Cl3>password add blue</Cl3>
       <Cl4>network hostlist</Cl4>

@@ -27,7 +27,7 @@ namespace Components.Library {
 		protected abstract IReadOnlyList<(string opCode, Type opType)> AddCommands ();
 		protected virtual void ChangeOwner ( CoreBase newOwner ) {
 			Owner?.Unregister ( this );
-			(Owner = newOwner).Register ( this );
+			(Owner = newOwner).Register ( this, ChangeOwner );
 		}
 
 		public object Fetch ( string opCode, Type type ) {
@@ -55,8 +55,9 @@ namespace Components.Library {
 	}
 	public abstract class ComponentBase<CoreType> : ComponentBase where CoreType : CoreBase {
 		public ComponentBase (CoreType newOwner) { base.ChangeOwner ( newOwner ); }
-		public new virtual CoreType Owner { get; protected set; }
-		protected override void ChangeOwner ( CoreBase newOwner ) { Owner = (CoreType)newOwner; base.ChangeOwner ( newOwner ); }
+		//public new virtual CoreType Owner { get; protected set; }
+		public new virtual CoreType Owner => base.Owner as CoreType;
+		protected new void ChangeOwner ( CoreType newOwner ) => base.ChangeOwner ( newOwner );
 	}
 
 	public class ComponentMock : ComponentBase<CoreBase> {

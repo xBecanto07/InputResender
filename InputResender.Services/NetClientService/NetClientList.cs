@@ -75,16 +75,20 @@ public class NetClientList {
 		return AccepterCT;
 	}
 
-	public INetPoint SelectProperLocalPoint ( INetPoint target ) {
+	public List<INetPoint> SelectProperLocalPoints ( INetPoint target ) {
 		// Select one of the provided addresses from which a connection to target could be established
 		// Currently, only selection whitin the same network is supported
 
 		if ( target == null ) throw new ArgumentNullException ( nameof ( target ) );
 		var netAddr = target.NetworkAddress;
+		List<INetPoint> validEPs = [];
 		foreach ( var EP in Devices.Keys ) {
-			if ( EP.NetworkAddress.Equals ( netAddr ) ) return EP;
+			if ( !Devices.ContainsKey ( EP ) ) continue;
+			if ( EP.NetworkAddress.Equals ( netAddr ) )
+				validEPs.Add ( EP );
 		}
-		return null;
+
+		return validEPs;
 	}
 
 	private void ConnAccepter ( NetworkConnection conn ) {
@@ -97,15 +101,22 @@ public class NetClientList {
 
 	public NetworkConnection Connect ( INetPoint targEP, int timeout = 1000 ) {
 		if ( targEP == null ) throw new ArgumentNullException ( nameof ( targEP ) );
-		INetPoint locEP = SelectProperLocalPoint ( targEP );
-		if ( locEP == null ) throw new InvalidOperationException ( $"No local point available for {targEP}\nAvailable are: {string.Join ( " | ", Devices.Keys )}" );
 		if ( Conns.ContainsKey ( targEP ) ) throw new InvalidOperationException ( $"Connection to {targEP} already exists" );
 
-		if ( !Devices.TryGetValue ( locEP, out var locDev ) ) throw new InvalidOperationException ( $"No device for {locEP}" );
+		List<INetPoint> locEPs = SelectProperLocalPoints ( targEP );
+		if ( locEPs?.Count == 0 ) throw new InvalidOperationException ( $"No local point available for {targEP}\nAvailable are: {string.Join ( " | ", Devices.Keys )}" );
 
-		var conn = locDev.Connect ( targEP, null, timeout );
-		ConnAccepter ( conn );
-		return conn;
+		foreach ( var VARIABLE in locEPs) {
+			 // Try to connect from each of the valid local EPs until one succeeds. This is needed, because even if there are multiple valid local EPs, some of them might be already used for other connections, or just not working for some reason
+			 try {
+				 var conn = Devices[VARIABLE].Connect ( targEP, null, timeout );
+				 ConnAccepter ( conn );
+				 return conn;
+			 } catch ( Exception ) {
+				 continue;
+			 }
+		}
+		throw new InvalidOperationException ( $"Failed to connect to {targEP} from any of the valid local EPs: {string.Join ( " | ", locEPs )}" );
 	}
 	public void UnregisterConnection ( NetworkConnection connection ) {
 		if ( connection == null ) throw new ArgumentNullException ( nameof ( connection ) );

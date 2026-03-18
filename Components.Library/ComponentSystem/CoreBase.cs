@@ -26,6 +26,8 @@ namespace Components.Library {
 		public event Action<ComponentInfo> OnComponentRemoved;
 
 		public class ComponentInfo {
+			/// <summary>It is not recommended to call this directly, prefer using <see cref="PassComponentTo"/>.</summary>
+			public readonly Action<CoreBase> Reregister;
 			public readonly ComponentBase Component;
 			public readonly DictionaryKey GlobalID;
 			public Type[] AcceptedTypes, TypeTree;
@@ -34,7 +36,12 @@ namespace Components.Library {
 			public DictionaryKey GroupID;
 			public int Priority;
 
-			public ComponentInfo ( ComponentBase comp, DictionaryKey globID ) { Component = comp; GlobalID = globID; }
+			public ComponentInfo ( Action<CoreBase> reregister, ComponentBase comp, DictionaryKey globID ) {
+				Reregister = reregister ?? throw new ArgumentNullException ( nameof ( reregister ) );
+				Component = comp ?? throw new ArgumentNullException ( nameof ( comp ) );
+				GlobalID = globID;
+			}
+
 			public override string ToString () => $"{Component}({GlobalID}:{Name}:{GroupID}:{Priority})";
 		}
 
@@ -91,14 +98,14 @@ namespace Components.Library {
 			Components = new Dictionary<DictionaryKey, ComponentInfo> ();
 		}
 
-		public void Register<T> ( T component, string name = null, int priority = 0 ) where T : ComponentBase {
+		public void Register<T> ( T component, Action<CoreBase> reregister, string name = null, int priority = 0 ) where T : ComponentBase {
 			DictionaryKey key = DictionaryKey.Empty;
-			Register ( component, ref key, name, priority );
+			Register ( component, ref key, reregister, name, priority );
 		}
-		public DictionaryKey Register<T> ( T component, ref DictionaryKey perTypeID, string name = null, int priority = 0 ) where T : ComponentBase {
+		public DictionaryKey Register<T> ( T component, ref DictionaryKey perTypeID, Action<CoreBase> reregister, string name = null, int priority = 0 ) where T : ComponentBase {
 			if ( IsRegistered ( component ) ) throw new ArgumentException ( "Given component instance is already registered!" );
 			DictionaryKey retKey = KeyFactory.NewKey ();
-			ComponentInfo compInfo = new ComponentInfo ( component, retKey );
+			ComponentInfo compInfo = new ComponentInfo ( reregister, component, retKey );
 			compInfo.AcceptedTypes = component.AcceptedTypes;
 			compInfo.TypeTree = FindCompDefName ( component.GetType () );
 			compInfo.Name = name ?? compInfo.TypeTree[0].Name;
@@ -117,12 +124,31 @@ namespace Components.Library {
 			}
 			Components.Add ( retKey, compInfo );
 			_componentAdded?.Invoke ( compInfo );
+			if ( compInfo.Component.Owner != this ) compInfo.Reregister ( this );
 			return retKey;
 		}
-		public void Register ( ComponentInfo compInfo ) {
-			if ( Components.ContainsKey ( compInfo.GlobalID ) ) throw new ArgumentException ( $"There is another component already registered under key {compInfo.GlobalID}" );
+		public void Register ( ComponentInfo compInfo, bool asNew = false ) {
+			if ( asNew ) {
+				ComponentInfo oldInfo = compInfo;
+				compInfo = new ( oldInfo.Reregister, oldInfo.Component, KeyFactory.NewKey () ) {
+					AcceptedTypes = oldInfo.AcceptedTypes,
+					TypeTree = oldInfo.TypeTree,
+					Name = oldInfo.Name,
+					VariantName = oldInfo.VariantName,
+					GroupID = oldInfo.GroupID,
+					Priority = oldInfo.Priority
+				};
+			} else if ( Components.ContainsKey ( compInfo.GlobalID ) )
+				throw new ArgumentException ( $"There is another component already registered under key {compInfo.GlobalID}" );
+
 			_componentAdded?.Invoke ( compInfo );
 			Components.Add ( compInfo.GlobalID, compInfo );
+			if ( compInfo.Component.Owner != this ) compInfo.Reregister ( this );
+		}
+
+		public void PassComponentTo ( ComponentInfo compInfo, CoreBase newCore ) {
+			if ( compInfo.Component.Owner != this ) throw new ArgumentException ( "Given component is not registered in this core!" );
+			compInfo.Reregister ( newCore );
 		}
 
 		public ComponentBase this[DictionaryKey ID] => Components[ID].Component;
@@ -167,6 +193,7 @@ namespace Components.Library {
 			if ( info == null ) return;
 			OnComponentRemoved?.Invoke ( info );
 			Components.Remove ( info.GlobalID );
+			if ( info.Component.Owner != this ) info.Reregister ( null );
 		}
 
 		public void Close () {

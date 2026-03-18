@@ -11,9 +11,13 @@ namespace Components.Implementations {
 		public override HInputEventDataHolder[] ParseCommand ( InputData data ) => GetParser ( data.Cmnd ).Parse ( data );
 		public override int Simulate ( params HInputEventDataHolder[] data ) {
 			int ret = 0;
+			var simulator = Owner.Fetch<DInputReader> ();
+			if (simulator == null)
+				Owner.PushDelayedError ( "Failed to fetch DInputReader component! Cannot simulate input without it!"
+					, new NullReferenceException() );
 			Owner.PushDelayedMsg ( "Requested simulating input of " + string.Join ( " | ", data.ToList () ) );
 			foreach ( HInputEventDataHolder h in data ) {
-				ret += (short)Owner.Fetch<DInputReader> ().SimulateInput ( h, AllowRecapture );
+				ret += (short)simulator.SimulateInput ( h, AllowRecapture );
 				System.Threading.Tasks.Task.Delay ( 50 ).Wait ();
 			}
 			return ret;

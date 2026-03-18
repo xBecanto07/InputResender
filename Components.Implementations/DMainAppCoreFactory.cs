@@ -1,4 +1,6 @@
 ﻿using Components.Interfaces;
+using Components.Interfaces.Commands;
+using InputResender.Services;
 using InputResender.Services.NetClientService;
 
 namespace Components.Implementations;
@@ -89,6 +91,8 @@ public class DMainAppCoreFactory {
 			input.Deserialize ( data, overwrite: true );
 			return (true, simulator.ParseCommand ( input ));
 		} );
+		DComponentJoiner.TryRegisterJoiner<NetworkCallbacks, DDataSigner, NetMessagePacket> ( compJoiner, ( joiner, signer, msg )
+			=> (true, signer.Decrypt ( msg.Data )) );
 		DComponentJoiner.TryRegisterJoiner<DInputProcessor, DInputSimulator, HMessageHolder> ( compJoiner, ( joiner, simulator, msg ) => {
 			// Simulate input from decrypted data
 			byte[] data = msg.InnerMsg;
