@@ -23,11 +23,12 @@ public abstract class CoreTestBase<CoreT> where CoreT : CoreBase {
 			TestCore.Register ( compInfo );
 			TestRegistered ( component ).Should ().Be ( compInfo );
 			TestCore[compInfo.GlobalID].Should ().Be ( component );
+			component.Owner.Should ().Be ( TestCore );
 		} else {
 			TestUnregistered ( component );
-			DictionaryKey subGroupID = new DictionaryKey ();
-			var origInfo = TestCore.Register ( component, ref subGroupID );
-			TestRegistered ( component ).Should ().Be ( origInfo );
+			ComponentBase.AssignOwner ( component, TestCore );
+			TestRegistered ( component );
+			component.Owner.Should ().Be ( TestCore );
 			TestCore.Unregister ( component );
 			TestUnregistered ( component );
 		}

@@ -29,6 +29,8 @@ public class PipelinesTest {
 		receiver = NetworkConnectionTest.InitTestObj ( output, "receiver", null );
 		var senderCore = sender.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		var receiverCore = receiver.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
+		sender.cliWrapper.ProcessLine ( "core new comp vinputsimulator" );
+		receiver.cliWrapper.ProcessLine ( "core new comp vinputsimulator" );
 		senderCore.OnMessage += SenderPrintMsg;
 		receiverCore.OnMessage += ReceiverPrintMsg;
 		senderCore.LogFcn = SenderLogMsg;

@@ -17,9 +17,9 @@ using Xunit;
 using Outputter = Xunit.Abstractions.ITestOutputHelper;
 using SBld = System.Text.StringBuilder;
 
-[assembly: TestFramework ( "InputResender.UnitTests.ParallelXunitRunner", "InputResender.UnitTests" )]
+//[assembly: TestFramework ( "InputResender.UnitTests.ParallelXunitRunner", "InputResender.UnitTests" )]
 namespace InputResender.UnitTests;
-public class GlobalCommandListTest {
+public abstract class GlobalCommandListTest {
 	Outputter Output;
 
 	public GlobalCommandListTest ( Outputter output ) => Output = output;
@@ -180,8 +180,8 @@ public class GlobalCommandListTest {
 	}
 }
 
-public class GlobalCommandTest : BaseIntegrationTest {
-	static readonly GlobalCommandList<DMainAppCore> CommandList = new ();
+public abstract class GlobalCommandTest : BaseIntegrationTest {
+	internal static readonly GlobalCommandList<DMainAppCore> CommandList = new ();
 	public Outputter Output;
 	/*
 	HELP EXAMPLE:
@@ -207,26 +207,69 @@ public class GlobalCommandTest : BaseIntegrationTest {
 	\s+[a-zA-Z]+: .*)|(
 	\s+((-[a-z])|(--[A-Z][a-zA-Z]+))( <[a-zA-Z]+>)?( = \S+)?: \S.*))+
 		*/
-	const string ascii = "[a-zA-Z_-]+";
-	const string asciiSpace = $"{ascii}( {ascii})*";
-	const string arg1 = $" \\({ascii}(\\|{ascii})*\\)";
-	const string arg2 = $" <\\S+?>";
-	const string sw = $"((-[a-z])|(--[A-Z][a-zA-Z]+)|(<{ascii}>))";
-	const string SW = $"(?:{sw}|(\\[-[a-z]\\|--[A-Z][a-zA-Z]+\\]))";
-	const string line1 = $"{callname}.*?(({arg1})|({arg2}))*"; // Not restrictive enough. Since this is getting realllly large, custom regex processor is getting more and more tempting.
-	const string line2 = $"\\n\\s+- {asciiSpace}.*";
-	const string line3 = $"\\n\\s+{asciiSpace}: .*";
-	const string line5 = $"\\n\\s+[+>] .*";
-	const string line4 = $"\\n\\s+{SW}({arg2})*( = \\S+)?: \\S.*";
+	protected const string ascii = "[a-zA-Z_-]+";
+	protected const string asciiSpace = $"{ascii}( {ascii})*";
+	protected const string arg1 = $" \\({ascii}(\\|{ascii})*\\)";
+	protected const string arg2 = $" <\\S+?>";
+	protected const string sw = $"((-[a-z])|(--[A-Z][a-zA-Z]+)|(<{ascii}>))";
+	protected const string SW = $"(?:{sw}|(\\[-[a-z]\\|--[A-Z][a-zA-Z]+\\]))";
+	protected const string line1 = $"{callname}.*?(({arg1})|({arg2}))*"; // Not restrictive enough. Since this is getting realllly large, custom regex processor is getting more and more tempting.
+	protected const string line2 = $"\\n\\s+- {asciiSpace}.*";
+	protected const string line3 = $"\\n\\s+{asciiSpace}: .*";
+	protected const string line5 = $"\\n\\s+[+>] .*";
+	protected const string line4 = $"\\n\\s+{SW}({arg2})*( = \\S+)?: \\S.*";
 	public static readonly Regex helpRegex = new ( $"^{line1}((: [\\S ]*)|({line2})|({line3})|({line5})|({line4}))+$", RegexOptions.ExplicitCapture );
 
-	const string callname = $"Usage:( ({ascii})(\\[\\.(\\|({ascii}))+\\])?)+";
+	protected const string callname = $"Usage:( ({ascii})(\\[\\.(\\|({ascii}))+\\])?)+";
 	public static readonly Regex callnameRegex = new ( callname );
 
 	public GlobalCommandTest ( Outputter output ) : base ( null, output, GeneralInitCmds ) {
 		Output = output;
 	}
 
+	public static IEnumerable<object[]> CommandIterator () {
+		foreach ( var comm in CommandList.CommandList ) {
+			foreach ( var cmd in comm.Value ) {
+				yield return [cmd, comm.Key];
+			}
+		}
+	}
+
+	protected static void AssertSubcommandHelp (string helpMsg) {
+		string[] lines = helpMsg.Replace ( "\r\n", "\n" ).Split ( '\n' );
+		SBld SB = null;
+
+		for ( int i = 0; i < lines.Length; i++ ) {
+			if ( SB != null ) {
+				if ( lines[i].StartsWith ( " > " ) )
+					SB.AppendLine ( lines[i][3..] );
+				else {
+					AssertHelpMsg ( null, SB.ToString () );
+					SB.Clear ();
+					SB = null;
+				}
+			}
+			if ( SB == null ) {
+				if ( !lines[i].StartsWith ( " +" ) ) continue;
+				lines[i].Should ().StartWith ( " + Usage: ", "no line other than start of sub-command should start with '+' sign" );
+				SB = new ();
+				SB.AppendLine ( lines[i][3..] );
+			}
+		}
+		if ( SB != null ) AssertHelpMsg ( null, SB.ToString () );
+	}
+
+	protected static void AssertHelpMsg ( string command, string helpMsg ) {
+		helpMsg = helpMsg.TrimEnd ();
+		helpMsg.Should ().NotBeNullOrWhiteSpace ().And
+			.MatchAnyRegex ( [helpRegex] );
+		if ( !string.IsNullOrWhiteSpace ( command ) )
+			helpMsg.Should ().MatchRegex ( callnameRegex, command.Split ( ' ' ) );
+		AssertSubcommandHelp ( helpMsg );
+	}
+}
+
+public class GlobalCommandsAreTestedTest ( Outputter output ) : GlobalCommandTest ( output ) {
 	[Fact]
 	public void AllCommandsAreTested () {
 		// This test gathers all implementations of 'ACommand' automatically using reflection.
@@ -245,7 +288,9 @@ public class GlobalCommandTest : BaseIntegrationTest {
 			Assert.Fail ( $"The following commands {errMsg}:\n{missingInfo}\nCurrently tested commands:\n{allTested}" );
 		}
 	}
+}
 
+public class GlobalCommandsCanBeLoadedTest ( Outputter output ) : GlobalCommandTest ( output ) {
 	[Fact]
 	public void AllCommandsCanBeLoaded () {
 		List<Type> loaded = [typeof ( FactoryCommandsLoader ), typeof ( BasicCommands<DMainAppCore> ), typeof(TopLevelLoader)];
@@ -285,7 +330,9 @@ public class GlobalCommandTest : BaseIntegrationTest {
 			}
 		}
 	}*/
+}
 
+public class GlobalCommandsInHelpTest ( Outputter output ) : GlobalCommandTest ( output ) {
 	Regex HelpListRegex = new ( $"^{ascii} - .*$", RegexOptions.Multiline );
 
 	[Theory]
@@ -300,40 +347,9 @@ public class GlobalCommandTest : BaseIntegrationTest {
 			.Subject.Length.Should ().BeGreaterThan ( 1 );
 		h.Should ().ContainAny ( [$"{callname} ", $"{callname}[.|", $"|{callname}|", $"|{callname}]", $"{callname}: "], $"variant of command call name '{callname}' from '{owner.Name}' should be present in help list" );
 	}
+}
 
-	static void AssertSubcommandHelp (string helpMsg) {
-		string[] lines = helpMsg.Replace ( "\r\n", "\n" ).Split ( '\n' );
-		SBld SB = null;
-
-		for ( int i = 0; i < lines.Length; i++ ) {
-			if ( SB != null ) {
-				if ( lines[i].StartsWith ( " > " ) )
-					SB.AppendLine ( lines[i][3..] );
-				else {
-					AssertHelpMsg ( null, SB.ToString () );
-					SB.Clear ();
-					SB = null;
-				}
-			}
-			if ( SB == null ) {
-				if ( !lines[i].StartsWith ( " +" ) ) continue;
-				lines[i].Should ().StartWith ( " + Usage: ", "no line other than start of sub-command should start with '+' sign" );
-				SB = new ();
-				SB.AppendLine ( lines[i][3..] );
-			}
-		}
-		if ( SB != null ) AssertHelpMsg ( null, SB.ToString () );
-	}
-
-	static void AssertHelpMsg ( string command, string helpMsg ) {
-		helpMsg = helpMsg.TrimEnd ();
-		helpMsg.Should ().NotBeNullOrWhiteSpace ().And
-			.MatchAnyRegex ( [helpRegex] );
-		if ( !string.IsNullOrWhiteSpace ( command ) )
-			helpMsg.Should ().MatchRegex ( callnameRegex, command.Split ( ' ' ) );
-		AssertSubcommandHelp ( helpMsg );
-	}
-
+public class GlobalCommandsHelpAvailableTest ( Outputter output ) : GlobalCommandTest ( output ) {
 	[Theory]
 	[MemberData ( nameof ( CommandIterator ) )]
 	public void HelpAvailable_P ( string command, Type owner ) {
@@ -351,14 +367,6 @@ public class GlobalCommandTest : BaseIntegrationTest {
 				AssertHelpMsg ( command, res.Message );
 				helpMsg = res.Message;
 			} else res.Message.Should ().Be ( helpMsg );
-		}
-	}
-
-	public static IEnumerable<object[]> CommandIterator () {
-		foreach ( var comm in CommandList.CommandList ) {
-			foreach ( var cmd in comm.Value ) {
-				yield return [cmd, comm.Key];
-			}
 		}
 	}
 }

@@ -24,25 +24,34 @@ public class PipelineCommand : DCommand<DMainAppCore> {
 
 	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
-			"list" => CallName + " list: List all registered pipelines",
-			"delete" => CallName + " delete <ID>: Delete a pipeline entry\n\tID: The ID of the entry to delete",
-			"new" => CallName + " new <Name> [<Components>]: Create a new pipeline\n\tName: The name of the new pipeline\n\tComponents: Optional, comma-separated list of components to include",
-			"expand" => CallName + " expand <ID>[<Components>]: Expand a pipeline entry by adding components\n\tID: The ID of the entry to expand\n\tComponents: Comma-separated list of components to add",
-			_ => null
-		}, out var helpRes ) ) return helpRes;
+					"list" => CallName + " list: List all registered pipelines"
+					, "delete" => CallName
+						+ " delete <ID>: Delete a pipeline entry\n\tID: The ID of the entry to delete"
+					, "new" => CallName
+						+ " new <Name> [<Components>]: Create a new pipeline\n\tName: The name of the new pipeline\n\tComponents: Optional, comma-separated list of components to include"
+					, "expand" => CallName
+						+ " expand <ID>[<Components>]: Expand a pipeline entry by adding components\n\tID: The ID of the entry to expand\n\tComponents: Comma-separated list of components to add"
+					, "safemode" => CallName + " safemode on/off: Turn on or off the safe mode"
+					, _          => null
+				}, out var helpRes
+			) )
+			return helpRes;
+
 		switch ( context.SubAction ) {
 		case "list": {
 			if ( CreatedPipelines.Count == 0 ) return new CommandResult ( "No pipelines created." );
+
 			string res = string.Join ( "\n", CreatedPipelines.Select ( ( p, i ) => $"[{i}] {p.name}: ({p.dsc})" ) );
 			return new CommandResult ( res );
 		}
 		case "delete": {
-			var selected = FindElement ( context, context.ArgID + 1, CreatedPipelines, ( id, x ) => id == x.name, "Target" );
+			var selected = FindElement ( context, context.ArgID + 1, CreatedPipelines, ( id, x ) => id == x.name
+				, "Target"
+			);
 			var joiner = Owner.Fetch<DComponentJoiner> ();
 			joiner.UnregisterPipeline ( selected.obj.key );
 			CreatedPipelines.RemoveAt ( selected.id );
-			foreach ( var ui in RegisteredUIs )
-				ui.NotifyDataChanged ();
+			foreach ( var ui in RegisteredUIs ) ui.NotifyDataChanged ();
 			return new CommandResult ( $"Removed pipeline [{selected.id}] {selected.obj.name} ({selected.obj.dsc})." );
 		}
 		case "new": {
@@ -59,15 +68,19 @@ public class PipelineCommand : DCommand<DMainAppCore> {
 				selectors.Add ( CreateSelector ( cName, core ) );
 				desc += (desc.Length > 0 ? ", " : string.Empty) + cName;
 			}
-			if ( selectors.Count < 2 ) return new CommandResult ( "At least two components are required to create a pipeline." );
+
+			if ( selectors.Count < 2 )
+				return new CommandResult ( "At least two components are required to create a pipeline." );
+
 			var pipelineId = joiner.RegisterPipeline ( selectors.ToArray () );
 			CreatedPipelines.Add ( (pipelineId, name, desc) );
-			foreach ( var ui in RegisteredUIs )
-				ui.NotifyDataChanged ();
+			foreach ( var ui in RegisteredUIs ) ui.NotifyDataChanged ();
 			return new CommandResult ( $"Created pipeline '{name}' with ID {CreatedPipelines.Count - 1} ({desc})." );
 		}
 		case "expand": {
-			var selected = FindElement ( context, context.ArgID + 1, CreatedPipelines, ( id, x ) => id == x.name, "Target" );
+			var selected = FindElement ( context, context.ArgID + 1, CreatedPipelines, ( id, x ) => id == x.name
+				, "Target"
+			);
 
 			var core = GetCore<DMainAppCore> ( context );
 			var joiner = core.Fetch<DComponentJoiner> ();
@@ -78,13 +91,27 @@ public class PipelineCommand : DCommand<DMainAppCore> {
 				compNames.Add ( cName );
 				selected.obj.dsc += ", " + cName; // Must be already longer than 2 components
 			}
+
 			List<ComponentSelector> selectors = compNames.Select ( n => CreateSelector ( n, core ) ).ToList ();
 			joiner.UnregisterPipeline ( selected.obj.key );
 			selected.obj.key = joiner.RegisterPipeline ( selectors.ToArray () );
 			CreatedPipelines[selected.id] = selected.obj;
-			foreach ( var ui in RegisteredUIs )
-				ui.NotifyDataChanged ();
-			return new CommandResult ( $"Expanded pipeline '{selected.obj.name}' with ID {selected.id} to ({selected.obj.dsc})." );
+			foreach ( var ui in RegisteredUIs ) ui.NotifyDataChanged ();
+			return new CommandResult (
+				$"Expanded pipeline '{selected.obj.name}' with ID {selected.id} to ({selected.obj.dsc})."
+			);
+		}
+		case "safemode": {
+			string set = context.Args.String ( context.ArgID + 1, "Assigned value" );
+			bool safemode = set switch {
+				"on"    => true
+				, "off" => false
+				, _     => throw new InvalidDataException ( $"Invalid value '{set}'. Use 'on' or 'off'." )
+			};
+			var core = GetCore<DMainAppCore> ( context );
+			var joiner = core.Fetch<DComponentJoiner> ();
+			joiner.PreferUnsafe = !safemode;
+			return new CommandResult ( $"Safe mode turned {(safemode ? "ON" : "OFF")}." );
 		}
 		default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
 		}

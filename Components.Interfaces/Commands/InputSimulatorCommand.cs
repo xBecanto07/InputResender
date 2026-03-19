@@ -47,7 +47,7 @@ public static HMouseEventDataHolder MouseMove ( ComponentBase owner, int X, int 
 		}, out var helpRes ) ) return helpRes;
 
 		DInputSimulator sim = Owner.Fetch<DInputSimulator> ();
-		if ( sim == null ) throw new Exception ( "No InputSimulater registered in core" );
+		if ( sim == null ) throw new Exception ( "No InputSimulator registered in core" );
 		DHookManager hookManager = Owner.Fetch<DHookManager> ();
 		if ( hookManager == null ) throw new Exception ( "No HookManager registered in core" );
 

@@ -44,7 +44,7 @@ public static class NativeEntryPoint {
 	public static IntPtr FetchDelayed (IntPtr sessionPtr) {
 		var ssn = NativeSession.Fetch ( sessionPtr );
 		StringBuilder SB = new ();
-		ssn.cmdProcessor.Owner?.FlushDelayedMsgs ( ( s ) => SB.AppendLine ( s ) );
+		ssn.cmdProcessor.Owner?.FlushDelayedMsgs<DMainAppCore> ( ( s ) => SB.AppendLine ( s ) );
 		return Marshal.StringToHGlobalUni( SB.ToString () );
 	}
 }

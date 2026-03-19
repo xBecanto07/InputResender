@@ -30,6 +30,13 @@ namespace Components.Library {
 			(Owner = newOwner).Register ( this, ChangeOwner );
 		}
 
+		/// <summary>This method offers access to the 'ChangeOwner' protected method from outside.
+		/// Use only as last option. Requires the owner to not be asigned to go through.</summary>
+		public static void AssignOwner ( ComponentBase component, CoreBase newOwner ) {
+			if (component.Owner != null) throw new InvalidOperationException ( $"Component {component.Name} already has an owner! Unregister it from current owner before assigning a new one." );
+			component.ChangeOwner ( newOwner );
+		}
+
 		public object Fetch ( string opCode, Type type ) {
 			// Can be overriden to provide own Fetch functionality, but not reccomended.
 			foreach (var cmd in SupportedCommands ) {

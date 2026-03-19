@@ -15,7 +15,7 @@ using Components.Interfaces;
 namespace InputResender.UnitTests.IntegrationTests;
 public class BaseIntegrationTest : IDisposable {
 	public static string[] InitCmdsList (params string[] extras) {
-		List<string> ret = ["loadall", "safemode on", "core new", "core own", .. extras]; //, "hook manager start" };
+		List<string> ret = ["loadall", "safemode on", "core new", "core migrate act own skipSame", "core destroy", "core activatep", .. extras]; //, "hook manager start" };
 		return [.. ret];
 	}
 	public static readonly string[] GeneralInitCmds = InitCmdsList ();
@@ -112,9 +112,11 @@ public class BaseIntegrationTest : IDisposable {
 		try {
 			res.Should ().NotBeNull ().And.BeOfType<CommandResult> ();
 		} catch ( Exception ex ) {
-			if (res is ErrorCommandResult errRes)
+			if (res is ErrorCommandResult errRes) {
 				Core?.PushDelayedError ( errRes.Message, ex );
-			Core?.FlushDelayedMsgs ( cliWrapper.Console.WriteLine );
+				throw res.Exception;
+			}
+			Core?.FlushDelayedMsgs<DMainAppCore> ( cliWrapper.Console.WriteLine );
 			throw;
 		}
 	}

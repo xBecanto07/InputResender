@@ -7,15 +7,12 @@
     <initCmds>
       <C0>loadall</C0>
       <C1>clear</C1>
-      <C2>safemode off</C2>
+      <C2>safemode off</C2>a a
       <C3>core new</C3>
       <C4>core migrate act own skipSame</C4>
       <C5>core destroy</C5>
       <C6>core activate</C6>
-      <C7>conns force init</C7>
       <C8>loglevel all</C8>
-      <C9>network callback recv print</C9>
-      <C10>network callback newconn print</C10>
     </initCmds>
     <setupPipes>
       <P0>hook manager start</P0>
@@ -45,17 +42,20 @@
       <S3>SIP force</S3>
       <S4>SIP assign SIPtest.scl</S4>
       <S5>auto run setupPipes</S5>
-      <S6>hook add Pipeline Keydown KeyUp</S6>
+      <S6>hook add Pipeline Keydown KeyUp</S6>etrws
       <S7>sim keydown R</S7>
     </TestSclAutorun>
     <Shared>
       <Sh0>windows load --force</Sh0>
       <Sh1>windows msgs start</Sh1>
-      <Sh2>hook manager start</Sh2>
-      <Sh3>load sclModules</Sh3>
-      <Sh4>load joiners</Sh4>
-      <Sh5>SIP force</Sh5>
-      <Sh6>network callback recv pipeline</Sh6>
+      <Sh2>core new comp packetsender</Sh2>
+      <Sh3>network callback recv print</Sh3>
+      <Sh4>network callback newconn print</Sh4>
+      <Sh5>hook manager start</Sh5>
+      <Sh6>load sclModules</Sh6>
+      <Sh7>load joiners</Sh7>
+      <Sh8>SIP force</Sh8>
+      <Sh9>network callback recv pipeline</Sh9>
     </Shared>
     <Client>
       <Cl0>auto run Shared</Cl0>

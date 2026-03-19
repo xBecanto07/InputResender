@@ -21,4 +21,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Components.Library\Components.Library.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

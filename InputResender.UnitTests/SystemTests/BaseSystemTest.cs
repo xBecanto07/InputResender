@@ -73,6 +73,12 @@ public abstract class BaseSystemTest : IDisposable {
 			}
 			Task.Delay ( 20 ).Wait ();
 		}
+		Output.WriteLine ( $"Timed out while waiting for command '{cmd}' to be processed." );
+		Output.WriteLine ( "Last known output:" );
+		lock (CmdResults) {
+			for ( int i = CmdResults.Count - 1; i >= 0; i-- )
+				Output.WriteLine ( $"Cmd: {CmdResults[i].cmd} | Res: {CmdResults[i].res}" );
+		}
 		throw new TimeoutException ( $"Couldn't find command '{cmd}' within the time period" );
 	}
 
@@ -100,7 +106,8 @@ public abstract class BaseSystemTest : IDisposable {
 	protected enum TestTimeout {
 		Immediate = 0,
 		Short = 1,
-		Long = 2,
+		Medium = 2,
+		Long = 3,
 	};
 
 	protected string[] ClearOutput () {
@@ -112,7 +119,7 @@ public abstract class BaseSystemTest : IDisposable {
 	protected string[] Test ( string[] cmds, string[] expectedOuts, TestSensitivity sensitivity, TestTimeout timeout ) {
 		foreach ( string cmd in cmds )
 			StdStream.InputLine ( cmd );
-		WaitUntilCmd ( cmds[^1], 2000*100 ); // Wait until all commands are processed before starting the timeout for callbacks
+		WaitUntilCmd ( cmds[^1], 2000 ); // Wait until all commands are processed before starting the timeout for callbacks
 		Task.Delay ( 20 ).Wait ();
 
 		if (timeout == TestTimeout.Immediate ) {
@@ -120,6 +127,7 @@ public abstract class BaseSystemTest : IDisposable {
 		}
 		int reps = timeout switch {
 			TestTimeout.Short => 4,
+			TestTimeout.Medium => 16,
 			TestTimeout.Long => 100,
 			_ => throw new ArgumentException ( $"Unsupported timeout variant '{timeout}'" )
 		};

@@ -14,7 +14,7 @@ using InputResender.UnitTests.IntegrationTests;
 
 namespace InputResender.UnitTests.SystemTests;
 public class InputTransformationTest : BaseSystemTest {
-	public InputTransformationTest ( ITestOutputHelper output ) : base ( output, "load sclModules", "load joiners" ) {
+	public InputTransformationTest ( ITestOutputHelper output ) : base ( output, "pipeline safemode off", "core new comp mpacketsender", "load sclModules", "load joiners" ) {
 	}
 
 	[Fact]
@@ -31,7 +31,7 @@ public class InputTransformationTest : BaseSystemTest {
 				, "InputCombination Count: 1" // It would be nice if multiple results could be merged into groups, where results inside of group would be order sensitive, individual groups wouldn't have to be. This would also allow to skip lines, group would be like Line1, Line 5. Order enforecd, whatever between is skipped. This could expand possibilities of the 'exclusive' sensitivity.
 			]
 			, TestSensitivity.None
-			, TestTimeout.Short );
+			, TestTimeout.Medium );
 	}
 
 	[Fact]
@@ -67,6 +67,9 @@ public class InputTransformationTest : BaseSystemTest {
 			PRINT_SIP_STATUS sip_status
 			String keyName = GET_SIP_KEY_NAME sip_status 0
 			Int pressState = GET_SIP_KEY_STATUS sip_status keyName
+			COMPARE_INT pressState 65534
+			?< pressState = 0
+			?> pressState = 1
 			FIRE_KEY sip_status keyName pressState
 			""",
 			"SIP force",

@@ -6,6 +6,9 @@ public abstract class DMainAppCore : CoreBase {
 	[Flags]
 	public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputMerger = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, ShortcutWorker = 256, CommandWorker = 512, ComponentJoiner = 1024, All = 0xFFFF }
 
+	public const CompSelect BasicSelection = CompSelect.CommandWorker | CompSelect.ComponentJoiner
+		| CompSelect.InputReader | CompSelect.InputMerger | CompSelect.InputProcessor | CompSelect.DataSigner;
+
 	public DEventVector EventVector { get => Fetch<DEventVector> (); }
 	public DLowLevelInput LowLevelInput { get => Fetch<DLowLevelInput> (); }
 	public DInputReader InputReader { get => Fetch<DInputReader> (); }

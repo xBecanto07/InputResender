@@ -17,6 +17,7 @@ internal sealed class ParallelXunitRunner ( IMessageSink msgSink )
 		protected override async void RunTestCases ( IEnumerable<IXunitTestCase> testCases, IMessageSink executionMessageSink, ITestFrameworkExecutionOptions executionOptions ) {
 			var newTests = SetUpTestCaseParallelization ( testCases );
 
+			executionOptions.SetValue ( "xunit.execution.DisableParallelization", false );
 			using var assemblyRunner = new XunitTestAssemblyRunner ( TestAssembly, newTests, DiagnosticMessageSink, executionMessageSink, executionOptions );
 			await assemblyRunner.RunAsync ();
 		}

@@ -27,4 +27,7 @@
     <ProjectReference Include="..\InputResender.Services\InputResender.Services.csproj" />
     <ProjectReference Include="..\InputResender.WindowsGUI\InputResender.WindowsGUI.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

@@ -38,7 +38,7 @@ public class DMainAppCoreFactory {
 			);
 	}
 
-	public static VMainAppCore CreateDefault ( DMainAppCore.CompSelect selector = DMainAppCore.CompSelect.All, params System.Action<DMainAppCore>[] extras ) {
+	public static VMainAppCore CreateDefault ( DMainAppCore.CompSelect selector = DMainAppCore.BasicSelection, params System.Action<DMainAppCore>[] extras ) {
 		var factory = new DMainAppCoreFactory ();
 		factory.PreferMocks = false;
 		var core = factory.CreateVMainAppCore ( selector );

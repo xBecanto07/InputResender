@@ -50,16 +50,22 @@ public class VScriptedInputProcessor : DInputProcessor {
 		}
 
 
-		//if ( PersistentScriptData != null )
-		//	ScriptRunner.PersistantStatus = PersistentScriptData;
-		ScriptRuntime.SetExternVar ( StatusVarName, new SCL_StatusType ( this, inputCombination, ScriptRuntime ), Owner );
-		var intDefinition = ScriptRuntime == null ? new BasicValueIntDef () : ScriptRuntime.GetDefinition<BasicValueIntDef> ();
-		ScriptRuntime.SetExternVar ( "SettingChanged", new BasicValueInt ( intDefinition, 0 ), Owner );
-		WasFired = false;
-		lock ( ScriptRuntime ) {
-			ScriptRuntime.Execute ( true );
-			//ScriptRunner.ExecuteSafe ( ScriptRuntime, [], ref progress );
+		try {
+			//if ( PersistentScriptData != null )
+			//	ScriptRunner.PersistantStatus = PersistentScriptData;
+			ScriptRuntime.SetExternVar ( StatusVarName, new SCL_StatusType ( this, inputCombination, ScriptRuntime )
+				, Owner
+			);
+			ScriptRuntime.SetExternVar<BasicValueIntDef> ( "SettingChanged", intDefinition => new BasicValueInt ( intDefinition, 0 ), Owner );
+			WasFired = false;
+			lock (ScriptRuntime) {
+				ScriptRuntime.Execute ( true );
+				//ScriptRunner.ExecuteSafe ( ScriptRuntime, [], ref progress );
+			}
+		} catch ( Exception ex ) {
+			Owner.PushDelayedError ( "Error during execution of input processing script!", ex );
 		}
+
 		DebuggerLog.Add ( $"= = = = = Script Execution Log after {inputCombination.Select ( ( d ) => d.ToString () ).Aggregate ( ( a, b ) => a + "+" + b )} = = = = =" );
 		foreach ( var log in Debugger.ExecutionLog )
 			DebuggerLog.Add ( log.ToString () );
@@ -276,6 +282,7 @@ public class VScriptedInputProcessor : DInputProcessor {
 				eventsToFire.Add ( new InputData ( status.Processor, key, true ) );
 				eventsToFire.Add ( new InputData ( status.Processor, key, false ) );
 				break;
+			default: throw new InvalidOperationException ( $"Key '{keyVal.Value}' is not a valid key action code.");
 			}
 
 			if (eventsToFire.Count > 0)

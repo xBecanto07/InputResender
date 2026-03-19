@@ -167,7 +167,7 @@ namespace Components.Implementations {
 			}
 			foreach ( var conn in ActiveConns ) conn.Value.Send ( data );
 			Task.Delay ( 10 ).Wait ();
-			Owner.FlushDelayedMsgs ();
+			Owner.FlushDelayedMsgs<DMainAppCore> ();
 		}
 
 		public override string ToString () {

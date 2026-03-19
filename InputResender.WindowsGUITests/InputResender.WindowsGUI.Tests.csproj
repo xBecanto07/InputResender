@@ -30,4 +30,9 @@
     <ProjectReference Include="..\InputResender.OSDependent.Windows\InputResender.OSDependent.Windows.csproj" />
     <ProjectReference Include="..\InputResender.WindowsGUI\InputResender.WindowsGUI.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

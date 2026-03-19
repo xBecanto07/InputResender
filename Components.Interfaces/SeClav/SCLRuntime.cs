@@ -240,6 +240,21 @@ public class SCLRuntimeHolder {
 			owner?.PushDelayedError ( $"Failed to set external variable '{name}': {ex.Message}", ex );
 		}
 	}
+	public void SetExternVar<DataTypeDef> ( string name, Func<DataTypeDef, IDataType> valCtor, CoreBase owner ) where DataTypeDef : DataTypeDefinition {
+		if ( !BaseRuntime.Script.InputVars.TryGetValue ( name, out SIdVal varID ) ) {
+			// Don't throw here, just log the error and continue
+			// Caller can thus always try to set all externals and let the script to choose if it's used or not
+			Errors.Add ( $"Input variable '{name}' not found in the script." );
+			return;
+		}
+		try {
+			var dataTypeDef = GetDefinition<DataTypeDef> ();
+			BaseRuntime.SafeSetVar ( varID, valCtor ( dataTypeDef ) );
+			UnassignedExternals.Remove ( name );
+		} catch ( Exception ex ) {
+			owner?.PushDelayedError ( $"Failed to set external variable '{name}': {ex.Message}", ex );
+		}
+	}
 
 	public bool TryGetOutputVar (string name, CoreBase owner, out IDataType value) {
 		value = null;

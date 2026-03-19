@@ -246,10 +246,12 @@ namespace Components.Library {
 			lock ( DelayedMessages ) DelayedMessages.Add ( msg );
 			OnError?.Invoke ( msg );
 		}
-		public void FlushDelayedMsgs ( Action<string> printer = null ) {
-			var cmdProc = Fetch<CommandProcessor<CoreBase>> ();
+		public void FlushDelayedMsgs<CoreT> ( Action<string> printer = null ) where CoreT : CoreBase {
+			var cmdProc = Fetch<CommandProcessor<CoreT>> ();
 			if ( cmdProc == null ) return;
-
+			FlushDelayedMsgs<CoreT> ( cmdProc, printer );
+		}
+		public void FlushDelayedMsgs<CoreT> ( CommandProcessor<CoreT> cmdProc, Action<string> printer = null ) where CoreT : CoreBase {
 			lock ( DelayedMessages ) {
 				if ( !DelayedMessages.Any () ) return;
 				var PrintFcn = printer ?? LogFcn;

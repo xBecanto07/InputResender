@@ -28,7 +28,7 @@ public class CliWrapper {
 	}
 
 	private void FlushDelayedMessages () {
-		CmdProc?.Owner?.FlushDelayedMsgs ( Console.WriteLine );
+		CmdProc?.Owner?.FlushDelayedMsgs ( CmdProc, Console.WriteLine );
 	}
 
 	public CommandResult ProcessLineBlocking () => ProcessLine ( Console.ReadLineBlocking );
@@ -84,7 +84,7 @@ public class CliWrapper {
 
 		if ( printLine ) Console.WriteLine ( PrintStart ? $"$> {line}" : line );
 		var res = processFcn ( line );
-		CmdProc?.Owner?.FlushDelayedMsgs ( Console.WriteLine );
+		CmdProc?.Owner?.FlushDelayedMsgs<DMainAppCore> ( Console.WriteLine );
 		if ( Config.ResponsePrintFormat != Config.PrintFormat.None ) Program.PrintResult ( res, Console, Config.MaxOnelinerLength );
 		OnCommandProcessed?.Invoke ( line, res );
 		return res;

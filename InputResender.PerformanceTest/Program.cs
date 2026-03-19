@@ -17,7 +17,7 @@ public class Program {
 
 			try {
 				(string cmd, Type t) = ((string, Type))iter.Current[0];
-				GlobalCommandTest testObj = new ( null );
+				GlobalCommandsHelpAvailableTest testObj = new ( null );
 				testObj.HelpAvailable_P ( cmd, t );
 				processed++;
 				Console.WriteLine ( $"Processed {processed} command" );

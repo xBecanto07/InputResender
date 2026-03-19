@@ -6,7 +6,7 @@ using InputResender.Services;
 
 namespace InputResender.CLI;
 public static class Program {
-	public static void StartMain ( string[] args, ACommandLoader<DMainAppCore> TLLoader, CliWrapper cliWrapper ) {
+	public static bool StartMain ( string[] args, ACommandLoader<DMainAppCore> TLLoader, CliWrapper cliWrapper ) {
 		ArgParser parser = new ( string.Join ( " ", args ), cliWrapper.Console.WriteLine );
 		if ( !Config.Load ( parser.String ( "cfg", null ) ) )
 			Config.Save (); // Couldn't load configuration, save the current one
@@ -25,11 +25,13 @@ public static class Program {
 
 		var startCommands = Config.FetchAutoCommands ( Config.AutostartName );
 		foreach ( var cmd in startCommands ) {
+			if ( cmd == "exit" ) return false;
 			if ( Config.PrintAutoCommands ) cliWrapper.ProcessLine ( cmd, true );
 			else cliWrapper.CmdProc.ProcessLine ( cmd );
 		}
 
 		cliWrapper.Console.WriteLine ( "Program started. Type 'help' for a list of commands. Type 'exit' to close the program." );
+		return true;
 	}
 
 	public static void MainRun ( CliWrapper cliWrapper ) {
@@ -45,7 +47,7 @@ public static class Program {
 
 	public static void Main ( string[] args, DMainAppCore core, ACommandLoader<DMainAppCore> TLLoader, ConsoleManager console ) {
 		CliWrapper cliWrapper = new ( core, console );
-		StartMain ( args, TLLoader, cliWrapper );
+		if ( !StartMain ( args, TLLoader, cliWrapper ) ) return;
 		MainRun ( cliWrapper );
 	}
 

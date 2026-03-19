@@ -24,7 +24,7 @@ public class CoreManagerCommand<CoreT> : DCommand<CoreT> where CoreT : CoreBase 
 			"act" => "core act: Prints the name of the active core.",
 			"typeof" => "core typeof <Type>\n\tType: Subtype of ComponentBase to find what specific variant of the component is registered in active core.",
 			"list" => "core list: List all registered components",
-			"migrate" => "core migrate <src> <targ> <style>: Migrate data from one core into another.\n\tsrc, targ: either 'act'/'active' or variable name\n\tstyle: {skip|overwrite|append} - How to handle conflicts when target already has components",
+			"migrate" => "core migrate <src> <targ> <style>: Migrate data from one core into another.\n\tsrc: either 'act'/'active'/'own' or variable name\n\targ: either 'act'/'active'/'own' or variable name\n\tstyle: {skip|overwrite|append} - How to handle conflicts when target already has components",
 			_ => null
 		}, out var helpRes ) ) return new ( null, helpRes.Message );
 
