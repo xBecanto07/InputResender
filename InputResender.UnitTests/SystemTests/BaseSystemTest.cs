@@ -16,6 +16,8 @@ using System.Threading;
 using Components.Interfaces;
 
 namespace InputResender.UnitTests.SystemTests;
+public class SystemTest_CriticalError ( string message ) : Exception ( message );
+
 public abstract class BaseSystemTest : IDisposable {
 	readonly CliWrapper MainCliWrapper;
 	readonly StandardStream StdStream;
@@ -116,14 +118,14 @@ public abstract class BaseSystemTest : IDisposable {
 		return ret;
 	}
 
-	protected string[] Test ( string[] cmds, string[] expectedOuts, TestSensitivity sensitivity, TestTimeout timeout ) {
+	protected string[] Test ( string[] cmds, string[] expectedOuts, TestSensitivity sensitivity, TestTimeout timeout, params string[] wrongOuts ) {
 		foreach ( string cmd in cmds )
 			StdStream.InputLine ( cmd );
 		WaitUntilCmd ( cmds[^1], 2000 ); // Wait until all commands are processed before starting the timeout for callbacks
 		Task.Delay ( 20 ).Wait ();
 
 		if (timeout == TestTimeout.Immediate ) {
-			return AssertFinal ( expectedOuts, sensitivity );
+			return AssertFinal ( expectedOuts, wrongOuts, sensitivity );
 		}
 		int reps = timeout switch {
 			TestTimeout.Short => 4,
@@ -134,11 +136,12 @@ public abstract class BaseSystemTest : IDisposable {
 		for ( ; reps >= 0; reps-- ) {
 			Task.Delay ( 20 * DelayMult ).Wait ();
 			try {
-				return Assert ( expectedOuts, sensitivity );
-			} catch {
-			}
+				return Assert ( expectedOuts, wrongOuts, sensitivity );
+			} catch ( SystemTest_CriticalError ce ) {
+				throw;
+			} catch {}
 		}
-		return AssertFinal ( expectedOuts, sensitivity );
+		return AssertFinal ( expectedOuts, wrongOuts, sensitivity );
 	}
 
 	private void StopProgram () {
@@ -148,9 +151,9 @@ public abstract class BaseSystemTest : IDisposable {
 		StdStream.InputLine ( "exit" );
 	}
 
-	private string[] AssertFinal ( string[] expectedResults, TestSensitivity sensitivity) {
+	private string[] AssertFinal ( string[] expectedResults, string[] wrongOuts, TestSensitivity sensitivity) {
 		try {
-			return Assert ( expectedResults, sensitivity );
+			return Assert ( expectedResults, wrongOuts, sensitivity );
 		} catch ( Exception e ) {
 			Output.WriteLine ( "Last known output:" );
 			foreach ( string s in StdStream.ReadAllOutput () )
@@ -159,7 +162,8 @@ public abstract class BaseSystemTest : IDisposable {
 		}
 	}
 
-	private string[] Assert ( string[] expectedOuts, TestSensitivity sensitivity ) {
+	private string[] Assert ( string[] expectedOuts, string[] wrongOuts, TestSensitivity sensitivity ) {
+		wrongOuts ??= [];
 		var output = StdStream.ReadAllOutput ();
 		List<int>[] matches = new List<int>[expectedOuts.Length];
 		for ( int i = 0; i < matches.Length; i++ )
@@ -169,6 +173,12 @@ public abstract class BaseSystemTest : IDisposable {
 		HashSet<int> unusedLines = new ( Enumerable.Range ( 0, output.Length ) );
 
 		for ( int i = 0; i < output.Length; i++ ) {
+			if ( wrongOuts.Any ( wo => sensitivity.HasFlag ( TestSensitivity.Exact )
+					? string.Equals ( output[i], wo, strComp )
+					: output[i].Contains ( wo, strComp )
+				) )
+				throw new SystemTest_CriticalError ( $"Found unexpected output: '{output[i]}'" );
+
 			for ( int j = 0; j < expectedOuts.Length; j++ ) {
 				if ( sensitivity.HasFlag ( TestSensitivity.Exact ) ) {
 					if ( string.Equals ( output[i], expectedOuts[j], strComp ) ) {

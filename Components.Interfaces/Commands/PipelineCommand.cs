@@ -58,15 +58,16 @@ public class PipelineCommand : DCommand<DMainAppCore> {
 			string name = context.Args.String ( context.ArgID + 1, "Name" );
 			if ( string.IsNullOrEmpty ( name ) ) return new CommandResult ( "Name cannot be empty." );
 
-			var core = GetCore<DMainAppCore> ( context );
-			var joiner = Owner.Fetch<DComponentJoiner> ();
+			var core = GetActiveCore<DMainAppCore> ();
+			var joiner = core.Fetch<DComponentJoiner> ();
 
 			List<ComponentSelector> selectors = [];
 			string desc = "";
 			for ( int i = context.ArgID + 2; i < context.Args.ArgC; i++ ) {
-				string cName = context.Args.String ( i, "Component name", 1, true ); // No other arguments after 'Name'
-				selectors.Add ( CreateSelector ( cName, core ) );
+				string cName = context.Args.String ( i, out string spec, "Component name", 1, true ); // No other arguments after 'Name'
+				selectors.Add ( CreateSelector ( cName, spec, core ) );
 				desc += (desc.Length > 0 ? ", " : string.Empty) + cName;
+				if ( spec != null ) desc += '=' + spec;
 			}
 
 			if ( selectors.Count < 2 )
@@ -82,17 +83,19 @@ public class PipelineCommand : DCommand<DMainAppCore> {
 				, "Target"
 			);
 
-			var core = GetCore<DMainAppCore> ( context );
+			var core = GetActiveCore<DMainAppCore> ();
 			var joiner = core.Fetch<DComponentJoiner> ();
 
-			List<string> compNames = selected.obj.dsc.Split ( ", " ).ToList ();
+			List<(string, string)> compNames = selected.obj.dsc.Split ( ", " )
+				.Select ( s => s.Split ( '=' ).ToTuple ( 0, 1, true ) )
+				.ToList ();
 			for ( int i = context.ArgID + 2; i < context.Args.ArgC; i++ ) {
-				string cName = context.Args.String ( i, "Component name", 1, true ); // No other arguments after 'Name'
-				compNames.Add ( cName );
+				string cName = context.Args.String ( i, out string spec, "Component name", 1, true ); // No other arguments after 'Name'
+				compNames.Add ( (cName, spec) );
 				selected.obj.dsc += ", " + cName; // Must be already longer than 2 components
 			}
 
-			List<ComponentSelector> selectors = compNames.Select ( n => CreateSelector ( n, core ) ).ToList ();
+			var selectors = compNames.Select ( n => CreateSelector ( n.Item1, n.Item2, core ) );
 			joiner.UnregisterPipeline ( selected.obj.key );
 			selected.obj.key = joiner.RegisterPipeline ( selectors.ToArray () );
 			CreatedPipelines[selected.id] = selected.obj;
@@ -160,10 +163,34 @@ public class PipelineCommand : DCommand<DMainAppCore> {
 		return ret;
 	}
 
-	static ComponentSelector CreateSelector ( string name, DMainAppCore core ) {
-		var comp = core.Fetch ( typeName: name );
-		if (comp == null)
-			throw new ArgumentException ( $"Component '{name}' not found in core." );
-		return new ComponentSelector ( core, componentType: comp.GetType () );
+	static ComponentSelector CreateSelector ( string name, string spec, DMainAppCore core ) {
+		switch ( name ) {
+		case "origin": return new (core, variantName: "origin", autoAssert: false); // Origin doesn't exist, is filled by pipeline manager
+		case "exact":  return new (core, variantName: spec, autoAssert: false); // Caller
+		case "id": return new (core, id: DictionaryKey.Parse ( spec ) );
+		case "def":
+		case "definition": {
+			Type t = core.Fetch ( typeName: name )?.GetType ();
+			if ( t == null ) throw new ArgumentException ( $"Component '{name}' not found in core." );
+			while ( t.BaseType != typeof(ComponentBase) )
+				t = t.BaseType ?? throw new ArgumentException ( $"Component '{name}' does not inherit from ComponentBase." );
+
+			return new (core, componentType: t);
+		}
+		case "reflection": {
+			Type t = Type.GetType ( spec );
+			if ( t == null ) throw new ArgumentException ( $"Type '{spec}' not found." );
+
+			return !typeof(ComponentBase).IsAssignableFrom ( t )
+				? throw new ArgumentException ( $"Type '{spec}' does not inherit from ComponentBase." )
+				: new (core, componentType: t, autoAssert: false); // If component had exist at time of creation, other method would be used.
+		}
+		default: {
+			var comp = core.Fetch ( typeName: name );
+			return comp == null
+				? throw new ArgumentException ( $"Component '{name}' not found in core." )
+				: new ComponentSelector ( core, componentType: comp.GetType () );
+		}
+		}
 	}
 }

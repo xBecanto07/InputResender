@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using SBld = System.Text.StringBuilder;
@@ -134,17 +135,57 @@ public static class MdxExtensions {
 	}
 	public static string ToShortCode ( this int num ) => $"{(num < 0 ? "-" : "")}{((ulong)(num < 0 ? -num : num)).ToShortCode ()}";
 	public static string ToShortCode ( this long num ) => $"{(num < 0 ? "-" : "")}{((ulong)(num < 0 ? -num : num)).ToShortCode ()}";
+
+	private const string ShortCodeChAr ="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+*@#$%&";
+	private static readonly ulong ShortCodeN = (ulong)ShortCodeChAr.Length;
 	public static string ToShortCode ( this ulong num ) {
 		const string chAr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+*@#$%&";
-		ulong origNum = num;
-		ulong N = (ulong)chAr.Length;
 		string ret = "";
 		while ( num > 0 ) {
-			ret += chAr[(int)(num % N)];
-			num /= N;
+			ret += ShortCodeChAr[(int)(num % ShortCodeN)];
+			num /= ShortCodeN;
 		}
-		return ret == "" ? "0" : ret;
+
+		return ret == "" ? new ([ShortCodeChAr[0]]) : ret;
 	}
+
+	public static ulong ParseShortCode ( this string shortCode ) {
+		if ( string.IsNullOrEmpty ( shortCode ) )
+			throw new ArgumentException ( "ShortCode cannot be null or empty", nameof ( shortCode ) );
+
+		ulong result = 0;
+		ulong multiplier = 1;
+
+		foreach ( char c in shortCode ) {
+			int index = ShortCodeChAr.IndexOf ( c );
+			if ( index < 0 ) throw new ArgumentException ( $"Invalid character '{c}' in shortCode", nameof(shortCode) );
+
+			result += (ulong)index * multiplier;
+			multiplier *= ShortCodeN;
+		}
+
+		return result;
+	}
+
+	public static T ParseShortCode<T> ( this string shortCode ) where T : ISignedNumber<T>, IConvertible, IMinMaxValue<T> {
+		ArgumentException.ThrowIfNullOrWhiteSpace ( nameof ( shortCode ) );
+
+		shortCode = shortCode.Trim ();
+		bool negative = shortCode.StartsWith ( '-' );
+		if ( negative ) shortCode = shortCode[1..];
+
+		ulong result = shortCode.ParseShortCode ().AssertInRange ( 0UL, T.MaxValue.ToUInt64 ( null ) );
+		return negative ? T.CreateChecked ( -(long)result ) : T.CreateChecked ( result );
+	}
+
+	public static T AssertInRange<T> ( this T x, T min, T max ) where T : IComparable<T> {
+		var cmpMin = x.CompareTo ( min );
+		var cmpMax = x.CompareTo ( max );
+		if ( cmpMin < 0 || cmpMax > 0 ) throw new ArgumentOutOfRangeException ( $"Value {x} is out of range [{min}, {max}]." );
+
+		return x;
+	}
+
 	public static int Crop ( this int x, int min, int max ) => x < min ? min : x > max ? max : x;
 	public static string AsString ( this MethodInfo MI ) {
 		SBld ret = new SBld ();
@@ -389,4 +430,14 @@ public static class MdxExtensions {
 
 		return ret;
 	}
+
+	public static (T, T) ToTuple<T> ( this T[] ar, int i0, int i1, bool canReturnDefault = false )
+		=> (ar.GetElemnt ( i0, canReturnDefault ), ar.GetElemnt ( i1, canReturnDefault ) );
+
+	private static T GetElemnt<T> ( this T[] ar, int id, bool canReturnDefault = false )
+		=> (id < 0 || id >= ar.Length)
+			? (canReturnDefault
+				? default
+				: throw new ArgumentOutOfRangeException ( $"Index {id} is out of range for array of length {ar.Length}." ) )
+			: ar[id];
 }

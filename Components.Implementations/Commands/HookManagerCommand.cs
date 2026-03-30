@@ -1,14 +1,22 @@
 ﻿using Components.Interfaces;
 using Components.Library;
 using InputResender.Commands;
+using SeClav;
+using System.Linq;
 
 namespace Components.Implementations;
 // Better question than is: Does the 'newer' version needs to be under Implementations? On what variant and how it depends?
 public class HookManagerCommand : DCommand<DMainAppCore> {
-	public enum CallbackFcn { None, Print, Aggregate, Fcn, Pipeline, AutoCmd, SCL }
-	Dictionary<CoreBase, SHookManager> hookManagerComponents = [];
+	public enum CallbackFcn { Invalid, None, Print, Aggregate, Fcn, Pipeline, AutoCmd, SCL, Filter }
+
+	public record struct HookManagerKey(CoreBase Core, DHookManager.CBType CallbackType, int DeviceID);
+	
+	Dictionary<HookManagerKey, SHookManager> hookManagerComponents = [];
 	List<string> aggregatedEvetns = new ();
 	public const string INPHOOKCBVarName = "InpHookCB";
+	private readonly DictionaryKeyFactory KeyFactory = new();
+	protected Dictionary<DictionaryKey, (DHookManager.CBType type, HCallbackHolder<DHookManager.HookCallback> cbHoldler)> RegisteredCallbacks = [];
+	private int MinimumPipelineSteps = -1;
 
 	override public string Description => "Input hook manager.";
 
@@ -18,7 +26,10 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 		  ("add", null),
 		  ("remove", null),
 		  ("list", null),
-		  ("debug", null)
+		  ("debug", null),
+		  ("autocmd", null),
+		  ("filter", null),
+		  ("scl", null)
 	 ];
 
 	// Cmd example: "hook add print keydown mousemove"
@@ -32,27 +43,37 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 				comp.hookCallback?.Unregister ();
 			return new CommandResult ( "Hook callbacks in all cores unregistered." );
 		} else {
-			var HMComp = GetComp ( core );
-			HMComp.hookCallback?.Unregister ();
-			return new CommandResult ( "Hook callback in active core unregistered." );
+			// Unregister all hook managers for this core (both fast and delayed, all devices)
+			var coreHookManagers = hookManagerComponents.Where(kvp => kvp.Key.Core == core).ToList();
+			foreach ( var kvp in coreHookManagers ) {
+				kvp.Value.hookCallback?.Unregister ();
+			}
+			return new CommandResult ( $"Hook callbacks in active core unregistered ({coreHookManagers.Count} managers)." );
 		}
 	}
 
 	bool debugMode = false;
 
 	private (DHookManager, List<VKChange>) ParseVKChanges ( DMainAppCore core, CommandProcessor<DMainAppCore>.CmdContext context, int offset ) {
-		List<VKChange> actionList = new ();
-		for ( int i = context.ArgID + offset; i < context.Args.ArgC; i++ ) {
-			var act = context.Args.EnumC<VKChange> ( i, i == context.ArgID + offset ? "Action" : null );
-			if ( act == VKChange.None )
-				throw new ArgumentException ( $"Invalid VKChange '{context[i]}'." );
-			actionList.Add ( act );
-		}
+		List<VKChange> actionList = GetEnumFromArgs<VKChange> ( context, offset, "Action" );
 
 		DHookManager hookManager = core.Fetch<DHookManager> ();
 		if ( hookManager == null ) throw new InvalidOperationException ( "Hook manager not started." );
 
 		return (hookManager, actionList);
+	}
+
+	private static List<KeyCode> GetKeysFromArgs ( CommandProcessor<DMainAppCore>.CmdContext context, int offset )
+		=> GetEnumFromArgs<KeyCode> ( context, offset, "Key" );
+	private static List<E> GetEnumFromArgs<E> ( CommandProcessor<DMainAppCore>.CmdContext context, int offset, string argName ) where E : struct, Enum {
+		List<E> values = [];
+		for ( int i = context.ArgID + offset; i < context.Args.ArgC; i++ ) {
+			var val = context.Args.EnumC<E> ( i, i == context.ArgID + offset ? argName : null );
+			if ( val.Equals ( default(E) ) )
+				throw new ArgumentException ( $"Invalid {typeof(E).Name} '{context[i]}'." );
+			values.Add ( val );
+		}
+		return values;
 	}
 
 	private static string HookInfo ( DMainAppCore core, ICollection<DictionaryKey> hookIDs ) {
@@ -65,17 +86,23 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 	}
 
 	override protected CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
+		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
+			"manager" => CallName + " manager <Sub-action>: Manage hook manager\n\tSub-action: {start|status}",
+			"add" => CallName + " add <variant> <CbAction> <VKChange1> [<VKChange2> ...]: Add hooks with callback\n\tvariant: {fast|delayed}\n\tCbAction: " + EnumPar<CallbackFcn>("CbAction") + "\n\tVKChange: " + EnumPar<VKChange>("VKChange") + "\n\t[-c|--Consume]: Consume the events",
+			"remove" => CallName + " remove <VKChange1> [<VKChange2> ...]: Remove hooks\n\tVKChange: " + EnumPar<VKChange>("VKChange"),
+			"list" => CallName + " list: Print info about registered hooks",
+			"debug" => CallName + " debug <sub-action>: Debug hook operations\n\tsub-action: {start|stop}",
+			"autocmd" => CallName + " autocmd <variant> <autocommand-group> <Key1> [<Key2> ...]: Configure AutoCmd key mappings\n\tvariant: {fast|delayed}\n\tautocommand-group: Name of the autocommand group to trigger\n\tKey: " + EnumPar<KeyCode>("Key"),
+			"filter" => CallName + " filter <variant> <action> <Key1> [<Key2> ...]: Configure Filter key mappings\n\tvariant: {fast|delayed}\n\taction: {consume|pass}\n\tKey: " + EnumPar<KeyCode>("Key"),
+			"scl" => CallName + " scl <variant> <script-name> <Key1> [<Key2> ...]: Configure SCL script key mappings\n\tvariant: {fast|delayed}\n\tscript-name: Name of parsed SCL script\n\tKey: " + EnumPar<KeyCode>("Key"),
+			"pipeline" => CallName + " pipeline minimum <stepCount>: Setup minimum required ammount of executed steps, throw error otherwise\n\tstepCount: Number of steps. Negative to allow failed pipelines.",
+			_ => null
+		}, out var helpRes ) ) return helpRes;
+
 		DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
-		var HMComp = GetComp ( core );
+		
 		switch ( context.SubAction ) {
 		case "manager": {
-			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook manager <Sub-action>\n\tSub-action: {{{string.Join ( "|", ["start", "status"] )}}}", out var helpRes1 ) ) return helpRes1;
-
-			if ( TryPrintHelp ( context.Args, context.ArgID + 2, () => context[1, "Sub-action"] switch {
-				"start" => "hook manager start: Start hook manager",
-				"status" => "hook manager status: Check if hook manager is running",
-				_ => null
-			}, out var helpRes2 ) ) return helpRes2;
 			var manager = core.Fetch<DHookManager> ();
 			switch ( context[1, "Sub-action"] ) {
 			case "start":
@@ -88,99 +115,191 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 			}
 		}
 		case "add": {
-			/// Hook callback propagation (setup):
-			/// 1. <see cref="VHookManager.AddHook"/> (under <see cref="DHookManager.AddHook(int, VKChange[])"/> - add hook to manager
-			/// 2. <see cref="VInputReader_KeyboardHook.SetupHook"/> (under <see cref="DInputReader.SetupHook(HHookInfo, Func{DictionaryKey, HInputEventDataHolder, bool}, Action{DictionaryKey, HInputEventDataHolder})"/> - Inter-step separating action into fast and delayed callbacks
-			/// 3. <see cref="VWinLowLevelLibs.SetHookEx"/> (under <see cref="DLowLevelInput.SetHookEx(HHookInfo, Func{DictionaryKey, HInputData, bool})"/> - Create struct containing the hook and register it
-			/// 4. <see cref="VWinLowLevelLibs.SetWindowsHookEx(int, HookProc, IntPtr, uint)"/> - Call the Windows API to set the hook
 
-			/// Hook callback propagation (on key press):
-			/// 1. <see cref="Hook.LLCallback(int, IntPtr, IntPtr)"/> - event origin, called by Windows API
-			/// 2. <see cref="VInputReader_KeyboardHook.LocalCoolback(DictionaryKey, HInputData)"/> - Call fast and queue delayed callbacks
-			/// 3. <see cref="VHookManager.FastCB"/> or <see cref="VHookManager.DelayedCB"/> - Loop through all registered callbacks, stop at first consuming one
-			/// 4. <see cref="HookManagerCommand.HookCallback(HInputEventDataHolder)"/> - Callback assign via command
+			var version = context.Args.EnumC<DHookManager.CBType> ( context.ArgID + 1, "Callback variant", true );
+			CallbackFcn cbFcn = context.Args.EnumC<CallbackFcn> ( context.ArgID + 2, "Callback action", true );
 
-			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook add <CbAction> <VKChange1> [<VKChange2> ...]{EnumPar<CallbackFcn> ( "CbAction" )}{EnumPar<VKChange> ( "VKChange" )}\n\t[-c|--Consume]: Consume the events", out var helpRes ) ) return helpRes;
-
-			// This should be somehow overwritable. When e.g. changing callback function on hook set to 'consume' this sould be possible to be turned off.
-			context.Args.RegisterSwitch ( 'c', "Consume" );
-			context.Args.RegisterSwitch ( 'p', "Passthrough" );
-
-			CallbackFcn cbFcn = context.Args.EnumC<CallbackFcn> ( context.ArgID + 1, "Callback action", true );
-			HMComp.lastContext = context;
-			HMComp.CbFcn = cbFcn;
+			var addHookManager = GetComp ( core, version, 0 );
+			addHookManager.lastContext = context;
+			addHookManager.CbFcn = cbFcn;
+			
 			if ( cbFcn == CallbackFcn.Aggregate ) {
 				try { context.CmdProc.GetVar<List<string>> ( "hookEvents" ); } catch ( Exception ) { context.CmdProc.SetVar ( "hookEvents", aggregatedEvetns = new () ); }
 			}
 
-			(var hookManager, var actionList) = ParseVKChanges ( core, context, 2 );
+			(var hookManager, var actionList) = ParseVKChanges ( core, context, 3 );
+
+			for ( int i = actionList.Count - 1; i >= 0; i-- ) {
+				var hook = hookManager.GetHook ( 0, actionList[i] );
+				if ( hook != null ) actionList.RemoveAt ( i );
+			}
 
 			var newHooks = hookManager.AddHook ( 0, actionList.ToArray () );
 			if ( newHooks == null || !newHooks.Any () ) return new CommandResult ( "No hooks added." );
 
-			var cb = hookManager.AddCallback ( DHookManager.CBType.Delayed, 0 );
-			cb.callback = HMComp.HookCallback;
-			// Shouldn't the 'cb' be stored somewhere to unregister it later?
-			if ( context.Args.Present ( "-c" ) ) {
-				cb = hookManager.AddCallback ( DHookManager.CBType.Fast, 0 );
-				cb.callback = ( e ) => false;
-			}
+			var cb = hookManager.AddCallback ( version, 0 );
+			cb.callback = addHookManager.HookCallback;
 
-			return new CommandResult ( $"Hooks added ({HookInfo ( core, newHooks )})." );
+			DictionaryKey key = KeyFactory.NewKey ();
+			RegisteredCallbacks[key] = (version, cb);
+
+			return new CommandResult ( $"Hooks added under key '{key}' ({HookInfo ( core, newHooks )}) for {version} callback type." );
 		}
 		case "remove": {
-			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => $"hook remove <VKChange1> [<VKChange2> ...]{EnumPar<CallbackFcn> ( "CbAction" )}", out var helpRes ) ) return helpRes;
 			(var hookManager, var actionList) = ParseVKChanges ( core, context, 1 );
 			var removed = hookManager.RemoveHook ( 0, [.. actionList] );
 			if ( removed == null || !removed.Any () ) return new CommandResult ( "No hooks removed." );
 			return new CommandResult ( $"Hooks removed ({HookInfo ( core, removed )})." );
 		}
 		case "list": {
-			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "hook list: Not currently implemented.", out var helpRes ) ) return helpRes;
-			return new CommandResult ( "Listing hooks is not implemented." );
+			System.Text.StringBuilder sb = new();
+			foreach ( var regCB in RegisteredCallbacks ) {
+				sb.AppendLine ( $"Key: {regCB.Key}, Type: {regCB.Value.type}, Callback: {regCB.Value.cbHoldler}" );
+			}
+			return new CommandResult ( sb.ToString () );
 		}
-		case "debug": {
-			if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => "hook debug (start|stop): Starts or stops debugging mode for hooks.", out var helpRes ) ) return helpRes;
+		/*ase "debug": {
+			var debugHookManager = GetComp ( core, DHookManager.CBType.Fast, 0 );
 			switch ( context[1, "sub-action"] ) {
 			case "start":
 				if ( debugMode ) return new ( "Debug mode for hooks is already on" );
-				HMComp.lastContext = context;
-				core.LowLevelInput.OnEvent += HMComp.OnLLEvent;
+				debugHookManager.lastContext = context;
+				core.LowLevelInput.OnEvent += debugHookManager.OnLLEvent;
 				debugMode = true;
 				return new ( "Debugging mode for hooks now active" );
 			case "stop":
 				if ( debugMode ) return new ( "Debug mode for hooks is already off" );
-				core.LowLevelInput.OnEvent -= HMComp.OnLLEvent;
+				core.LowLevelInput.OnEvent -= debugHookManager.OnLLEvent;
 				debugMode = false;
 				return new ( "Debugging mode for hooks now disabled" );
 			default: return new ( $"Invalid sub-action '{context[1]}'" );
+			}
+		}*/
+		case "autocmd": {
+			var version = context.Args.EnumC<DHookManager.CBType> ( context.ArgID + 1, "Callback variant", true );
+			string autoCmdGroup = context[2, "autocommand-group"];
+			var keyList = GetKeysFromArgs ( context, 3 );
+			
+			// Configure the mapping for AutoCmd callback type (typically used with fast callbacks)
+			var autoCmdHookManager = GetComp ( core, version, 0 );
+			foreach ( var key in keyList ) {
+				autoCmdHookManager.AutoCmdMap[key] = autoCmdGroup;
+			}
+			
+			return new CommandResult ( $"AutoCmd configured for group '{autoCmdGroup}' with {keyList.Count} keys: {string.Join(", ", keyList)}. Use with CallbackFcn.AutoCmd during hook installation." );
+		}
+		case "filter": {
+			var version = context.Args.EnumC<DHookManager.CBType> ( context.ArgID + 1, "Callback variant", true );
+			string actionStr = context[2, "Filter action"];
+			bool shouldConsume = actionStr.ToLower() switch {
+				"consume" => true,
+				"pass" => false,
+				_ => throw new ArgumentException($"Invalid filter action '{actionStr}'. Use 'consume' or 'pass'.")
+			};
+			
+			var keyList = GetKeysFromArgs ( context, 3 );
+			
+			// Configure the mapping for Filter callback type (typically used with fast callbacks)
+			var filterHookManager = GetComp ( core, version, 0 );
+			foreach ( var key in keyList ) {
+				filterHookManager.FilterMap[key] = shouldConsume;
+			}
+			
+			return new CommandResult ( $"Filter configured to {actionStr} {keyList.Count} keys: {string.Join(", ", keyList)}. Use with CallbackFcn.Filter during hook installation." );
+		}
+		case "scl": {
+			var version = context.Args.EnumC<DHookManager.CBType> ( context.ArgID + 1, "Callback variant", true );
+			string scriptPath = context[2, "script-path"];
+			var keyList = GetKeysFromArgs ( context, 3 );
+			
+			try {
+				// Configure the mapping for SCL callback type
+				var sclHookManager = GetComp ( core, version, 0 );
+				
+				// Load and compile SCL script if not already loaded
+				if ( !sclHookManager.LoadedScripts.ContainsKey ( scriptPath ) ) {
+					// TODO: Implement proper script loading from file
+					// var scriptContent = File.ReadAllText(scriptPath);
+					// var script = new SCLScriptHolder(scriptContent);
+					// var runtime = new SCLRuntimeHolder(script);
+					// sclHookManager.LoadedScripts[scriptPath] = (script, runtime);
+				}
+				
+				// Configure the mapping for each key to the script path
+				foreach ( var key in keyList ) {
+					sclHookManager.SclScriptMap[key] = scriptPath;
+				}
+				
+				return new CommandResult ( $"SCL script '{scriptPath}' configured for {keyList.Count} keys: {string.Join(", ", keyList)}. Use with CallbackFcn.SCL during hook installation." );
+			} catch ( Exception ex ) {
+				return new CommandResult ( $"Failed to configure SCL script '{scriptPath}': {ex.Message}" );
+			}
+		}
+		case "pipeline": {
+			switch ( context[1, "stepCount"] ) {
+			case "minimum": {
+				int stepCnt = context.Args.Int ( context.ArgID + 2, "Minimal step count", true ).Value;
+				MinimumPipelineSteps = stepCnt;
+				foreach ( var cbHolder in hookManagerComponents.Values )
+					cbHolder.MinimumPipelineSteps = stepCnt;
+				return new CommandResult ( $"Minimum pipeline steps set to {stepCnt} for all hook managers." );
+			}
+			default: return new CommandResult ( $"Invalid sub-action '{context[1]}'. Use 'minimum'." );
 			}
 		}
 		default: return new CommandResult ( $"Invalid action '{context.SubAction}'." );
 		}
 	}
 
-	SHookManager GetComp(CoreBase core) {
-		if (!hookManagerComponents.TryGetValue(core, out var comp)) {
-			comp = new SHookManager(core);
-			hookManagerComponents[core] = comp;
+	protected SHookManager GetComp(CoreBase core, DHookManager.CBType callbackType, int deviceID) {
+		var key = new HookManagerKey(core, callbackType, deviceID);
+		if (!hookManagerComponents.TryGetValue(key, out var comp)) {
+			comp = new SHookManager(core, callbackType, deviceID);
+			comp.MinimumPipelineSteps = MinimumPipelineSteps;
+			hookManagerComponents[key] = comp;
 		}
 		return comp;
 	}
 
 	public class SHookManager : ComponentMock {
 		public HCallbackHolder<DHookManager.HookCallback> hookCallback;
-		public CallbackFcn CbFcn = CallbackFcn.None;
+		public CallbackFcn CbFcn = CallbackFcn.Invalid;
 		public CommandProcessor<DMainAppCore>.CmdContext lastContext;
+		public int MinimumPipelineSteps = -1;
 
-		public SHookManager ( CoreBase newOwner ) : base ( newOwner ) {
+		public HookManagerCommand Owner;
+		public readonly DHookManager.CBType AssignedCallbackType;
+		public readonly int AssignedDeviceID;
+
+		public readonly Dictionary<KeyCode, string> AutoCmdMap = [];
+		public readonly Dictionary<KeyCode, bool> FilterMap = [];
+		public readonly Dictionary<KeyCode, string> SclScriptMap = [];
+		public readonly Dictionary<string, (SCLScriptHolder script, SCLRuntimeHolder runtime)> LoadedScripts = [];
+
+		public bool IsProcessingEvent { get; private set; }
+		private bool _shouldConsume = false;
+
+		public bool ShouldConsume {
+			get => _shouldConsume;
+			set {
+				if ( !IsProcessingEvent ) return;
+
+				_shouldConsume = value;
+			}
 		}
 
+		public SHookManager ( CoreBase newOwner, DHookManager.CBType callbackType, int deviceID ) : base ( newOwner ) {
+			AssignedCallbackType = callbackType;
+			AssignedDeviceID = deviceID;
+		}
 
-
+		/// <inheritdoc cref="DHookManager.HookCallback" />
 		public bool HookCallback ( HInputEventDataHolder e ) {
+			lastContext.CmdProc.ProcessLine ( $"print \"Encountered Input Event: {EventToStr ( e )}\"" );
 			switch ( CbFcn ) {
 			// This is currently the point of hook callback execution
+			case CallbackFcn.Invalid:
+				throw new InvalidOperationException ( "Invalid callback function type, hook not set up correctly!" );
 			case CallbackFcn.None: return true;
 			case CallbackFcn.Print:
 				lastContext.CmdProc.ProcessLine ( $"print \"Encountered Input Event: {EventToStr ( e )}\"" );
@@ -200,8 +319,89 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 				return true;
 			case CallbackFcn.Pipeline:
 				if ( lastContext.CmdProc == null ) return false;
-				return DComponentJoiner.TrySend ( lastContext.CmdProc, null, e ) != 0;
-			default: return false;
+
+				ShouldConsume = false;
+				IsProcessingEvent = true;
+				int execSteps = DComponentJoiner.TrySend ( this, null, e );
+				if ( execSteps < MinimumPipelineSteps )
+					// This was added so it is clear if pipeline was executed from SHookManager or no.
+					// This might or might not be wanted behaviour, please update tests.
+					throw new InvalidOperationException (
+						$"Pipeline executed {execSteps} steps, which is below the configured minimum of {MinimumPipelineSteps}."
+					);
+				IsProcessingEvent = false;
+				return !ShouldConsume;
+			case CallbackFcn.AutoCmd: {
+				if ( e is not HKeyboardEventDataHolder kbEvent ) return true;
+				if ( !(kbEvent.Pressed > 0) ) return true;
+
+				KeyCode keyPressed = (KeyCode)kbEvent.InputCode;
+				if ( !AutoCmdMap.TryGetValue ( keyPressed, out string autoCmdGroup ) ) return true;
+
+				try {
+					string autoCommand = $"auto run {autoCmdGroup}";
+					lastContext.CmdProc.ProcessLine ( autoCommand );
+					return false;
+				} catch ( Exception ex ) {
+					lastContext.CmdProc.Owner.PushDelayedError (
+						$"Error executing AutoCmd '{autoCmdGroup}' for key {keyPressed}.", ex
+					);
+					return true;
+				}
+
+				return true;
+			}
+			case CallbackFcn.Filter: {
+				if ( AssignedCallbackType == DHookManager.CBType.Delayed ) return true;
+
+				// If fast callback, check filter mapping for this key
+				if ( e is not HKeyboardEventDataHolder filterEvent ) return true;
+
+				KeyCode keyPressed = (KeyCode)filterEvent.InputCode;
+				if ( FilterMap.TryGetValue ( keyPressed, out bool shouldConsume ) ) {
+					return !shouldConsume; // Return opposite of shouldConsume (true = pass through, false = consume)
+				}
+
+				// For mouse events or unmapped keys, pass through by default
+				return true;
+			}
+			case CallbackFcn.SCL:
+				// Check if this key has a script configured
+				if ( e is HKeyboardEventDataHolder sclEvent ) {
+					KeyCode keyPressed = (KeyCode)sclEvent.InputCode;
+					if ( SclScriptMap.TryGetValue ( keyPressed, out string scriptPath ) ) {
+						if ( LoadedScripts.TryGetValue ( scriptPath, out var scriptInfo ) ) {
+							try {
+								// Execute the specific script for this key
+								// Set up input event data in SCL runtime (similar to VScriptedInputProcessor)
+								// scriptInfo.runtime.SetExternVar("input_event", new SCL_InputEventType(e), Owner);
+								// scriptInfo.runtime.SetExternVar("should_consume", new BasicValueInt(0), Owner);
+								
+								// Execute the script
+								// lock (scriptInfo.runtime) {
+								//     scriptInfo.runtime.Execute(true);
+								// }
+								
+								// Check if script wants to consume the event
+								// scriptInfo.runtime.TryGetOutputVar("should_consume", Owner, out var consumeResult);
+								// if (consumeResult is BasicValueInt consumeVal && consumeVal.Value > 0) {
+								//     return false; // Consume the event
+								// }
+								
+								// For now, placeholder implementation
+								lastContext.CmdProc.Owner.PushDelayedMsg ( $"SCL script '{scriptPath}' processing key {keyPressed}: {sclEvent.InputCode}" );
+								return true; // Pass through for now
+							} catch ( Exception ex ) {
+								lastContext.CmdProc.Owner.PushDelayedError ( $"Error executing SCL script '{scriptPath}' for key {keyPressed}.", ex );
+								return true; // Pass through on error
+							}
+						} else {
+							lastContext.CmdProc.Owner.PushDelayedError ( $"SCL script '{scriptPath}' not loaded for key {keyPressed}.", new InvalidOperationException("Script not found") );
+						}
+					}
+				}
+				return true; // Pass through if no script mapping or not keyboard event
+			default: return true;
 			}
 
 			string EventToStr ( HInputEventDataHolder e ) {

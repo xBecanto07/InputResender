@@ -14,7 +14,16 @@ using InputResender.UnitTests.IntegrationTests;
 
 namespace InputResender.UnitTests.SystemTests;
 public class InputTransformationTest : BaseSystemTest {
-	public InputTransformationTest ( ITestOutputHelper output ) : base ( output, "pipeline safemode off", "core new comp mpacketsender", "load sclModules", "load joiners" ) {
+	public InputTransformationTest ( ITestOutputHelper output )
+		: base (
+			output
+			, "pipeline safemode off"
+			, "core new comp mpacketsender"
+			, "load sclModules"
+			, "load joiners"
+			, "hook manager start"
+			, "hook pipeline minimum 2"
+			) {
 	}
 
 	[Fact]
@@ -23,8 +32,8 @@ public class InputTransformationTest : BaseSystemTest {
 			"seclav parse SIPtest.scl",
 			"SIP force",
 			"SIP assign SIPtest.scl",
-			"auto run setupPipes",
-			"hook add Pipeline Keydown KeyUp",
+			"pipeline new InputProcess DInputReader DInputMerger DInputProcessor",
+			"hook add delayed Pipeline Keydown KeyUp",
 			"sim keydown R",
 			], [
 				"ScriptedInputProcessor Status:"
@@ -45,8 +54,8 @@ public class InputTransformationTest : BaseSystemTest {
 			PRINT_SIP_STATUS sip_status""",
 			"SIP force",
 			"SIP assign SIPtest.scl",
-			"auto run setupPipes",
-			"hook add Pipeline Keydown KeyUp",
+			"pipeline new InputProcess DInputReader DInputMerger DInputProcessor",
+			"hook add delayed Pipeline Keydown KeyUp",
 			"sim keydown R",
 			], [
 				"ScriptedInputProcessor Status:"
@@ -74,8 +83,8 @@ public class InputTransformationTest : BaseSystemTest {
 			""",
 			"SIP force",
 			"SIP assign SIPtest.scl",
-			"auto run setupPipes",
-			"hook add Print Keydown KeyUp",
+			"pipeline new InputProcess DInputReader DInputMerger DInputProcessor",
+			"hook add delayed Print Keydown KeyUp",
 			"sim keydown R",
 			], [
 				"Requested simulating input of 0.82 (R)[65K;0;0] Δ[65K;0;0]",
@@ -161,8 +170,8 @@ SIP_3Tree --> 0					# −−---
 			""",
 			"SIP force",
 			"SIP assign SipMorse.scl",
-			"auto run setupPipes",
-			"hook add Print Keydown KeyUp",
+			"pipeline new InputProcess DInputReader DInputMerger DInputProcessor",
+			"hook add delayed Print Keydown KeyUp",
 			"sim keypress E E E E R", // H
 			"sim keypress E R", // E
 			"sim keypress E T E E R", // L
@@ -182,5 +191,52 @@ SIP_3Tree --> 0					# −−---
 			]
 			, TestSensitivity.None
 			, TestTimeout.Short );
+	}
+
+	[Fact]
+	public void ConditionalConsumingInput () {
+		// This tests needs to be updated to work with the HookManager pipeline instead of the direct one.
+		// Or actually, maybe the InputReader could be updated to also accept some return info about event consuming.
+		// Anyway, this test must somehow pass on the information during 'fast CB' if to consume the event or not.
+		Test ( [
+				@"seclav parse SIPtest.scl --inline=""
+@using BasicModule
+@using ScriptedInputProcessor
+
+@in SIP_Status_t sip_status
+@in Int SettingChanged
+@out Int ConsumeEvent
+
+String DotKey = \""E\""
+String DashKey = \""T\""
+String ConditionKey = \""R\""
+ConsumeEvent = 0
+
+--> [Main]
+COMPARE_KEYS_3 sip_status DotKey DashKey ConditionKey
+?CA FIRE_KEY sip_status \""oemperiod\"" 2
+?CB FIRE_KEY sip_status \""oemdash\"" 2
+?CA ConsumeEvent = 0
+?CB ConsumeEvent = 1
+""",
+				"SIP force",
+				"SIP assign SIPtest.scl",
+				"pipeline new InputProcess exact=SHookManager DInputMerger DInputProcessor origin",
+				"hook add fast Pipeline Keydown KeyUp",
+				"sim keydown R",
+				"sim keypress E",
+				"sim keyup R",
+				"sim keypress T",
+			], [
+				"Firing key 'oemPeriod' - Pressed: True",
+				"Firing key 'oemPeriod' - Pressed: False",
+			]
+			, TestSensitivity.Order
+			, TestTimeout.Short
+			, "Firing key 'oemDash'"
+			, "Firing key 'Dash'"
+			, "Error in hook: "
+			, "Could not parse line:"
+			);
 	}
 }

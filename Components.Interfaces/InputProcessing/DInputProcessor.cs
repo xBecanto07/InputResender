@@ -20,7 +20,7 @@ namespace Components.Interfaces {
 		}
 
 		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
-				(nameof(ProcessInput), typeof(void)),
+				(nameof(ProcessInput), typeof(bool)),
 				(nameof(SetCustomModifier), typeof(void)),
 				(nameof(SequentialProcess), typeof(InputData[])),
 				(nameof(ReadModifiers), typeof(Modifier)),
@@ -28,7 +28,8 @@ namespace Components.Interfaces {
 				(nameof(Callback), typeof(Action<InputData>)),
 			};
 
-		public abstract void ProcessInput ( HInputEventDataHolder[] inputCombination );
+		/// <inheritdoc cref="DHookManager.HookCallback"/>
+		public abstract bool ProcessInput ( HInputEventDataHolder[] inputCombination );
 		private Action<InputData> callback;
 		public Action<InputData> Callback { set { callback = value; } protected get => callback ?? Owner.Fetch<DCommandWorker> ().Push; }
 
@@ -95,8 +96,8 @@ namespace Components.Interfaces {
 
 		public override int ComponentVersion => 1;
 
-		public override void ProcessInput ( HInputEventDataHolder[] inputCombination ) {
-			if ( inputCombination == null || inputCombination.Length == 0 ) return;
+		public override bool ProcessInput ( HInputEventDataHolder[] inputCombination ) {
+			if ( inputCombination == null || inputCombination.Length == 0 ) return false;
 			var firstEvent = inputCombination[0];
 			Callback?.Invoke ( new InputData ( this ) {
 				Cmnd = firstEvent.Pressed >= 1 ? Command.KeyPress : Command.KeyRelease,
@@ -104,6 +105,7 @@ namespace Components.Interfaces {
 				Key = (KeyCode)firstEvent.InputCode,
 				DeviceID = firstEvent.HookInfo.DeviceID
 			} );
+			return false;
 		}
 
 		public override StateInfo Info => new VStateInfo ( this );

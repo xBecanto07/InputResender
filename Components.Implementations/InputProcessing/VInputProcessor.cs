@@ -9,9 +9,9 @@ namespace Components.Implementations {
 
 		public override int ComponentVersion => 1;
 
-		public override void ProcessInput ( DataHolder[] inputCombination ) {
+		public override bool ProcessInput ( DataHolder[] inputCombination ) {
 			int Cnt = inputCombination == null ? -1 : inputCombination.Length;
-			if ( Cnt < 1 ) return;
+			if ( Cnt < 1 ) return true;
 
 			InputData ret = new InputData ( this ) {
 				Cmnd = inputCombination[0].Pressed >= 1 ? InputData.Command.KeyPress : InputData.Command.KeyRelease,
@@ -23,6 +23,7 @@ namespace Components.Implementations {
 			};
 			ret.Modifiers = ReadModifiers ( inputCombination );
 			FireCallback ( ret );
+			return true;
 		}
 
 		public override StateInfo Info => new VStateInfo ( this );

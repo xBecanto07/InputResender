@@ -45,6 +45,9 @@ public abstract class DComponentJoiner : ComponentBase<CoreBase> {
 		ArgumentNullException.ThrowIfNull ( joiner, nameof ( joiner ) );
 		if ( dsc == null ) dsc = $"{typeof ( CA ).Name}<{typeof ( DT ).Name}> => {typeof ( CB ).Name}";
 		compJoiner.RegisterJoiner ( typeof ( CA ), typeof ( CB ), dsc, ( joinerComp, obj ) => {
+			if ( obj == null ) {
+				throw new NullReferenceException ( $"Joiner {dsc} received null data!" );
+			}
 			string objType = obj.GetType ().Name + " - " + obj.GetType ().FullName;
 			if ( obj is not DT ) return (false, null);
 			var activeComp = joinerComp.Owner?.Fetch<CB> ();
@@ -135,6 +138,13 @@ public class VComponentJoiner : DComponentJoiner {
 		foreach (var pipelineInfo in Links.Values) {
 			var pipeline = pipelineInfo.comps;
 
+			foreach ( var componentSelector in  pipeline ) {
+				if (componentSelector.VariantName != "origin") continue;
+
+				componentSelector.VariantName = null;
+				componentSelector.ID = origin.Owner[origin].GlobalID;
+			}
+
 			Type origT = origin.GetType ();
 			Type[] firstTs = GetCompTypes ( pipeline[0] );
 			if ( firstTs == null ) continue;
@@ -171,6 +181,11 @@ public class VComponentJoiner : DComponentJoiner {
 					dsc += $"\nPipeline stopped after failed step #{i - 1}";
 					//Owner.PushDelayedMsg ( dsc );
 					return i - 1;
+				}
+				if ( newData == null ) {
+					dsc += $"\nPipeline stopped at step #{i} due to null data.";
+					Owner.PushDelayedMsg ( dsc );
+					return i;
 				}
 			}
 			dsc += "\nPipeline finished";

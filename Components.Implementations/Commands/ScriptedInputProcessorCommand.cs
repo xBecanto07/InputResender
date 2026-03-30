@@ -38,7 +38,7 @@ public class ScriptedInputProcessorCommand : DCommand<DMainAppCore> {
 				return new CommandResult ( "Input Processor is not a SIP." );
 			if ( scriptedSIP.Script == null )
 				return new CommandResult ( "SIP running, no skript assigned." );
-			return new CommandResult ( $"SIP running, assigned {(scriptedSIP.Script.IsUsingModule ( Components.Implementations.VScriptedInputProcessor.SCL_Module.ModuleName ) ? "integratable" : "non-integratable")} script '{scriptedSIP.Script.ScriptName}'." );
+			return new CommandResult ( $"SIP running, assigned {(scriptedSIP.Script.IsUsingModule ( SCL_Module.ModuleName ) ? "integratable" : "non-integratable")} script '{scriptedSIP.Script.ScriptName}'." );
 		}
 		case "force": {
 			DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );

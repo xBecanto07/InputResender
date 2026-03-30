@@ -79,4 +79,84 @@ public class MdxExtensionsTest {
 		for (int i = 0; i < output.Count; i++ ) output[i] = output[i].TrimEnd ();
 		res.Should ().ContainInOrder ( output );
 	}
+
+	[Theory]
+	[InlineData("A", 0UL)]
+	[InlineData("B", 1UL)]
+	[InlineData("Z", 25UL)]
+	[InlineData("a", 26UL)]
+	[InlineData("z", 51UL)]
+	[InlineData("9", 61UL)]
+	[InlineData("+", 62UL)]
+	[InlineData("*", 63UL)]
+	[InlineData("@", 64UL)]
+	[InlineData("#", 65UL)]
+	[InlineData("$", 66UL)]
+	[InlineData("%", 67UL)]
+	[InlineData("&", 68UL)]
+	public void ParseShortCodeUlong_SingleChar(string shortCode, ulong expected) {
+		var result = MdxExtensions.ParseShortCode(shortCode);
+		result.Should().Be(expected);
+	}
+
+	[Theory]
+	[InlineData("A", 0)]
+	[InlineData("-A", 0)]
+	[InlineData("0", 52)]
+	[InlineData("-0", -52)]
+	[InlineData("B", 1)]
+	[InlineData("-B", -1)]
+	public void ParseShortCode(string shortCode, int expected) {
+		shortCode.ParseShortCode<int> ().Should ().Be ( expected );
+		shortCode.ParseShortCode<long> ().Should ().Be ( expected );
+	}
+
+	[Theory]
+	[InlineData(0UL)]
+	[InlineData(1UL)]
+	[InlineData(25UL)]
+	[InlineData(42UL)]
+	[InlineData(314UL)]
+	[InlineData(1000UL)]
+	[InlineData(ulong.MaxValue)]
+	public void RoundTripUlong(ulong value) {
+		var shortCode = value.ToShortCode();
+		shortCode.ParseShortCode().Should().Be(value);
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(1)]
+	[InlineData(-1)]
+	[InlineData(1000)]
+	[InlineData(-1000)]
+	[InlineData(int.MaxValue)]
+	[InlineData(int.MinValue)]
+	public void RoundTripInt(int value) {
+		var shortCode = value.ToShortCode();
+		shortCode.ParseShortCode<int>().Should().Be(value);
+	}
+
+	[Theory]
+	[InlineData(0L)]
+	[InlineData(1L)]
+	[InlineData(-1L)]
+	[InlineData(1000L)]
+	[InlineData(-1000L)]
+	[InlineData(long.MaxValue)]
+	[InlineData(long.MinValue)]
+	public void RoundTripLong(long value) {
+		var shortCode = value.ToShortCode();
+		shortCode.ParseShortCode<long>().Should().Be(value);
+	}
+
+	[Theory]
+	[InlineData("")]
+	[InlineData(null)]
+	[InlineData("invalid")]
+	[InlineData("!")]
+	public void ParseShortCode_InvalidInput_ThrowsException(string invalidInput) {
+		Action act = () => MdxExtensions.ParseShortCode(invalidInput);
+		act.Should().Throw<ArgumentException>();
+	}
 }

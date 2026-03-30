@@ -125,11 +125,12 @@ namespace Components.Implementations {
 			return IsAnyReleased;
 		}
 
-		public override void ProcessInput ( DataHolder[] input ) {
+		/// <inheritdoc/>
+		public override bool ProcessInput ( DataHolder[] input ) {
 			int Cnt = input == null ? -1 : input.Length;
-			if ( Cnt < 1 ) return;
+			if ( Cnt < 1 ) return false;
 			var mods = ReadModifiers ( input );
-			if ( (mods & TriggerMod) < TriggerMod ) return;
+			if ( (mods & TriggerMod) < TriggerMod ) return false;
 
 			var anyReleased = ParseInput ( input, out var origVal, out var newVal, out var pressed, out var released );
 
@@ -139,7 +140,7 @@ namespace Components.Implementations {
 			if ( WaitForRelease ) {
 				if ( released.Value == 0 ) WaitForRelease = false;
 				Owner.LogFcn?.Invoke ( $"Waiting for release ({(released.Value == 0 ? "Is Released" : "Still waiting")})" );
-				return;
+				return false;
 			} else if ( anyReleased ) {
 				if ( released.Value != 0 ) WaitForRelease = true;
 				else Owner.LogFcn?.Invoke ( $"Key pressed AND released, not waiting." );
@@ -165,23 +166,23 @@ namespace Components.Implementations {
 				switch ( State ) {
 				case StateType.Normal:
 					switch ( mapping[0][LastTapCombo].key ) {
-					case KeyCode.ShiftKey: State = StateType.Shift; LastTapCombo.Reset (); return;
-					case KeyCode.NoName: State = StateType.Switch; LastTapCombo.Reset (); return;
+					case KeyCode.ShiftKey: State = StateType.Shift; LastTapCombo.Reset (); return false;
+					case KeyCode.NoName: State = StateType.Switch; LastTapCombo.Reset (); return false;
 					}
 					mapID = Presses;
 					break;
 				case StateType.Shift:
 					switch ( mapping[0][LastTapCombo].key ) {
-					case KeyCode.ShiftKey: State = StateType.Normal; LastTapCombo.Reset (); return;
-					case KeyCode.NoName: State = StateType.Switch; LastTapCombo.Reset (); return;
+					case KeyCode.ShiftKey: State = StateType.Normal; LastTapCombo.Reset (); return false;
+					case KeyCode.NoName: State = StateType.Switch; LastTapCombo.Reset (); return false;
 					default: State = StateType.Normal ; break;
 					}
 					mapID = 3;
 					break;
 				case StateType.Switch:
 					switch ( mapping[0][LastTapCombo].key ) {
-					case KeyCode.ShiftKey: State = StateType.Switch; LastTapCombo.Reset (); return;
-					case KeyCode.NoName: State = StateType.Normal; LastTapCombo.Reset (); return;
+					case KeyCode.ShiftKey: State = StateType.Switch; LastTapCombo.Reset (); return false;
+					case KeyCode.NoName: State = StateType.Normal; LastTapCombo.Reset (); return false;
 					}
 					mapID = 4;
 					break;
@@ -199,10 +200,10 @@ namespace Components.Implementations {
 					Callback?.Invoke ( LastRet.Clone<InputData> () );
 					Callback?.Invoke ( LastRet.Clone<InputData> () );
 				}
-				return;
+				return false;
 			} else {
 				Owner.LogFcn?.Invoke ( $"No key released, skipping." );
-				return;
+				return false;
 			}
 		}
 

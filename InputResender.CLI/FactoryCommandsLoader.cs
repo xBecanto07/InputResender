@@ -90,7 +90,7 @@ public class LoaderCommand : DCommand<DMainAppCore> {
 
 			List<SeClav.IModuleInfo> knownModules = [
 				new Components.Interfaces.SeClav.SCL_BasicModule ()
-				, new Components.Implementations.VScriptedInputProcessor.SCL_Module ()
+				, new SCL_Module ()
 				];
 			foreach ( var module in knownModules ) sclRunner.ModuleManager.RegisterModule ( module );
 			return new CommandResult ( $"Loaded {knownModules.Count} SeClav modules:\n" + string.Join ( "\n", knownModules.Select ( m => $"- {m.Name}: {m.Description}" ) ) );

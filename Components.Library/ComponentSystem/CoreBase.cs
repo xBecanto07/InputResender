@@ -270,12 +270,19 @@ namespace Components.Library {
 		public string VariantName;
 		public Type ComponentType;
 
-		public ComponentSelector ( CoreBase core = null, DictionaryKey? id = null, string variantName = null, Type componentType = null, string componentTypeName = null ) {
+		public ComponentSelector (
+			CoreBase core = null, DictionaryKey? id = null, string variantName = null, Type componentType = null
+			, string componentTypeName = null, bool autoAssert = true
+		) {
 			ID = id;
 			VariantName = variantName;
 			ComponentType = componentType;
 
-			AssertComponent ( core );
+			// For safety reasons, this will auto-asserts that the component actually exists at the time of selector creation.
+			// Please note, the status can change over time. If this is expected, disable of auto assertion is adviced.
+			//   In such case, errors might be difficult to track, so use with caution.
+			// Component state might change in real-time, so asserting during selector creation does not guarantee error free usage, but it can help to catch some errors early on.
+			if ( autoAssert ) AssertComponent ( core );
 		}
 
 		void AssertComponent ( CoreBase core ) {

@@ -241,6 +241,19 @@ public class ArgParser {
 			return Error ( $"Argument '{key}'({ret}) is too short. {dsc}", ErrStringTooShortByName, shouldThrow, string.Empty );
 		return ret;
 	}
+	public const int ErrStringTooShortByIDWithOut = 8;
+	public string String ( int id, out string val, string dsc, int min = 0, bool shouldThrow = false ) {
+		val = null;
+		var arg = this[id];
+		if ( arg?.value == null ) return dsc == null ? string.Empty : Error ( $"Argument #{id} not found. {dsc}", ErrArgNotFoundByID, shouldThrow, string.Empty );
+
+		val = arg.value.Value;
+		string ret = arg.value.Name;
+
+		if ( ret != null && ret.Length < min )
+			return Error ( $"Argument #{id}({ret}) is too short. {dsc}", ErrStringTooShortByIDWithOut, shouldThrow, string.Empty );
+		return ret;
+	}
 	public bool Present ( int id ) => this[id]?.errCode == 0;
 	public bool Present ( string key ) => this[key]?.errCode == 0;
 

@@ -7,6 +7,7 @@ using System.Collections;
 namespace Components.Interfaces;
 public abstract class DHookManager : ComponentBase<CoreBase> {
 	public enum CBType { Fast, Delayed }
+	/// <summary>Callback for hooks. Should return true if event should be passed to other hooks, false if it should be consumed.</summary>
 	public delegate bool HookCallback ( HInputEventDataHolder data );
 
 	public override int ComponentVersion => 1;

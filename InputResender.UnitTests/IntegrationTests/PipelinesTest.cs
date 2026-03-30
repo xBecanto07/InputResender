@@ -31,6 +31,8 @@ public class PipelinesTest {
 		var receiverCore = receiver.cliWrapper.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
 		sender.cliWrapper.ProcessLine ( "core new comp vinputsimulator" );
 		receiver.cliWrapper.ProcessLine ( "core new comp vinputsimulator" );
+		sender.cliWrapper.ProcessLine ( "core new comp vpacketsender --force" );
+		receiver.cliWrapper.ProcessLine ( "core new comp vpacketsender --force" );
 		senderCore.OnMessage += SenderPrintMsg;
 		receiverCore.OnMessage += ReceiverPrintMsg;
 		senderCore.LogFcn = SenderLogMsg;

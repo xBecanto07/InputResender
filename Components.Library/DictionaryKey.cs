@@ -16,6 +16,7 @@ namespace Components.Library {
 		}
 		public override int GetHashCode () => Key;
 		public override string ToString () => $"({Key.ToShortCode ()})";
+		public static DictionaryKey Parse ( string shortCode ) => new (shortCode.ParseShortCode<int> ());
 		public static bool operator == ( DictionaryKey A, DictionaryKey B ) => A.Key == B.Key;
 		public static bool operator != ( DictionaryKey A, DictionaryKey B ) => A.Key != B.Key;
 		public static explicit operator DictionaryKey ( int key ) { return new DictionaryKey ( key ); }
