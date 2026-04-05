@@ -316,6 +316,7 @@ namespace Components.Interfaces {
 		public readonly HHookInfo HookInfo;
 		private readonly GCHandle _gcHandler;
 		public HashSet<nint> Seen = [];
+		public bool Verbose = false;
 
 		private DLowLevelInput LLInput { get => Owner; }
 
@@ -350,7 +351,14 @@ namespace Components.Interfaces {
 			var inputInfo = Owner.Owner.Fetch<CInputLLParser> ()?.Parse ( nCode, wParam, lParam );
 
 			MsgID++;
-			var parseAttempts = LLInput.TryParseHookDataContextfree ( wParam, lParam );
+			IReadOnlyCollection<HInputData> parseAttempts;
+			try {
+				parseAttempts = LLInput.TryParseHookDataContextfree ( wParam, lParam );
+			} catch ( Exception e ) {
+				Owner.Owner.PushDelayedError ( $"Error during context-free parsing of hook data for {nCode}|{wParam}|{lParam}", e );
+				return LLInput.CallNextHook ( HookID, nCode, wParam, lParam );
+			}
+
 			nint hash = 0, extras = 0;
 			uint time = 0;
 			foreach ( var attempt in parseAttempts ) {
@@ -387,19 +395,23 @@ namespace Components.Interfaces {
 			Log?.Invoke ( nCode, wParam, lParam );
 			if ( source != null ) LLInputLogger.Log ( HookID, 'h', $"Not notifying other probes about new event, as it is from {source.GetType ()}" );
 			else InputManagementService.NotifyProbes ( this, nCode, wParam, lParam, extras );
-			Owner.Owner.PushDelayedMsg ($"Callback for input: {nCode}, {wParam}, {lParam}");
+			if ( Verbose ) Owner.Owner.PushDelayedMsg ($"Callback for input: {nCode}, {wParam}, {lParam}");
 
 			bool resend = true;
 			try {
+				/* From MS Docs https://learn.microsoft.com/en-us/previous-versions/windows/desktop/legacy/ms644985(v=vs.85)
+				 * A code the hook procedure uses to determine how to process the message.
+				 * If nCode is less than zero, the hook procedure must pass the message to
+				 * the CallNextHookEx function without further processing and should return
+				 * the value returned by CallNextHookEx.
+				 */
 				if ( (nCode >= 0) | (EnforcePassthrough) ) {
 					var res = LLInput.ParseHookData ( Key, wParam, lParam );
 					if ( res != null ) {
-						if ( res.Key == KeyCode.F5 || res.Key == KeyCode.F6 || res.Key == KeyCode.F10 || res.Key == KeyCode.F11 || res.Key == KeyCode.ShiftKey || res.Key == KeyCode.ControlKey )
+						if ( !res.IsInvalid )
+							// KeyCode.None is treated 'Invalid' event, unsure if this could be actually raised by system
+							// Currently this is used to mark simulated event that shouldn't be re-captured
 							resend = HLCallback == null ? true : HLCallback ( Key, res );
-						else {
-							LLInputLogger.Log ( HookID, 'h', HLCallback == null ? "No callback" : "Sending to callback" );
-							resend = HLCallback == null ? true : HLCallback ( Key, res );
-						}
 					} else {
 						LLInputLogger.Log ( HookID, 'h', $"Failed to parse {nCode}|{wParam}|{lParam} to HInputData" );
 						OnError?.Invoke ( $"Failed to parse {nCode}|{wParam}|{lParam} to HInputData", null );

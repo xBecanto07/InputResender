@@ -89,5 +89,50 @@
       <Se6>password add blue</Se6>
       <Se7>target set 192.168.72.12:45256</Se7>
     </Server2>
+    <tapper>
+      <ta00>tapper force A S D F Space CapsLock Scroll</ta00>
+      <ta01>tapper wait 600</ta01>
+      <ta02>tapper conditioon None</ta02>
+      <ta03>tapper mapping Single X---- T</ta03>
+      <ta04>tapper mapping Single -X--- A</ta04>
+      <ta05>tapper mapping Single --X-- E</ta05>
+      <ta06>tapper mapping Single ---X- I</ta06>
+      <ta07>tapper mapping Single ----X O</ta07>
+      <ta08>tapper mapping Single XX--- D</ta08>
+      <ta09>tapper mapping Single X-X-- U</ta09>
+      <ta10>tapper mapping Single X--X- P</ta10>
+      <ta11>tapper mapping Single X---X M</ta11>
+      <ta12>tapper mapping Single -XX-- N</ta12>
+      <ta13>tapper mapping Single -X-X- R</ta13>
+      <ta14>tapper mapping Single -X--X B</ta14>
+      <ta15>tapper mapping Single --XX- S</ta15>
+      <ta16>tapper mapping Single --X-X Space</ta16>
+      <ta17>tapper mapping Single ---XX F</ta17>
+      <ta18>tapper mapping Single XXXXX C</ta18>
+      <ta19>tapper mapping Single -XXXX L</ta19>
+      <ta20>tapper mapping Single X-XXX G</ta20>
+      <ta21>tapper mapping Single XX-XX Z</ta21>
+      <ta22>tapper mapping Single XXX-X Enter</ta22>
+      <ta23>tapper mapping Single XXXX- J</ta23>
+      <ta24>tapper mapping Single --XXX Scroll None</ta24>
+      <ta25>tapper mapping Single -X-XX Y</ta25>
+      <ta26>tapper mapping Single -XX-X Down</ta26>
+      <ta27>tapper mapping Single -XXX- K</ta27>
+      <ta28>tapper mapping Single X--XX V</ta28>
+      <ta29>tapper mapping Single X-X-X Q</ta29>
+      <ta30>tapper mapping Single X-XX- H</ta30>
+      <ta31>tapper mapping Single XX--X X</ta31>
+      <ta32>tapper mapping Single XX-X- W</ta32>
+      <ta33>tapper mapping Single XXX-- CapsLock None</ta33>
+    </tapper>
+    <tapperRun>
+      <tr0>auto run Shared</tr0>
+      <tr1>auto run tapper</tr1>
+      <tr2>hook manager verbosity 0</tr2>
+      <tr3>tapper verbosity 0</tr3>
+      <tr4>hook add Fast Pipeline Keydown KeyUp</tr4>
+      <tr5>pipeline new LocalCallback DInputProcessor DInputSimulator DInputSimulator</tr5>
+      <tr6>pipeline new ReadInputAndProcess SHookManager DInputMerger VTapperInput SHookManager</tr6>
+    </tapperRun>
   </AutoCommands>
 </Config>

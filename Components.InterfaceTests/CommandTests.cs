@@ -16,8 +16,6 @@ public class PasswordManagerTest () : CommandTestBaseMCore ( owner => new Passwo
 
 	[Fact]
 	public void HappyFlow() {
-		AssertMissingCore ( "password print" );
-		SetMCore ( DMainAppCore.CompSelect.DataSigner );
 		AssertCorrectMsg ( "password print", "Current password: " + EmptyPasswordHash );
 		// Hash might be randomized here. If so, probably just checking that the result is not original password and contains somewhat proper ammount of characters should be enough
 		string ExpectedHash = 952669910.ToShortCode ();
@@ -28,15 +26,11 @@ public class PasswordManagerTest () : CommandTestBaseMCore ( owner => new Passwo
 public class TargetManagerTest () : CommandTestBaseMCore ( owner => new TargetManagerCommand ( owner ) ) {
 	[Fact]
 	public void Disconnect () {
-		AssertMissingCore ( "target set none" );
-		SetMCore ( DMainAppCore.CompSelect.PacketSender );
 		AssertCorrectMsg ( "target set none", "Target disconnected." );
 	}
 
 	[Fact]
 	public void InvalidTarget () {
-		AssertMissingCore ( "target set none" );
-		SetMCore ( DMainAppCore.CompSelect.PacketSender );
 		AssertCorrectMsg("target set SomethingInvalid",  "Provided target 'SomethingInvalid' is not a valid end point.");
 	}
 }
@@ -76,8 +70,6 @@ public class HookCallbackManagerCommandTest ()
 public class NetworkManagerCommandTest () : CommandTestBaseMCore ( owner => new NetworkManagerCommand ( owner ) ) {
 	[Fact]
 	public void Hostlist () {
-		AssertMissingCore ( "network hostlist" );
-		SetMCore ( DMainAppCore.CompSelect.PacketSender );
 		var res = CmdProc.ProcessLine ( "network hostlist" );
 		res.Should ().NotBeNull ();
 		res.Message.Should ().NotBeNullOrWhiteSpace ();

@@ -15,7 +15,8 @@ namespace Components.Implementations {
 			if (simulator == null)
 				Owner.PushDelayedError ( "Failed to fetch DInputReader component! Cannot simulate input without it!"
 					, new NullReferenceException() );
-			Owner.PushDelayedMsg ( "Requested simulating input of " + string.Join ( " | ", data.ToList () ) );
+			if ( Verbose )
+				Owner.PushDelayedMsg ( "Requested simulating input of " + string.Join ( " | ", data.ToList () ) );
 			foreach ( HInputEventDataHolder h in data ) {
 				ret += (short)simulator.SimulateInput ( h, AllowRecapture );
 				System.Threading.Tasks.Task.Delay ( 50 ).Wait ();

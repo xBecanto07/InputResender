@@ -72,7 +72,7 @@ namespace InputResender.WindowsGUI {
 		}
 		public override HInputData GetLowLevelData ( HInputEventDataHolder highLevelData ) {
 			var inputUnion = new HWInput.InputUnion ();
-			uint time = (uint)new TimeSpan ( highLevelData.CreationTime.Ticks ).TotalMilliseconds;
+			uint time = GetTickCount ();
 
 			if ( highLevelData is HKeyboardEventDataHolder keyboardInput ) {
 				var keyboardData = new HWInput.KeyboardInput ();
@@ -105,7 +105,15 @@ namespace InputResender.WindowsGUI {
 				return null;
 			}
 
-			return new WinLLInputData ( this, vkChngCode, vkCode );
+			var ret = new WinLLInputData ( this, vkChngCode, vkCode );
+			lock (SimulatedEvents) {
+				if (SimulatedEvents.Contains ( ret.TimeStamp )) {
+					ret.IsInvalid = true;
+				} else {
+					ret.IsInvalid = false;
+				}
+			}
+			return ret;
 		}
 
 		public override IReadOnlyCollection<HInputData> TryParseHookDataContextfree ( IntPtr vkChngCode, IntPtr vkCode ) => [new WinLLInputData ( this, vkChngCode, vkCode )];
@@ -247,8 +255,12 @@ namespace InputResender.WindowsGUI {
 		}
 
 		uint LastSimulatedInputTime = 0;
+		readonly private HashSet<uint> SimulatedEvents = [];
 		public override uint SimulateInput ( uint nInputs, HInputData[] pInputs, int cbSize, bool? shouldProcess = null ) {
-			//var inputs = pInputs.Select ( ( input ) => (Input)input.Data ).ToArray ();
+			// Sorry, not really sure why the nullable bool for shouldProcess. 🫤
+			//  My current guess is that true/false sets it explicitely,
+			//  while the null leaves it to that specific variant. Maybe. 🤔
+			//var inputs = pInputs.Select ( ( input ) => (Input)input.Data ).ToArray ();a
 			HWInput[] inputs = new HWInput[nInputs];
 			for (int i = 0; i < nInputs; i++) {
 				inputs[i] = (HWInput)pInputs[i].Data;
@@ -259,8 +271,18 @@ namespace InputResender.WindowsGUI {
 						inputs[i].Data.ki.time = LastSimulatedInputTime + 1;
 					LastSimulatedInputTime = inputs[i].Data.ki.time;
 				} else throw new NotSupportedException ( "Non-keyboard input simulation is not currently supported :(" );
+
+				if ( shouldProcess == false ) {
+					lock (SimulatedEvents) {
+						if ( SimulatedEvents.Count > 1000 ) {
+							SimulatedEvents.RemoveWhere ( time => time < LastSimulatedInputTime - 5000 );
+						}
+
+						SimulatedEvents.Add ( inputs[i].Time );
+					}
+				}
 			}
-			Owner.PushDelayedMsg ( "Simulating input: " + string.Join ( " | ", inputs ) );
+			//Owner.PushDelayedMsg ( "Simulating input: " + string.Join ( " | ", inputs ) );
 			LLInputLogger.Log(42, 'W', $"Simulating input: {string.Join ( " | ", inputs )}" );
 			var ret = SendInput ( nInputs, inputs, cbSize );
 			if (ret < nInputs) ErrorList.Add ( (nameof ( SimulateInput ), new Win32Exception ()) );
@@ -286,6 +308,9 @@ namespace InputResender.WindowsGUI {
 
 		[DllImport ( "user32.dll", CharSet = CharSet.Auto, SetLastError = true )]
 		private static extern uint SendInput ( uint nInputs, HWInput[] pInputs, int cbSize );
+
+		[DllImport ( "kernel32.dll", CharSet = CharSet.Auto, SetLastError = true )]
+		private static extern uint GetTickCount ();
 
 
 		public override StateInfo Info => new VStateInfo ( this );

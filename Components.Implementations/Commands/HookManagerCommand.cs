@@ -7,7 +7,7 @@ using System.Linq;
 namespace Components.Implementations;
 // Better question than is: Does the 'newer' version needs to be under Implementations? On what variant and how it depends?
 public class HookManagerCommand : DCommand<DMainAppCore> {
-	public enum CallbackFcn { Invalid, None, Print, Aggregate, Fcn, Pipeline, AutoCmd, SCL, Filter }
+	public enum CallbackFcn { Invalid, None, Print, Consume, Aggregate, Fcn, Pipeline, AutoCmd, SCL, Filter }
 
 	public record struct HookManagerKey(CoreBase Core, DHookManager.CBType CallbackType, int DeviceID);
 	
@@ -17,6 +17,7 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 	private readonly DictionaryKeyFactory KeyFactory = new();
 	protected Dictionary<DictionaryKey, (DHookManager.CBType type, HCallbackHolder<DHookManager.HookCallback> cbHoldler)> RegisteredCallbacks = [];
 	private int MinimumPipelineSteps = -1;
+	private int PreferedVerbosity = 0;
 
 	override public string Description => "Input hook manager.";
 
@@ -87,7 +88,7 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 
 	override protected CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
-			"manager" => CallName + " manager <Sub-action>: Manage hook manager\n\tSub-action: {start|status}",
+			"manager" => CallName + " manager <Sub-action>: Manage hook manager\n\tSub-action: {start|status|verbosity}",
 			"add" => CallName + " add <variant> <CbAction> <VKChange1> [<VKChange2> ...]: Add hooks with callback\n\tvariant: {fast|delayed}\n\tCbAction: " + EnumPar<CallbackFcn>("CbAction") + "\n\tVKChange: " + EnumPar<VKChange>("VKChange") + "\n\t[-c|--Consume]: Consume the events",
 			"remove" => CallName + " remove <VKChange1> [<VKChange2> ...]: Remove hooks\n\tVKChange: " + EnumPar<VKChange>("VKChange"),
 			"list" => CallName + " list: Print info about registered hooks",
@@ -110,40 +111,58 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 				manager = new VHookManager ( core );
 				return new CommandResult ( "Hook manager started." );
 			case "status": return new CommandResult ( manager == null ? "Hook manager not started." : "Hook manager is running." );
+			case "verbosity": {
+				int verbosity = context.Args.Int ( context.ArgID + 2, "Verbosity level", true ).Value;
+				PreferedVerbosity = verbosity;
+				manager.Verbosity = verbosity;
+				var simulator = core.Fetch<DInputSimulator> ();
+				if ( simulator != null ) simulator.Verbose = verbosity > 0;
+				var merger = core.Fetch<DInputMerger> ();
+				if ( merger != null ) merger.Verbose = verbosity > 0;
+				return new CommandResult ( $"Verbosity level set to {verbosity}" );
+			}
 			default:
 				return new CommandResult ( $"Invalid sub-action '{context[1]}'." );
 			}
 		}
 		case "add": {
-
+			context.Args.RegisterSwitch ( 'c', "--consume", null );
 			var version = context.Args.EnumC<DHookManager.CBType> ( context.ArgID + 1, "Callback variant", true );
 			CallbackFcn cbFcn = context.Args.EnumC<CallbackFcn> ( context.ArgID + 2, "Callback action", true );
 
-			var addHookManager = GetComp ( core, version, 0 );
-			addHookManager.lastContext = context;
-			addHookManager.CbFcn = cbFcn;
-			
-			if ( cbFcn == CallbackFcn.Aggregate ) {
-				try { context.CmdProc.GetVar<List<string>> ( "hookEvents" ); } catch ( Exception ) { context.CmdProc.SetVar ( "hookEvents", aggregatedEvetns = new () ); }
+
+			var ret = PushCallback ( version, cbFcn );
+			if ( version == DHookManager.CBType.Delayed && context.Args.Present ( "--consume" ) ) {
+				PushCallback ( DHookManager.CBType.Fast, CallbackFcn.Consume );
 			}
+			return ret;
 
-			(var hookManager, var actionList) = ParseVKChanges ( core, context, 3 );
+			CommandResult PushCallback ( DHookManager.CBType version, CallbackFcn fcn ) {
+				var addHookManager = GetComp ( core, version, 0 );
+				addHookManager.lastContext = context;
+				addHookManager.CbFcn = cbFcn;
 
-			for ( int i = actionList.Count - 1; i >= 0; i-- ) {
-				var hook = hookManager.GetHook ( 0, actionList[i] );
-				if ( hook != null ) actionList.RemoveAt ( i );
+				if ( cbFcn == CallbackFcn.Aggregate ) {
+					try { context.CmdProc.GetVar<List<string>> ( "hookEvents" ); } catch ( Exception ) { context.CmdProc.SetVar ( "hookEvents", aggregatedEvetns = new () ); }
+				}
+
+				(var hookManager, var actionList) = ParseVKChanges ( core, context, 3 );
+
+				for ( int i = actionList.Count - 1; i >= 0; i-- ) {
+					var hook = hookManager.GetHook ( 0, actionList[i] );
+					if ( hook != null ) actionList.RemoveAt ( i );
+				}
+
+				var newHooks = hookManager.AddHook ( 0, actionList.ToArray () );
+				if ( newHooks == null || !newHooks.Any () ) return new ( "No hooks added." );
+
+				var cb = hookManager.AddCallback ( version, 0 );
+				cb.callback = addHookManager.HookCallback;
+
+				DictionaryKey key = KeyFactory.NewKey ();
+				RegisteredCallbacks[key] = (version, cb);
+				return new ( $"Hooks added under key '{key}' ({HookInfo ( core, newHooks )}) for {version} callback type." );
 			}
-
-			var newHooks = hookManager.AddHook ( 0, actionList.ToArray () );
-			if ( newHooks == null || !newHooks.Any () ) return new CommandResult ( "No hooks added." );
-
-			var cb = hookManager.AddCallback ( version, 0 );
-			cb.callback = addHookManager.HookCallback;
-
-			DictionaryKey key = KeyFactory.NewKey ();
-			RegisteredCallbacks[key] = (version, cb);
-
-			return new CommandResult ( $"Hooks added under key '{key}' ({HookInfo ( core, newHooks )}) for {version} callback type." );
 		}
 		case "remove": {
 			(var hookManager, var actionList) = ParseVKChanges ( core, context, 1 );
@@ -254,7 +273,7 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 	protected SHookManager GetComp(CoreBase core, DHookManager.CBType callbackType, int deviceID) {
 		var key = new HookManagerKey(core, callbackType, deviceID);
 		if (!hookManagerComponents.TryGetValue(key, out var comp)) {
-			comp = new SHookManager(core, callbackType, deviceID);
+			comp = new SHookManager(this, core, callbackType, deviceID);
 			comp.MinimumPipelineSteps = MinimumPipelineSteps;
 			hookManagerComponents[key] = comp;
 		}
@@ -267,7 +286,7 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 		public CommandProcessor<DMainAppCore>.CmdContext lastContext;
 		public int MinimumPipelineSteps = -1;
 
-		public HookManagerCommand Owner;
+		public readonly HookManagerCommand OwnerCmd;
 		public readonly DHookManager.CBType AssignedCallbackType;
 		public readonly int AssignedDeviceID;
 
@@ -277,32 +296,39 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 		public readonly Dictionary<string, (SCLScriptHolder script, SCLRuntimeHolder runtime)> LoadedScripts = [];
 
 		public bool IsProcessingEvent { get; private set; }
-		private bool _shouldConsume = false;
+		private bool _shouldPassOver = false;
 
-		public bool ShouldConsume {
-			get => _shouldConsume;
+		public bool ShouldPassOver {
+			get => _shouldPassOver;
 			set {
 				if ( !IsProcessingEvent ) return;
 
-				_shouldConsume = value;
+				_shouldPassOver = value;
 			}
 		}
 
-		public SHookManager ( CoreBase newOwner, DHookManager.CBType callbackType, int deviceID ) : base ( newOwner ) {
+		public SHookManager ( HookManagerCommand ownerCmd, CoreBase newOwner, DHookManager.CBType callbackType, int deviceID )
+			: base ( newOwner ) {
+			OwnerCmd = ownerCmd;
 			AssignedCallbackType = callbackType;
 			AssignedDeviceID = deviceID;
 		}
 
 		/// <inheritdoc cref="DHookManager.HookCallback" />
 		public bool HookCallback ( HInputEventDataHolder e ) {
-			lastContext.CmdProc.ProcessLine ( $"print \"Encountered Input Event: {EventToStr ( e )}\"" );
+			if (OwnerCmd.PreferedVerbosity > 0)
+				Owner.LogFcn?.Invoke ( $"Hook callback triggered for event: {EventToStr ( e )}, CallbackFcn: {CbFcn}" );
+
 			switch ( CbFcn ) {
 			// This is currently the point of hook callback execution
 			case CallbackFcn.Invalid:
 				throw new InvalidOperationException ( "Invalid callback function type, hook not set up correctly!" );
 			case CallbackFcn.None: return true;
+			case CallbackFcn.Consume: return false;
 			case CallbackFcn.Print:
-				lastContext.CmdProc.ProcessLine ( $"print \"Encountered Input Event: {EventToStr ( e )}\"" );
+				lastContext.CmdProc.ProcessLine (
+					$"print \"Encountered Input Event: {EventToStr ( e )}\""
+				);
 				return true;
 			case CallbackFcn.Fcn:
 				try {
@@ -320,17 +346,20 @@ public class HookManagerCommand : DCommand<DMainAppCore> {
 			case CallbackFcn.Pipeline:
 				if ( lastContext.CmdProc == null ) return false;
 
-				ShouldConsume = false;
-				IsProcessingEvent = true;
-				int execSteps = DComponentJoiner.TrySend ( this, null, e );
-				if ( execSteps < MinimumPipelineSteps )
-					// This was added so it is clear if pipeline was executed from SHookManager or no.
-					// This might or might not be wanted behaviour, please update tests.
-					throw new InvalidOperationException (
-						$"Pipeline executed {execSteps} steps, which is below the configured minimum of {MinimumPipelineSteps}."
-					);
-				IsProcessingEvent = false;
-				return !ShouldConsume;
+				lock (this) { // Prevent from starting multiple pipelines concurrently from the same hook manager, which could cause issues with shared state like ShouldConsume
+					ShouldPassOver = true;
+					IsProcessingEvent = true;
+					int execSteps = DComponentJoiner.TrySend ( this, null, e );
+					if ( execSteps < MinimumPipelineSteps )
+						// This was added so it is clear if pipeline was executed from SHookManager or no.
+						// This might or might not be wanted behaviour, please update tests.
+						throw new InvalidOperationException (
+							$"Pipeline executed {execSteps} steps, which is below the configured minimum of {MinimumPipelineSteps}."
+						);
+
+					IsProcessingEvent = false;
+					return ShouldPassOver;
+				}
 			case CallbackFcn.AutoCmd: {
 				if ( e is not HKeyboardEventDataHolder kbEvent ) return true;
 				if ( !(kbEvent.Pressed > 0) ) return true;

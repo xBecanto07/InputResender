@@ -43,6 +43,7 @@ public class InputCommandsLoader : ACommandLoader<DMainAppCore> {
 		{ typeof(InputSimulatorCommand), ( core ) => new InputSimulatorCommand ( core ) },
 		{ typeof(HookManagerCommand), ( core ) => new HookManagerCommand ( core ) },
 		{ typeof(ScriptedInputProcessorCommand), ( core ) => new ScriptedInputProcessorCommand ( core ) },
+		{ typeof(VTapperInputCommand), ( core ) => new VTapperInputCommand ( core ) },
 	};
 	protected override IReadOnlyCollection<Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommands
 		=> NewCommandList.Values.Select<Func<DMainAppCore, DCommand<DMainAppCore>>, Func<DMainAppCore, DCommand<DMainAppCore>>>( f

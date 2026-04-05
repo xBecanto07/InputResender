@@ -3,11 +3,15 @@
 namespace Components.Interfaces {
 	public abstract class DInputMerger : ComponentBase<CoreBase> {
 		public DInputMerger ( CoreBase owner ) : base ( owner ) { }
+		public virtual bool Verbose { get; set; } = false;
 
-		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
-				(nameof(ProcessInput), typeof(HInputEventDataHolder[])),
-				(nameof(ClearMemory), typeof(void)),
-				(nameof(MemoryCount), typeof(int))
+		protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands ()
+			=> new List<(string opCode, Type opType)> () {
+				(nameof(ProcessInput), typeof(HInputEventDataHolder[]))
+				, (nameof(ClearMemory), typeof(void))
+				, ("get_" + nameof(MemoryCount), typeof(int))
+				, ("get_" + nameof(Verbose), typeof(bool))
+				, ("set_" + nameof(Verbose), typeof(void))
 			};
 
 		public abstract int MemoryCount { get; }

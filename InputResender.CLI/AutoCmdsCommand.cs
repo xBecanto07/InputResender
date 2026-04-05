@@ -60,6 +60,7 @@ public class AutoCmdsCommand : DCommand<DMainAppCore> {
 			var cliWrapper = context.CmdProc.GetVar<CliWrapper> ( CliWrapper.CLI_VAR_NAME );
 			int done = 0;
 			foreach ( var cmd in cmds ) {
+				if ( cmd.StartsWith ( '#' ) ) continue;
 				if ( Config.PrintAutoCommands ) cliWrapper.ProcessLine ( cmd, true );
 				else cliWrapper.CmdProc.ProcessLine ( cmd );
 				done++;

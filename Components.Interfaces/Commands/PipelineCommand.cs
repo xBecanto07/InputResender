@@ -67,7 +67,7 @@ public class PipelineCommand : DCommand<DMainAppCore> {
 				string cName = context.Args.String ( i, out string spec, "Component name", 1, true ); // No other arguments after 'Name'
 				selectors.Add ( CreateSelector ( cName, spec, core ) );
 				desc += (desc.Length > 0 ? ", " : string.Empty) + cName;
-				if ( spec != null ) desc += '=' + spec;
+				if ( !string.IsNullOrWhiteSpace ( spec ) ) desc += '=' + spec;
 			}
 
 			if ( selectors.Count < 2 )

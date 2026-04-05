@@ -117,6 +117,20 @@ namespace Components.Interfaces {
 		public abstract void SetExtraInfo ( nint dataLocation, nint extraInfo );
 		public KeyCode Key { get => Data.Key; }
 
+		protected bool MarkedInvalid = false;
+
+		public virtual bool IsInvalid {
+			get => MarkedInvalid;
+			set {
+				if ( MarkedInvalid )
+					throw new InvalidOperationException (
+						"This input data is already marked as invalid and cannot be reused!"
+					);
+
+				MarkedInvalid = value;
+			}
+		}
+
 		public override bool Equals ( object obj ) {
 			if ( obj == null ) return false;
 			if ( obj.GetType () != GetType () ) return false;

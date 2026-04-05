@@ -9,6 +9,7 @@ public class VHookManager : DHookManager {
 	readonly Dictionary<DeviceID, HookGroup> ActiveHooks = new ();
 	readonly Dictionary<(DeviceID, CBType), HashSet<CallbackHolder>> Callbacks = new ();
 	readonly Dictionary<DictionaryKey, HHookInfo> OwnedHooks = new ();
+	private int _verbosity;
 
 	public readonly static VKChange[] SupportedVKs = { VKChange.KeyDown, VKChange.KeyUp, VKChange.MouseMove };
 	private static void AssertVKs (params VKChange[] vkChanges) {
@@ -20,6 +21,15 @@ public class VHookManager : DHookManager {
 
 	public VHookManager ( CoreBase owner ) : base ( owner ) {
 	}
+
+	public override int Verbosity { get => _verbosity;
+		set {
+			bool isVerbose = value > 0;
+			_verbosity = isVerbose ? 0 : 1;
+			var keyReader = Owner.Fetch<VInputReader_KeyboardHook> ();
+			if ( keyReader != null ) keyReader.Verbose = isVerbose;
+		}
+		}
 
 	public override CallbackHolder AddCallback ( CBType cbType, DeviceID device = -1 ) {
 		var key = (device, cbType);

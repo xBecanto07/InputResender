@@ -117,8 +117,14 @@ public class DMainAppCoreFactory {
 		) => {
 			if ( !manager.IsProcessingEvent ) return (false, data);
 
-			manager.ShouldConsume = data;
+			manager.ShouldPassOver = data;
 			return (true, data);
+		});
+		DComponentJoiner.TryRegisterJoiner<DInputProcessor, DInputSimulator, InputData> ( compJoiner, (
+			joiner, simulator, data
+		) => {
+			int sim = simulator.Simulate ( simulator.ParseCommand ( data ) );
+			return (sim != 0, sim);
 		});
 	}
 }

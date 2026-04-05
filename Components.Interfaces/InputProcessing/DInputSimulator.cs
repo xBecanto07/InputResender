@@ -3,6 +3,7 @@
 namespace Components.Interfaces {
 	public abstract class DInputSimulator : ComponentBase<CoreBase> {
 		public bool AllowRecapture { get; set; } = false;
+		public virtual bool Verbose { get; set; } = false;
 
 		protected DInputSimulator ( CoreBase newOwner ) : base ( newOwner ) { }
 
@@ -11,6 +12,8 @@ namespace Components.Interfaces {
 				(nameof(Simulate), typeof(int)),
 				("get_"+nameof(AllowRecapture), typeof(bool)),
 				("set_"+nameof(AllowRecapture), typeof(void)),
+				("get_"+nameof(Verbose), typeof(bool)),
+				("set_"+nameof(Verbose), typeof(void)),
 			};
 
 		public abstract HInputEventDataHolder[] ParseCommand ( InputData data );

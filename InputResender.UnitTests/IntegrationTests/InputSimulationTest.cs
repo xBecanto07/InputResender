@@ -28,8 +28,11 @@ public class WindowsInputSimulationTest : InputSimulationTest {
 
 [Collection ( "WinInputTests" )]
 public abstract class InputSimulationTest : BaseIntegrationTest {
-	public static string HookAddRegex ( string inputs ) => @"Hooks added \(WinHook#\([+-]?[a-zA-Z0-9\+\*@#$%&\?€£¤]+\)\[13\]:0<" + inputs + ">\\)";
-	public static string HookRemoveRegex ( string inputs ) => @"Hooks removed \(WinHook#\([+-]?[a-zA-Z0-9\+\*@#$%&\?€£¤]+\)\[13\]:0<" + inputs + ">\\)";
+	public const string DictKeyRegex = "\\([+-]?[a-zA-Z0-9\\+\\*@#$%&\\?€£¤]+\\)";
+	public static string HookAddRegex ( string inputs, DHookManager.CBType type )
+		=> $@"Hooks added under key '{DictKeyRegex}' \(WinHook#{DictKeyRegex}\[13\]:0<{inputs}>\) for {type} callback type\.";
+	public static string HookRemoveRegex ( string inputs )
+		=> $@"Hooks removed \(WinHook#{DictKeyRegex}\[13\]:0<{inputs}>\)";
 	protected abstract string[] InitCmds { get; }
 	private bool HookRet = true; // Please: docs containing what this 'bool' return type means!!!
 	List<HInputEventDataHolder> hookCaptures = [];
@@ -46,7 +49,7 @@ public abstract class InputSimulationTest : BaseIntegrationTest {
 		//	private const int WH_KEYBOARD_LOW_LEVEL = 13;
 		//	private const int WH_MOUSE_LOW_LEVEL = 14;
 		// Hook info generated as: hookInfo[j++] = core.Fetch<DInputReader> ().PrintHookInfo ( hook );
-		AssertExecByRegex ( "hook add Fcn -c KeyDown", HookAddRegex ( "KeyDown" ), "No hooks added." );
+		AssertExecByRegex ( "hook add delayed Fcn -c KeyDown", HookAddRegex ( "KeyDown", DHookManager.CBType.Delayed ), "No hooks added." );
 		// Manual waiting for windows events will probably be needed here
 		ConsumeMessages ();
 		hookCaptures.Clear ();
@@ -68,7 +71,7 @@ public abstract class InputSimulationTest : BaseIntegrationTest {
 
 	[Fact]
 	public void SimKeyEvents () {
-		AssertExecByRegex ( "hook add Fcn -c KeyDown KeyUp", HookAddRegex ( "KeyDown, KeyUp" ), "No hooks added." );
+		AssertExecByRegex ( "hook add delayed Fcn -c KeyDown KeyUp", HookAddRegex ( "KeyDown, KeyUp", DHookManager.CBType.Delayed ), "No hooks added." );
 		ConsumeMessages ();
 		hookCaptures.Clear ();
 		hookWaiter = new ( false );
@@ -366,7 +369,7 @@ class TestStatus {
 		if ( HookCaptures != null ) throw new Exception ( "Cannot add multiple hooks" );
 		HookCaptures = new ( [], [] );
 		Tester.cliWrapper.CmdProc.SetVar ( HookManagerCommand.INPHOOKCBVarName, (object)TestHook );
-		Tester.AssertExecByRegex ( "hook add Fcn -c KeyDown KeyUp", HookAddRegex ( "KeyDown, KeyUp" ), "No hooks added." );
+		Tester.AssertExecByRegex ( "hook add delayed Fcn -c KeyDown KeyUp", HookAddRegex ( "KeyDown, KeyUp", DHookManager.CBType.Delayed ), "No hooks added." );
 		Output.WriteLine ( "Hook added" );
 		UpdateConsuming ();
 		Assert ();

@@ -23,6 +23,8 @@ public class InputTransformationTest : BaseSystemTest {
 			, "load joiners"
 			, "hook manager start"
 			, "hook pipeline minimum 2"
+			, "hook manager verbosity 2"
+			, "sim recapture T"
 			) {
 	}
 
@@ -32,15 +34,19 @@ public class InputTransformationTest : BaseSystemTest {
 			"seclav parse SIPtest.scl",
 			"SIP force",
 			"SIP assign SIPtest.scl",
-			"pipeline new InputProcess DInputReader DInputMerger DInputProcessor",
-			"hook add delayed Pipeline Keydown KeyUp",
+			"pipeline new InputProcess exact=SHookManager DInputMerger DInputProcessor",
+			"hook add delayed -c Pipeline Keydown KeyUp",
 			"sim keydown R",
 			], [
 				"ScriptedInputProcessor Status:"
 				, "InputCombination Count: 1" // It would be nice if multiple results could be merged into groups, where results inside of group would be order sensitive, individual groups wouldn't have to be. This would also allow to skip lines, group would be like Line1, Line 5. Order enforecd, whatever between is skipped. This could expand possibilities of the 'exclusive' sensitivity.
 			]
 			, TestSensitivity.None
-			, TestTimeout.Medium );
+			, TestTimeout.Medium
+			, "Error in hook: "
+			, "Could not parse line:"
+			, "steps, which is below the configured minimum of "
+		);
 	}
 
 	[Fact]
@@ -54,15 +60,19 @@ public class InputTransformationTest : BaseSystemTest {
 			PRINT_SIP_STATUS sip_status""",
 			"SIP force",
 			"SIP assign SIPtest.scl",
-			"pipeline new InputProcess DInputReader DInputMerger DInputProcessor",
-			"hook add delayed Pipeline Keydown KeyUp",
+			"pipeline new InputProcess exact=SHookManager DInputMerger DInputProcessor",
+			"hook add delayed -c Pipeline Keydown KeyUp",
 			"sim keydown R",
 			], [
 				"ScriptedInputProcessor Status:"
 				, "InputCombination Count: 1"
 			]
 			, TestSensitivity.None
-			, TestTimeout.Short );
+			, TestTimeout.Short
+			, "Error in hook: "
+			, "Could not parse line:"
+			, "steps, which is below the configured minimum of "
+		);
 	}
 
 	[Fact]
@@ -84,7 +94,7 @@ public class InputTransformationTest : BaseSystemTest {
 			"SIP force",
 			"SIP assign SIPtest.scl",
 			"pipeline new InputProcess DInputReader DInputMerger DInputProcessor",
-			"hook add delayed Print Keydown KeyUp",
+			"hook add delayed -c Print Keydown KeyUp",
 			"sim keydown R",
 			], [
 				"Requested simulating input of 0.82 (R)[65K;0;0] Δ[65K;0;0]",
@@ -94,7 +104,11 @@ public class InputTransformationTest : BaseSystemTest {
 				"Encountered Input Event: hook catched R (1) : 0:[KeyDown, KeyUp]",
 			]
 			, TestSensitivity.None
-			, TestTimeout.Short );
+			, TestTimeout.Short
+			, "Error in hook: "
+			, "Could not parse line:"
+			, "steps, which is below the configured minimum of "
+		);
 	}
 
 	[Fact]
@@ -170,8 +184,8 @@ SIP_3Tree --> 0					# −−---
 			""",
 			"SIP force",
 			"SIP assign SipMorse.scl",
-			"pipeline new InputProcess DInputReader DInputMerger DInputProcessor",
-			"hook add delayed Print Keydown KeyUp",
+			"pipeline new InputProcess exact=SHookManager DInputMerger DInputProcessor",
+			"hook add delayed -c Pipeline Keydown KeyUp",
 			"sim keypress E E E E R", // H
 			"sim keypress E R", // E
 			"sim keypress E T E E R", // L
@@ -190,7 +204,11 @@ SIP_3Tree --> 0					# −−---
 				"Firing key 'O' - Pressed: False",
 			]
 			, TestSensitivity.None
-			, TestTimeout.Short );
+			, TestTimeout.Short
+			, "Error in hook: "
+			, "Could not parse line:"
+			, "steps, which is below the configured minimum of "
+		);
 	}
 
 	[Fact]
@@ -237,6 +255,7 @@ COMPARE_KEYS_3 sip_status DotKey DashKey ConditionKey
 			, "Firing key 'Dash'"
 			, "Error in hook: "
 			, "Could not parse line:"
+			, "steps, which is below the configured minimum of "
 			);
 	}
 }

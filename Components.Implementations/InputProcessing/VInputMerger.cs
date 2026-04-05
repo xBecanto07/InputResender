@@ -16,16 +16,24 @@ namespace Components.Implementations {
 		public override void ClearMemory () => eventList.Clear ();
 
 		public override DataHolder[] ProcessInput ( DataHolder inputData ) {
+			// The current system is very primitive, working only on time-insensitive binary input.
 			if ( inputData == null ) return new DataHolder[0];
 			KeyCode keyCode = (KeyCode)inputData.InputCode;
-			List<DataHolder> ret = new List<DataHolder> { (DataHolder)inputData.Clone () };
+			DataHolder lastDuplicate = RemoveDuplicates ( inputData );
+			List<DataHolder> ret = null;
+			if (lastDuplicate == null)
+				ret = [(DataHolder)inputData.Clone ()];
+			else {
+				lastDuplicate.SetNewValue ( inputData.ValueX, inputData.ValueY, inputData.ValueZ );
+				ret = [(DataHolder)lastDuplicate.Clone ()];
+			}
 			for (int i = 0; i < eventList.Count; i++) {
 				var data = eventList[i].Clone<DataHolder> ();
 				data.SetNewValue ( data.ValueX, data.ValueY, data.ValueZ );
 				ret.Add ( data );
 			}
 
-			if ( inputData.Pressed < 1 ) {
+			if ( ret[0].Pressed < 1 ) {
 				// If key is released
 				if (keyCode.IsModifier()) {
 					RemoveEvents ( keyCode );
@@ -35,16 +43,23 @@ namespace Components.Implementations {
 			} else {
 				// If key is pressed
 				if ( keyCode.IsModifier () ) {
-					eventList.Add ( inputData );
+					eventList.Add ( ret[0] );
 				} else {
-					eventList.Insert ( 0, inputData );
+					eventList.Insert ( 0, ret[0] );
 				}
 			}
 
-			if (Owner.LogFcn != null) {
+			if (Verbose && Owner.LogFcn != null) {
 				var SB = new System.Text.StringBuilder ();
 				SB.Append ( $" -- {nameof ( ProcessInput )}:" );
-				foreach ( var data in ret ) SB.Append ( $"  {(data.Pressed >= 1 ? '↓' : '↑')}{(KeyCode)data.InputCode}" );
+				foreach ( var data in ret ) {
+					char mark = '.';
+					if (data.DeltaX == 0 && data.ValueX < HInputEventDataHolder.PressThreshold) mark = '_';
+					else if (data.DeltaX == 0 && data.ValueX >= HInputEventDataHolder.PressThreshold) mark = '*';
+					else if (data.DeltaX > 0) mark = '^';
+					else if (data.DeltaX < 0) mark = 'v';
+					SB.Append ( $"  {mark}{(KeyCode)data.InputCode}" );
+				}
 				Owner.LogFcn ( SB.ToString () );
 			}
 			return ret.ToArray ();
@@ -56,6 +71,22 @@ namespace Components.Implementations {
 				eventList.RemoveAt ( i );
 				i--;
 			}
+		}
+
+		private DataHolder RemoveDuplicates (DataHolder inputData) {
+			DataHolder lastDuplicate = null;
+			KeyCode keyCode = (KeyCode)inputData.InputCode;
+			for ( int i = eventList.Count - 1; i >= 0; i-- ) {
+				// Removing events this way also removes the information about how long is something being pressed.
+				if ( eventList[i].InputCode != (int)keyCode ) continue;
+				if ( eventList[i].ValueX != inputData.ValueX ) continue;
+				if ( eventList[i].ValueY != inputData.ValueY ) continue;
+				if ( eventList[i].ValueZ != inputData.ValueZ ) continue;
+				lastDuplicate = eventList[i];
+				eventList.RemoveAt ( i );
+			}
+
+			return lastDuplicate;
 		}
 
 		public override StateInfo Info => new VStateInfo ( this );

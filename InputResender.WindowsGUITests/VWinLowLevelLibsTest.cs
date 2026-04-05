@@ -144,7 +144,7 @@ namespace InputResender.GUIComponentTests {
 			messages.Add ( (hookKey, inputData) );
 			Thread.MemoryBarrier ();
 			waiter.Set ();
-			return true;
+			return false; // Consume the event
 		}
 		public static uint GetPID () => (uint)Process.GetCurrentProcess ().Id;
 

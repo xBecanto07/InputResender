@@ -97,7 +97,9 @@ public class PipelinesTest {
 			}
 			return false;
 		} );
-		sender.AssertExecByRegex ( "hook add -c Fcn KeyDown", InputSimulationTest.HookAddRegex ( "KeyDown" ), "No hooks added." );
+		sender.AssertExecByRegex ( "hook add Delayed -c Fcn KeyDown"
+			, InputSimulationTest.HookAddRegex ( "KeyDown", DHookManager.CBType.Delayed )
+			, "No hooks added." );
 
 		var EPA = NetworkConnectionTest.GetEP ( sender );
 		var EPB = NetworkConnectionTest.GetEP ( receiver );
@@ -118,7 +120,7 @@ public class PipelinesTest {
 			}
 			return false;
 		} );
-		receiver.AssertExecByRegex ( "hook add -c Fcn KeyUp", InputSimulationTest.HookAddRegex ( "KeyUp" ), "No hooks added." );
+		receiver.AssertExecByRegex ( "hook add delayed -c Fcn KeyUp", InputSimulationTest.HookAddRegex ( "KeyUp", DHookManager.CBType.Delayed ), "No hooks added." );
 		BaseIntegrationTest.ConsumeMessages ();
 		lock ( VWinLowLevelLibs.EventList )
 			VWinLowLevelLibs.EventList.Clear ();

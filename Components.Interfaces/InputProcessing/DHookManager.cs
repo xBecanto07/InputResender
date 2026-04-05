@@ -28,6 +28,7 @@ public abstract class DHookManager : ComponentBase<CoreBase> {
 	public abstract Dictionary<int, DictionaryKey> ListHooks ();
 	/// <summary>Register callback for all active hooks (in this manager) for given device. Callback should return true if event should be passed to other hooks, false if it should be consumed.</summary>
 	public abstract HCallbackHolder<HookCallback> AddCallback ( CBType cbType, int device = -1 );
+	public virtual int Verbosity { get; set; } = 0;
 }
 
 public class HCallbackHolder<T> : DataHolderBase<ComponentBase> {

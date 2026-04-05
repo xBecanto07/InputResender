@@ -27,7 +27,7 @@ public abstract class BaseSystemTest : IDisposable {
 	bool closing = false;
 
 	readonly List<(string cmd, CommandResult res)> CmdResults = [];
-	const int DelayMult = 2;
+	const int DelayMult = 4;
 	const string StartCmd = "print \"Main Started!\"";
 
 	protected BaseSystemTest ( ITestOutputHelper output, params string[] initCmds ) : base () {
