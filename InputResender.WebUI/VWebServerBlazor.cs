@@ -29,7 +29,7 @@ public class VWebServerBlazor : DWebServer {
 
 	public VWebServerBlazor ( CoreBase owner ) : base ( owner ) { }
 
-	public override void StartServer ( INetPoint ep ) {
+	public override void StartServer ( INetPoint ep, bool runDebug ) {
 		if ( ep is not IPNetPoint ipEp )
 			throw new ArgumentException ( "Only IPNetPoint is supported.", nameof ( ep ) );
 		if ( host != null )
@@ -37,12 +37,12 @@ public class VWebServerBlazor : DWebServer {
 		EP = ipEp;
 		
 		host = Host.CreateDefaultBuilder ()
-			.ConfigureWebHostDefaults ( PrepareBuilder )
+			.ConfigureWebHostDefaults ( builder => PrepareBuilder ( builder, runDebug ) )
 			.Build ();
 		hostTask = host.StartAsync ();
 	}
 
-	private void PrepareBuilder ( IWebHostBuilder webBuilder ) {
+	private void PrepareBuilder ( IWebHostBuilder webBuilder, bool runDebug ) {
 		EnvironmentHolder envHolder = new ( this );
 		string wwwRootPath = FindRootDir ();
 		Console.WriteLine($"Using wwwroot path: {wwwRootPath}");
@@ -63,6 +63,11 @@ public class VWebServerBlazor : DWebServer {
 			logging.SetMinimumLevel ( LogLevel.Warning );
 		} );
 		webBuilder.Configure ( app => {
+			if ( runDebug ) {
+				app.UseDeveloperExceptionPage ();
+			} else {
+				app.UseExceptionHandler ( "/Error" );
+			}
 			app.UseStaticFiles ();
 			app.UseRouting ();
 			app.UseAntiforgery ();

@@ -23,6 +23,7 @@ public class FactoryCommandsLoader : ACommandLoader<DMainAppCore> {
 		{ typeof(AutoCmdsCommand), ( core ) => new AutoCmdsCommand ( core ) },
 		{ typeof(LoaderCommand), ( core ) => new LoaderCommand ( core ) },
 		{ typeof(BlazorManagerCommand), ( core ) => new BlazorManagerCommand ( core ) },
+		{ typeof(ExternalLoaderCommand), ( core ) => new ExternalLoaderCommand ( core ) },
 	};
 	private static Dictionary<Type, (string, Func<DCommand<DMainAppCore>, DCommand<DMainAppCore>>)> NewSubCommandList = new () {
 		{ typeof (CoreCreatorCommand), ("core", ( parent ) => {

@@ -42,6 +42,7 @@ public class BlazorManagerCommand : DCommand<DMainAppCore> {
 		case "start": {
 			context.Args.RegisterSwitch ( 'a', "Address", "Address to bind the Blazor server to. Default is localhost." );
 			context.Args.RegisterSwitch ( 'p', "Port", "Port to bind the Blazor server to. Default is 1648." );
+			context.Args.RegisterSwitch ( 'd', "Debug", "Enable debug mode for the Blazor server." );
 			// string address = context.Args.String ( context.ArgID + 1, "Address" );
 			// int port = context.Args.Int ( context.ArgID + 2, "Port" );
 			if (!IPAddress.TryParse ( context.Args.String ( "--Address", "Address to bind to", 4, false), out var ipAddress ))
@@ -49,7 +50,7 @@ public class BlazorManagerCommand : DCommand<DMainAppCore> {
 			int port = context.Args.Int ( "--Port", "Port to bind to", false ).GetValueOrDefault ( 1648 );
 
 
-			webServer.StartServer ( new IPNetPoint ( ipAddress, port ) );
+			webServer.StartServer ( new IPNetPoint ( ipAddress, port ), context.Args.Present ( "--Debug" ) );
 			return new CommandResult ( $"Blazor server started at {ipAddress}:{port}." );
 		}
 		case "stop": {

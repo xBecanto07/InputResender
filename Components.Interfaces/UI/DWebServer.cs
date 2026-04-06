@@ -13,7 +13,7 @@ public abstract class DWebServer : ComponentBase<CoreBase> {
 			(nameof(StopServer), typeof(void))
 		};
 
-	public abstract void StartServer ( INetPoint ep );
+	public abstract void StartServer ( INetPoint ep, bool runDebug );
 	public abstract void StopServer ();
 
 	public override void Clear () {
@@ -33,7 +33,7 @@ public abstract class DWebServer : ComponentBase<CoreBase> {
 
 public class MWebServer : DWebServer {
 	public MWebServer ( CoreBase owner ) : base ( owner ) { }
-	public override void StartServer(INetPoint ep)
+	public override void StartServer ( INetPoint ep, bool runDebug )
 	{
 		throw new NotImplementedException();
 	}
