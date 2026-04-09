@@ -24,6 +24,7 @@ public class FactoryCommandsLoader : ACommandLoader<DMainAppCore> {
 		{ typeof(LoaderCommand), ( core ) => new LoaderCommand ( core ) },
 		{ typeof(BlazorManagerCommand), ( core ) => new BlazorManagerCommand ( core ) },
 		{ typeof(ExternalLoaderCommand), ( core ) => new ExternalLoaderCommand ( core ) },
+		{ typeof(FileManagerCommand), ( core ) => new FileManagerCommand ( core ) },
 	};
 	private static Dictionary<Type, (string, Func<DCommand<DMainAppCore>, DCommand<DMainAppCore>>)> NewSubCommandList = new () {
 		{ typeof (CoreCreatorCommand), ("core", ( parent ) => {
@@ -54,7 +55,7 @@ public class InputCommandsLoader : ACommandLoader<DMainAppCore> {
 public class SeClavCommandLoader : ACommandLoader<DMainAppCore> {
 	public SeClavCommandLoader ( DMainAppCore owner ) : base ( owner, "seclavCmds" ) { }
 	private static Dictionary<Type, Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommandList = new () {
-		{ typeof(SeClavRunnerCommand), ( core ) => new SeClavRunnerCommand ( core, core.Fetch<Config> ().LoadFileContent ) },
+		{ typeof(SeClavRunnerCommand), ( core ) => new SeClavRunnerCommand ( core ) },
 	};
 	protected override IReadOnlyCollection<Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommands
 		=> NewCommandList.Values.Select<Func<DMainAppCore, DCommand<DMainAppCore>>, Func<DMainAppCore, DCommand<DMainAppCore>>>( f

@@ -16,12 +16,14 @@ public class MExternalLoader : DExternalLoader {
 	public override int ComponentVersion => 1;
 
 	public override ACommandLoader<DMainAppCore> LoadExternal ( string path, string loaderName, ArgParser args ) {
-		ArgumentNullException.ThrowIfNullOrWhiteSpace ( path, nameof(path) );
-		ArgumentNullException.ThrowIfNullOrWhiteSpace ( loaderName, nameof(loaderName) );
+		ArgumentException.ThrowIfNullOrWhiteSpace ( path, nameof(path) );
+		ArgumentException.ThrowIfNullOrWhiteSpace ( loaderName, nameof(loaderName) );
+
 		if ( !System.IO.File.Exists ( path ) )
 			throw new System.IO.FileNotFoundException ( $"File {path} not found" );
 
-		var assembly = System.Reflection.Assembly.LoadFrom ( path );
+		byte[] binary = Owner.FileManager.GetWrapperOrSelf ().ReadBinary ( path );
+		var assembly = System.Reflection.Assembly.Load ( binary );
 		if ( assembly == null )
 			throw new Exception ( $"Failed to load assembly from {path}" );
 

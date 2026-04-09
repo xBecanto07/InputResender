@@ -52,7 +52,7 @@ public abstract class BaseSystemTest : IDisposable {
 		};
 
 		Program.StartMain (
-			[$"cfg={di.FullName.Replace ( "\\", "\\\\" )}"]
+			[$"cfg={di.FullName.Replace ( "\\", "\\\\" )} pass=asdf"]
 			, new TopLevelLoader ( Core, StdStream.ConsoleWrapper )
 			, MainCliWrapper );
 

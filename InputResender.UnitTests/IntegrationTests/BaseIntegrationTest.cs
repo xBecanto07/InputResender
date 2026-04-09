@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Xunit.Abstractions;
 using Components.Implementations;
 using Components.Interfaces;
+using Components.InterfaceTests;
 
 namespace InputResender.UnitTests.IntegrationTests;
 public class BaseIntegrationTest : IDisposable {
@@ -70,6 +71,9 @@ public class BaseIntegrationTest : IDisposable {
 		StdErr = new ();
 		console = new ( StdOut.Add, StdIn.Take, Write, null, null );
 		Core = DMainAppCoreFactory.CreateDefault ();
+		Core.FileManager.FileService = new MockFileService ();
+		Core.FileManager.FileManagerWrapper = new FileManager_AutoAccept ( Core );
+		new Config ( "default", new ("password"), Core );
 		cliWrapper = new ( Core, console );
 
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );

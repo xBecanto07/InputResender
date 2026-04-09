@@ -84,7 +84,7 @@ public class ArgParser {
 	public ErrLvl ErrorLevel;
 
 	public const int ErrArgDup = 1;
-	public ArgParser ( string args, Action<string> output, ErrLvl errLvl = ErrLvl.Normal ) {
+	public ArgParser ( string args, Action<string> output, ErrLvl errLvl = ErrLvl.None ) {
 		ErrorLevel = errLvl;
 		Args = new ();
 		SwitchesChar = new ();
@@ -229,14 +229,14 @@ public class ArgParser {
 
 	public const int ErrStringTooShortByID = 8;
 	public string String ( int id, string dsc, int min = 0, bool shouldThrow = false ) {
-		string ret = Get ( id, dsc );
+		string ret = Get ( id, dsc, shouldThrow );
 		if ( ret != null && ret.Length < min )
 			return Error ( $"Argument #{id}({ret}) is too short. {dsc}", ErrStringTooShortByID, shouldThrow, string.Empty );
 		return ret;
 	}
 	public const int ErrStringTooShortByName = 9;
 	public string String ( string key, string dsc, int min = 0, bool shouldThrow = false ) {
-		string ret = Get ( key, dsc );
+		string ret = Get ( key, dsc, shouldThrow );
 		if ( ret != null && ret.Length < min )
 			return Error ( $"Argument '{key}'({ret}) is too short. {dsc}", ErrStringTooShortByName, shouldThrow, string.Empty );
 		return ret;

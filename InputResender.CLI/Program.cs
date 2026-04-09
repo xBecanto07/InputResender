@@ -12,12 +12,13 @@ public static class Program {
 		//	Config.Save (); // Couldn't load configuration, save the current one
 		DMainAppCore core = cliWrapper.CmdProc.Owner;
 
-		FileManagerCLIWrapper fileManagerWrapper = new ( cliWrapper );
 		if ( core == null )
 			throw new InvalidOperationException (
 				"Provided CliWrapper does not have an owner set for its CommandProcessor!"
 			);
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
+
+		core.FileManager.FileManagerWrapper ??= new FileManagerCLIWrapper ( cliWrapper );
 
 		Config cfg = core.Fetch<Config> ();
 		if ( cfg == null ) {
@@ -29,9 +30,8 @@ public static class Program {
 			}
 
 			PasswordHolder psswd = new (password);
-			cfg = new Config ( defConfigPath, psswd, core, fileManagerWrapper );
-		} else
-			cfg.FileManagerWrapper ??= fileManagerWrapper;
+			cfg = new Config ( defConfigPath, psswd, core );
+		}
 
 		cliWrapper.CmdProc.AddCommand ( new BasicCommands<DMainAppCore> ( core, cliWrapper.Console.WriteLine, cliWrapper.Console.Clear, () => { /* Cleanup is done after main loop */ } ) );
 		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader ( core ) );

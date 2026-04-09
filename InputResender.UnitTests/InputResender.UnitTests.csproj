@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Components.Implementations\Components.Implementations.csproj" />
     <ProjectReference Include="..\Components.Interfaces\Components.Interfaces.csproj" />
+    <ProjectReference Include="..\Components.InterfaceTests\Components.InterfaceTests.csproj" />
     <ProjectReference Include="..\Components.LibraryTests\Components.LibraryTests.csproj" />
     <ProjectReference Include="..\InputResender.CLI\InputResender.CLI.csproj" />
     <ProjectReference Include="..\InputResender.Services\InputResender.Services.csproj" />

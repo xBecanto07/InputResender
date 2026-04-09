@@ -22,18 +22,21 @@ public class Config : ComponentBase<DMainAppCore> {
 	private PrintFormat responsePrintFormat = PrintFormat.Normal;
 	private PasswordHolder configPassword = null;
 
-	public IFileManager FileManagerWrapper = null;
-
-	public Config ( string initPath, PasswordHolder password, DMainAppCore owner, IFileManager fileManagerWrapper = null ) : base ( owner ) {
+	public Config ( string initPath, PasswordHolder password, DMainAppCore owner ) : base ( owner ) {
 		var searchOptions = FileAccessService.SearchOptions.ProjectFolder
 			| FileAccessService.SearchOptions.SolutionFolder
 			| FileAccessService.SearchOptions.SubDirectories;
-		FileManagerWrapper = fileManagerWrapper;
 		if ( string.IsNullOrWhiteSpace ( initPath ) ) initPath = AppDomain.CurrentDomain.BaseDirectory;
-		savePath = FileManager.FileService.GetAssetPath ( initPath, ConfigFileName, searchOptions );
-		homePath = Path.GetDirectoryName ( savePath );
-		configPassword = password;
-		Load ();
+		if ( initPath == "default" ) {
+			savePath = initPath;
+			homePath = Path.GetDirectoryName ( savePath );
+			configPassword = password;
+		} else {
+			savePath = FileManager.FileService.GetAssetPath ( initPath, ConfigFileName, searchOptions );
+			homePath = Path.GetDirectoryName ( savePath );
+			configPassword = password;
+			Load ();
+		}
 	}
 
 	public bool IsInitialized => configPassword != null && Owner != null;
@@ -45,15 +48,14 @@ public class Config : ComponentBase<DMainAppCore> {
 		(nameof(Load), typeof(bool)),
 		(nameof(FetchAutoCommands), typeof(IReadOnlyCollection<string>)),
 		(nameof(AddAutoCommand), typeof(void)),
-		(nameof(LoadFileContent), typeof(string)),
 		(nameof(SetNewPassword), typeof(void))
 	};
 
 	private IFileManager FileManager {
 		get {
-			if ( FileManagerWrapper != null ) return FileManagerWrapper;
 			var fileManager = Owner.Fetch<DFileManager> ();
 			if ( fileManager == null ) throw new Exception ( "DFileManager not found in active core." );
+			if ( fileManager.FileManagerWrapper != null ) return fileManager.FileManagerWrapper;
 			return fileManager;
 		}
 	}
@@ -71,6 +73,8 @@ public class Config : ComponentBase<DMainAppCore> {
 				throw new ArgumentException ( "HomePath must be an existing directory or a valid file path." );
 			homePath = value;
 			savePath = Path.Combine ( HomePath, "config.xml" );
+			Owner.Fetch<CommandProcessor<DMainAppCore>> ()
+				.SetVar ( Components.Interfaces.Commands.FileManagerCommand.HOME_PATH_VAR_NAME, homePath );
 			Save ();
 		}
 	}
@@ -108,14 +112,6 @@ public class Config : ComponentBase<DMainAppCore> {
 	}
 	public void AddAutoCommand ( string key, IEnumerable<string> commands ) =>
 		autoCommands[key] = commands.ToArray ();
-
-
-	public string LoadFileContent(string relPath) {
-		if (string.IsNullOrEmpty(relPath)) return null;
-		string fullPath = Path.IsPathRooted(relPath) ? relPath : Path.Combine(HomePath, relPath);
-		if (!File.Exists(fullPath)) return null;
-		return File.ReadAllText(fullPath);
-	}
 
 
 	public void Save () {
@@ -185,22 +181,31 @@ public class Config : ComponentBase<DMainAppCore> {
 				case "ResponsePrintFormat": if ( Enum.TryParse ( node.InnerText, true, out PrintFormat format ) ) ResponsePrintFormat = format; break;
 				case "AutoCommands":
 					autoCommands.Clear ();
-					foreach ( XmlNode key in node.ChildNodes ) {
-						if ( key.NodeType != XmlNodeType.Element ) continue;
-						Dictionary<string, string> cmds = new ();
-						int cmdIndex = 0;
-						foreach ( XmlNode cmd in key.ChildNodes ) {
-							if ( cmd.NodeType != XmlNodeType.Element ) continue;
-							cmds.Add ( $"{cmd.Name}_{cmdIndex++}", cmd.InnerText );
-						}
-						autoCommands[key.Name] = cmds.OrderBy ( c => c.Key ).Select ( c => c.Value ).ToArray ();
-					}
+					LoadAutoCommands ( node, autoCommands );
 					break;
 				}
 			}
 			SkipAutoSave = oldSkipAutoSave;
 			return true;
 		}
+	}
+
+	public static int LoadAutoCommands ( XmlNode root, Dictionary<string, string[]> autoCommands ) {
+		int loadedCnt = 0;
+		foreach ( XmlNode key in root.ChildNodes ) {
+			if ( key.NodeType != XmlNodeType.Element ) continue;
+			Dictionary<string, string> cmds = new ();
+			int cmdIndex = 0;
+			foreach ( XmlNode cmd in key.ChildNodes ) {
+				if ( cmd.NodeType != XmlNodeType.Element ) continue;
+				cmds.Add ( $"{cmd.Name}_{cmdIndex++}", cmd.InnerText );
+			}
+
+			autoCommands[key.Name] = cmds.OrderBy ( c => c.Key ).Select ( c => c.Value ).ToArray ();
+			loadedCnt++;
+		}
+
+		return loadedCnt;
 	}
 
 	public override StateInfo Info => new VStateInfo ( this );

@@ -7,7 +7,7 @@ namespace Components.Implementations;
 public class VFileManager : DFileManager {
 	public override int ComponentVersion => 1;
 
-	public const int HashSizeHex = SHA3_256.HashSizeInBytes * 3 - 1;
+	public const int HashSizeHex = SHA3_256.HashSizeInBytes * 2;
 	//public const int HashSizeBase64_1 = SHA3_256.HashSizeInBytes * 4 / 3;
 	public const int HashSizeBase64 = SHA3_256.HashSizeInBytes * 4 / 3 + (SHA3_256.HashSizeInBytes * 4) % 3;
 
@@ -57,7 +57,7 @@ public class VFileManager : DFileManager {
 		switch ( hash.Length ) {
 		case HashSizeHex:
 			hashBytes = new byte[SHA3_256.HashSizeInBytes];
-			for ( int i = 0, j = 0; i < hash.Length; i += 3, j++ )
+			for ( int i = 0, j = 0; i < hash.Length; i += 2, j++ )
 				hashBytes[j] = Convert.ToByte ( hash.Substring ( i, 2 ), 16 );
 			break;
 		case HashSizeBase64:
@@ -80,6 +80,20 @@ public class VFileManager : DFileManager {
 		byte[] expected = ReadHash ( path );
 		if ( !hash.SequenceEqual ( expected ) )
 			throw new IntegrityException ( $"File {path} integrity check failed. Hash does not match the expected value.", hash, content );
+
+		return content;
+	}
+
+	public override byte[] ReadBinary ( string path ) {
+		if ( !FileService.Exists ( path ) )
+			throw new FileNotFoundException ( $"File {path} not found." );
+
+		byte[] content = FileService.ReadAllBytes ( path );
+		byte[] hash = SHA3_256.HashData ( content );
+
+		byte[] expected = ReadHash ( path );
+		if ( !hash.SequenceEqual ( expected ) )
+			throw new IntegrityException ( $"File {path} integrity check failed. Hash does not match the expected value.", hash, System.Text.Encoding.UTF8.GetString ( content ) );
 
 		return content;
 	}

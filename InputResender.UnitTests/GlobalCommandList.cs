@@ -25,6 +25,8 @@ internal class GlobalCommandList<CoreT> where CoreT : CoreBase {
 		typeof( ScriptedInputProcessorCommand ),
 		typeof( VTapperInputCommand ),
 		typeof( ComponentCommandLoader ),
+		typeof( ExternalLoaderCommand ),
+		typeof( FileManagerCommand ),
 		typeof( InputSimulatorCommand ),
 		typeof( PasswordManagerCommand ),
 		typeof( TargetManagerCommand ),

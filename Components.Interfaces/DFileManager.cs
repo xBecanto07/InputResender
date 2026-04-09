@@ -6,6 +6,7 @@ public interface IFileManager {
 	void WhitelistHash ( string path, string hash );
 	string ReadFileWithHeader ( string path, PasswordHolder password );
 	string ReadFile ( string path );
+	byte[] ReadBinary ( string path );
 	void WriteFileWithHeader ( string path, string content, PasswordHolder password );
 	FileAccessService FileService { get; set; }
 }
@@ -30,17 +31,23 @@ public abstract class DFileManager : ComponentBase<CoreBase>, IFileManager {
 	public override int ComponentVersion => 1;
 
 	public FileAccessService FileService { get; set; }
+	public IFileManager FileManagerWrapper = null;
+
+	public IFileManager GetWrapperOrSelf () => FileManagerWrapper ?? this;
 
 	protected sealed override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
 		(nameof ( WhitelistHash ), typeof( void )),
 		(nameof ( ReadFileWithHeader ), typeof( string )),
 		(nameof ( ReadFile ), typeof( string )),
-		(nameof ( WriteFileWithHeader ), typeof( void ))
+		(nameof ( ReadBinary ), typeof( byte[] )),
+		(nameof ( WriteFileWithHeader ), typeof( void )),
+		(nameof ( GetWrapperOrSelf ), typeof( IFileManager )),
 	};
 
 	public abstract void WhitelistHash ( string path, string hash );
 	public abstract string ReadFileWithHeader ( string path, PasswordHolder password );
 	public abstract string ReadFile ( string path );
+	public abstract byte[] ReadBinary ( string path );
 	public abstract void WriteFileWithHeader ( string path, string content, PasswordHolder password );
 
 	public override StateInfo Info => new DStateInfo ( this );
@@ -78,6 +85,8 @@ public class MFileManager : DFileManager {
 			throw new IntegrityException ( $"File {path} integrity check failed.", hash, content );
 		return content;
 	}
+
+	public override byte[] ReadBinary ( string path ) => System.Text.Encoding.UTF8.GetBytes ( ReadFile ( path ) );
 
 	public override string ReadFileWithHeader ( string path, PasswordHolder password ) {
 		ArgumentNullException.ThrowIfNull ( password );

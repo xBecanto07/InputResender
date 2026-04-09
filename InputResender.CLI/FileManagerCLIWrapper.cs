@@ -48,8 +48,14 @@ public class FileManagerCLIWrapper (CliWrapper cliWrapper) : IFileManager {
 			, ( ex ) => FileManager.WhitelistHash ( path, Convert.ToHexString ( ex.Hash ) )
 		);
 
+	public byte[] ReadBinary ( string path )
+		=> Process ( path
+			, () => FileManager.ReadBinary ( path )
+			, ( ex ) => FileManager.WhitelistHash ( path, Convert.ToHexString ( ex.Hash ) )
+		);
 
-	private string Process ( string path, Func<string> action
+
+	private T Process<T> ( string path, Func<T> action
 		, Action<DFileManager.IntegrityException> overrideContent ) {
 		try { return action (); }
 		catch ( DFileManager.IntegrityException ex ) {
@@ -76,7 +82,7 @@ public class FileManagerCLIWrapper (CliWrapper cliWrapper) : IFileManager {
 					//WriteFileWithHeader ( path, ex.Content, password );
 					overrideContent ( ex );
 					CliWrapper.Console.WriteLine ( $"File {path} updated with new hash." );
-					return ex.Content;
+					return action ();
 				default: continue;
 				}
 			}

@@ -1,10 +1,12 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
 
 namespace InputResender.Services;
 public class FileAccessService {
 	public virtual bool Exists ( string path ) => File.Exists ( path );
 	public virtual string ReadAllText ( string path ) => File.ReadAllText ( path );
+	public virtual byte[] ReadAllBytes ( string path ) => File.ReadAllBytes ( path );
 	public virtual StreamWriter CreateText ( string path ) => File.CreateText ( path );
 	public virtual DirectoryInfo[] GetDirectories ( DirectoryInfo dir ) => dir.GetDirectories ();
 
@@ -18,10 +20,13 @@ public class FileAccessService {
 		ProjectFolder = 4,
 		/// <summary>Try to navigate to solution folder if starts under bin/Debug or bin/Release folders. If SubDirectories is also set, will search all subdirectories of the solution folder.</summary>
 		SolutionFolder = 8,
+		All = 0xFFFF,
 	}
 
 
 	public string GetAssetPath (string basePath, string filename, SearchOptions searchOptions ) {
+		ArgumentException.ThrowIfNullOrWhiteSpace ( basePath );
+		ArgumentException.ThrowIfNullOrWhiteSpace ( filename );
 		if ( basePath.EndsWith ( filename ) )
 			basePath = Path.GetDirectoryName ( basePath );
 		if ( Exists ( Path.Combine ( basePath, filename ) ) )

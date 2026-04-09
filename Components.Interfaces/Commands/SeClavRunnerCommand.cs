@@ -6,12 +6,12 @@ using SeClav;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using InputResender.Services;
 
 namespace Components.Interfaces.Commands;
 public class SeClavRunnerCommand : DCommand<DMainAppCore> {
 	public readonly SeClavModuleManagerCommand ModuleManager;
 	private readonly Dictionary<string, SCLScriptHolder> ParsedScripts;
-	private readonly Func<string, string> FileLoader;
 
 	public SCLScriptHolder TryGetParsedScript ( string scriptName )
 		=> ParsedScripts.GetValueOrDefault ( scriptName );
@@ -26,10 +26,7 @@ public class SeClavRunnerCommand : DCommand<DMainAppCore> {
 		, ("run", null)
 		];
 
-	public SeClavRunnerCommand ( DMainAppCore owner, Func<string, string> fileLoader, string parentDsc = null ) : base ( owner, parentDsc, CommandNames, InterCommands ) {
-		ArgumentNullException.ThrowIfNull ( fileLoader );
-
-		FileLoader = fileLoader;
+	public SeClavRunnerCommand ( DMainAppCore owner, string parentDsc = null ) : base ( owner, parentDsc, CommandNames, InterCommands ) {
 		ModuleManager = new ( owner, CallName );
 		ParsedScripts = new ();
 	}
@@ -57,13 +54,23 @@ public class SeClavRunnerCommand : DCommand<DMainAppCore> {
 			bool alreadyContains = ParsedScripts.ContainsKey ( script );
 			bool shouldForce = context.Args.Present ( "--force" );
 			if ( alreadyContains && !shouldForce )
-				return new CommandResult ( $"Script '{script}' is already parsed. Use 'force' option to reparse." );
+				return new ( $"Script '{script}' is already parsed. Use 'force' option to reparse." );
 
-			string code = context.Args.Present ( "--inline" )
-				? context.Args.String ( "--inline", "code", 4 )
-				: FileLoader ( script );
+			//string code = context.Args.Present ( "--inline" )
+			//	? context.Args.String ( "--inline", "code", 4 )
+			//	: GetActiveCore<DMainAppCore>().FileManager.GetWrapperOrSelf ().ReadFile ( script );
+			string code;
+			if ( context.Args.Present ( "--inline" ) ) code = context.Args.String ( "--inline", "code", 4 );
+			else {
+				var fileManager = GetActiveCore<DMainAppCore> ().FileManager;
+				string homePath = FileManagerCommand.GetHomePath ( context.CmdProc );
+				code = fileManager.FileService.GetAssetPath ( homePath, script, FileAccessService.SearchOptions.All );
+				if (string.IsNullOrWhiteSpace ( code ))
+					return new ( $"Script '{script}' does not exist." );
+				code = fileManager.GetWrapperOrSelf ().ReadFile ( code );
+			}
 			if ( string.IsNullOrEmpty ( code ) )
-				return new CommandResult ( $"Failed to load script from '{script}'." );
+				return new ( $"Failed to load script from '{script}'." );
 
 			SCLScriptHolder parsed = new ( code, script, ModuleManager.ModuleLoader, !context.CmdProc.SafeMode );
 			ParsedScripts[script] = parsed;

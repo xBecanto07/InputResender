@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml;
 using Components.Interfaces;
 
 namespace InputResender.CLI;
@@ -16,6 +17,9 @@ public class AutoCmdsCommand : DCommand<DMainAppCore> {
 		];
 	public AutoCmdsCommand ( DMainAppCore owner, string parentDsc = null )
 		: base ( owner, parentDsc, CommandNames, InterCommands ) { }
+
+	private Dictionary<string, string[]> LoadedCmds = [];
+
 	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"list" => CallName + " list: List all automatic commands",
@@ -48,8 +52,31 @@ public class AutoCmdsCommand : DCommand<DMainAppCore> {
 			return new CommandResult ( sb.ToString () );
 		}
 		case "load": {
-			// Placeholder for future implementation
-			return new CommandResult ( "The 'load' command is not implemented yet." );
+			context.Args.RegisterSwitch ( 'n', "node" );
+			string name = context.Args.String ( context.ArgID + 1, "Path", 1, true );
+			var fileManager = GetActiveCore<DMainAppCore> ().FileManager;
+			string homePath = Components.Interfaces.Commands.FileManagerCommand.GetHomePath ( context.CmdProc );
+			homePath = fileManager.FileService.GetAssetPath ( homePath, name, InputResender.Services.FileAccessService.SearchOptions.All );
+			if ( string.IsNullOrWhiteSpace ( homePath ) )
+				return new CommandResult ( $"Could not find file: {name}." );
+			string content = fileManager.GetWrapperOrSelf ().ReadFile ( homePath );
+			XmlDocument xmlDoc = new ();
+			try {
+				xmlDoc.LoadXml ( content );
+				XmlElement root = xmlDoc.DocumentElement;
+				XmlNode node = root;
+				if ( context.Args.Present ( "--node" ) ) {
+					string nodeName = context.Args.String ( context.ArgID + 2, "NodeName", 1, true );
+					node = root.SelectSingleNode ( $"//{nodeName}" );
+					if ( node == null ) return new ($"Could not find node: {nodeName}.");
+				}
+
+				int loaded = Config.LoadAutoCommands ( node, LoadedCmds );
+				return new ($"Loaded {loaded} commands from {node.Name}.");
+			}
+			catch ( Exception e ) {
+				return new ( e.Message );
+			}
 		} case "run": {
 			string name = context.Args.String ( context.ArgID + 1, "Name" );
 			if ( string.IsNullOrEmpty ( name ) )
