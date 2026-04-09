@@ -4,10 +4,16 @@ using System.Net;
 namespace Components.Interfaces;
 public abstract class DMainAppCore : CoreBase {
 	[Flags]
-	public enum CompSelect { None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputMerger = 8, InputProcessor = 16, DataSigner = 32, PacketSender = 64, MainAppControls = 128, ShortcutWorker = 256, CommandWorker = 512, ComponentJoiner = 1024, All = 0xFFFF }
+	public enum CompSelect {
+		None = 0, EventVector = 1, LLInput = 2, InputReader = 4, InputMerger = 8, InputProcessor = 16, DataSigner = 32
+		, PacketSender = 64, MainAppControls = 128, ShortcutWorker = 256, CommandWorker = 512, ComponentJoiner = 1024
+		, FileManager = 2048
+		, All = 0xFFFF
+	}
 
 	public const CompSelect BasicSelection = CompSelect.CommandWorker | CompSelect.ComponentJoiner
-		| CompSelect.InputReader | CompSelect.InputMerger | CompSelect.InputProcessor | CompSelect.DataSigner;
+		| CompSelect.InputReader | CompSelect.InputMerger | CompSelect.InputProcessor | CompSelect.DataSigner
+		| CompSelect.FileManager;
 
 	public DEventVector EventVector { get => Fetch<DEventVector> (); }
 	public DLowLevelInput LowLevelInput { get => Fetch<DLowLevelInput> (); }
@@ -20,6 +26,7 @@ public abstract class DMainAppCore : CoreBase {
 	public DShortcutWorker ShortcutWorker { get => Fetch<DShortcutWorker> (); }
 	public DCommandWorker CommandWorker { get => Fetch<DCommandWorker> (); }
 	public DComponentJoiner ComponentJoiner { get => Fetch<DComponentJoiner> (); }
+	public DFileManager FileManager { get => Fetch<DFileManager> (); }
 
 	public DMainAppCore (
 		Func<DMainAppCore, DEventVector> CreateEventVector,
@@ -33,6 +40,7 @@ public abstract class DMainAppCore : CoreBase {
 		Func<DMainAppCore, DShortcutWorker> CreateShortcutWorker,
 		Func<DMainAppCore, DCommandWorker> CreateCommandWorker,
 		Func<DMainAppCore, DComponentJoiner> CreateComponentJoiner,
+		Func<DMainAppCore, DFileManager> CreateFileManager,
 		CompSelect componentMask = CompSelect.All
 		) {
 
@@ -49,6 +57,7 @@ public abstract class DMainAppCore : CoreBase {
 		CreateComponent ( CreateShortcutWorker, nameof ( DShortcutWorker ) );
 		CreateComponent ( CreateCommandWorker, nameof ( DCommandWorker ) );
 		CreateComponent ( CreateComponentJoiner, nameof ( DComponentJoiner ) );
+		CreateComponent ( CreateFileManager, nameof ( DFileManager ) );
 
 		if ( missingComponents.Count > 0 ) {
 			var SB = new System.Text.StringBuilder ();
@@ -98,6 +107,7 @@ public abstract class DMainAppCore : CoreBase {
 			( core ) => null,
 			( core ) => new VCommandWorker ( core ),
 			( core ) => new VComponentJoiner ( core ),
+			( core ) => new MFileManager ( core ),
 			selector
 			);
 }
@@ -108,7 +118,8 @@ public abstract class DMainAppCommand ( DMainAppCore owner, string parentHelp = 
 
 
 public class MMainAppCore : DMainAppCore {
-	public MMainAppCore ( Func<DMainAppCore, DEventVector> CreateEventVector,
+	public MMainAppCore (
+		Func<DMainAppCore, DEventVector> CreateEventVector,
 		Func<DMainAppCore, DLowLevelInput> CreateLowLevelInput,
 		Func<DMainAppCore, DInputReader> CreateInputReader,
 		Func<DMainAppCore, DInputMerger> CreateInputMerger,
@@ -119,8 +130,12 @@ public class MMainAppCore : DMainAppCore {
 		Func<DMainAppCore, DShortcutWorker> CreateShortcutWorker,
 		Func<DMainAppCore, DCommandWorker> CreateCommandWorker,
 		Func<DMainAppCore, DComponentJoiner> CreateComponentJoiner,
-		CompSelect componentMask = CompSelect.All ) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputMerger, CreateInputProcessor, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker, CreateComponentJoiner, componentMask ) {
-	}
+		Func<DMainAppCore, DFileManager> CreateFileManager,
+		CompSelect componentMask = CompSelect.All
+	) : base ( CreateEventVector, CreateLowLevelInput, CreateInputReader, CreateInputMerger, CreateInputProcessor
+		, CreateDataSigner, CreatePacketSender, CreateMainAppControls, CreateShortcutWorker, CreateCommandWorker
+		, CreateComponentJoiner, CreateFileManager, componentMask
+	) { }
 
 	public override void Initialize () {}
 	public override void LoadComponents () {}

@@ -16,7 +16,7 @@ public class PWDCommand : DCommand<DMainAppCore> {
 
 	protected override CommandResult ExecIner ( CommandProcessor<DMainAppCore>.CmdContext context ) {
 		if ( context.Args.ArgC < context.ArgID + 1 )
-			return new CommandResult ( "HomePath=" + Config.HomePath );
+			return new CommandResult ( "HomePath=" + Owner.Fetch<Config> ().HomePath );
 
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"set" => CallName + " set <Path>: Set the working directory\n\tPath: The new working directory path",
@@ -28,8 +28,8 @@ public class PWDCommand : DCommand<DMainAppCore> {
 			if ( string.IsNullOrEmpty ( path ) )
 				return new CommandResult ( "Path cannot be empty." );
 			try {
-				Config.HomePath = path;
-				return new CommandResult ( $"Working directory set to '{Config.HomePath}'." );
+				Owner.Fetch<Config> ().HomePath = path;
+				return new CommandResult ( $"Working directory set to '{Owner.Fetch<Config> ().HomePath}'." );
 			} catch ( Exception ex ) {
 				return new CommandResult ( $"Failed to set working directory to '{path}': {ex.Message}" );
 			}

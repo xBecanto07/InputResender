@@ -1,28 +1,68 @@
-﻿using System;
+﻿using Components.Interfaces;
+using Components.Library;
+using InputResender.Services;
+using System;
 using System.Xml;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace InputResender.CLI; 
-public static class Config {
-	private static bool SkipAutoSave = false;
-	private static List<string> AdditionalPaths = [];
-	private static string homePath = AppDomain.CurrentDomain.BaseDirectory;
-	private static string savePath = Path.Combine ( HomePath, "config.xml" );
-	private readonly static Dictionary<string, string[]> autoCommands = new () {
+namespace InputResender.CLI;
+public class Config : ComponentBase<DMainAppCore> {
+	const string ConfigFileName = "config.xml";
+
+	private bool SkipAutoSave = false;
+	private string homePath, savePath;
+	private readonly Dictionary<string, string[]> autoCommands = new () {
 		{"initCmds", new string[] { "loadall", "clear", "safemode on", "core new", "core own", "conns force init", "loglevel all", "network callback recv print", "network callback newconn print", "hook manager start" } }
 	};
-	private static string autostartName = "initCmds";
-	private static bool printAutoCommands = true;
-	private static int maxOnelinerLength = 125;
-	private static PrintFormat responsePrintFormat = PrintFormat.Normal;
+	private string autostartName = "initCmds";
+	private bool printAutoCommands = true;
+	private int maxOnelinerLength = 125;
+	private PrintFormat responsePrintFormat = PrintFormat.Normal;
+	private PasswordHolder configPassword = null;
+
+	public IFileManager FileManagerWrapper = null;
+
+	public Config ( string initPath, PasswordHolder password, DMainAppCore owner, IFileManager fileManagerWrapper = null ) : base ( owner ) {
+		var searchOptions = FileAccessService.SearchOptions.ProjectFolder
+			| FileAccessService.SearchOptions.SolutionFolder
+			| FileAccessService.SearchOptions.SubDirectories;
+		FileManagerWrapper = fileManagerWrapper;
+		if ( string.IsNullOrWhiteSpace ( initPath ) ) initPath = AppDomain.CurrentDomain.BaseDirectory;
+		savePath = FileManager.FileService.GetAssetPath ( initPath, ConfigFileName, searchOptions );
+		homePath = Path.GetDirectoryName ( savePath );
+		configPassword = password;
+		Load ();
+	}
+
+	public bool IsInitialized => configPassword != null && Owner != null;
+
+	public override int ComponentVersion => 1;
+
+	protected override IReadOnlyList<(string opCode, Type opType)> AddCommands () => new List<(string opCode, Type opType)> () {
+		(nameof(Save), typeof(void)),
+		(nameof(Load), typeof(bool)),
+		(nameof(FetchAutoCommands), typeof(IReadOnlyCollection<string>)),
+		(nameof(AddAutoCommand), typeof(void)),
+		(nameof(LoadFileContent), typeof(string)),
+		(nameof(SetNewPassword), typeof(void))
+	};
+
+	private IFileManager FileManager {
+		get {
+			if ( FileManagerWrapper != null ) return FileManagerWrapper;
+			var fileManager = Owner.Fetch<DFileManager> ();
+			if ( fileManager == null ) throw new Exception ( "DFileManager not found in active core." );
+			return fileManager;
+		}
+	}
 
 	public enum PrintFormat { None, Batch, ErrOnly, Normal, Full }
 
-	public static HashSet<string> ValidAutostartNames { get => autoCommands.Keys.ToHashSet (); }
-	public static string AutostartName { get => autostartName; set { autostartName = value; Save (); } }
-	public static string HomePath {
+	public HashSet<string> ValidAutostartNames { get => autoCommands.Keys.ToHashSet (); }
+	public string AutostartName { get => autostartName; set { autostartName = value; Save (); } }
+	public string HomePath {
 		get => homePath; set {
 			if ( string.IsNullOrEmpty ( value ) )
 				throw new ArgumentException ( "HomePath cannot be empty." );
@@ -34,7 +74,7 @@ public static class Config {
 			Save ();
 		}
 	}
-	public static string SavePath {
+	public string SavePath {
 		get => savePath; set {
 			if ( string.IsNullOrEmpty ( value ) )
 				throw new ArgumentException ( "SavePath cannot be empty." );
@@ -50,11 +90,15 @@ public static class Config {
 			Save ();
 		}
 	}
-	public static bool PrintAutoCommands { get => printAutoCommands; set { printAutoCommands = value; Save (); } }
-	public static int MaxOnelinerLength { get => maxOnelinerLength; set { maxOnelinerLength = value; Save (); } }
-	public static PrintFormat ResponsePrintFormat { get => responsePrintFormat; set { responsePrintFormat = value; Save (); } }
+	public bool PrintAutoCommands { get => printAutoCommands; set { printAutoCommands = value; Save (); } }
+	public int MaxOnelinerLength { get => maxOnelinerLength; set { maxOnelinerLength = value; Save (); } }
+	public PrintFormat ResponsePrintFormat { get => responsePrintFormat; set { responsePrintFormat = value; Save (); } }
+	public void SetNewPassword ( PasswordHolder newPassword ) {
+		configPassword = newPassword;
+		Save ();
+	}
 
-	public static IReadOnlyCollection<string> FetchAutoCommands ( string key ) {
+	public IReadOnlyCollection<string> FetchAutoCommands ( string key ) {
 		if ( string.IsNullOrEmpty ( key ) ) return Array.Empty<string> ();
 		if ( !autoCommands.TryGetValue ( key, out string[] ret ) )
 			return Array.Empty<string> ();
@@ -62,11 +106,11 @@ public static class Config {
 		ret.CopyTo ( ret2, 0 );
 		return ret2;
 	}
-	public static void AddAutoCommand ( string key, IEnumerable<string> commands ) =>
+	public void AddAutoCommand ( string key, IEnumerable<string> commands ) =>
 		autoCommands[key] = commands.ToArray ();
 
 
-	public static string LoadFileContent(string relPath) {
+	public string LoadFileContent(string relPath) {
 		if (string.IsNullOrEmpty(relPath)) return null;
 		string fullPath = Path.IsPathRooted(relPath) ? relPath : Path.Combine(HomePath, relPath);
 		if (!File.Exists(fullPath)) return null;
@@ -74,7 +118,8 @@ public static class Config {
 	}
 
 
-	public static void Save () {
+	public void Save () {
+		if ( configPassword == null ) throw new InvalidOperationException ( "Config not initialized!" );
 		if ( SkipAutoSave ) return;
 		if ( string.IsNullOrEmpty ( SavePath ) ) return;
 
@@ -86,7 +131,7 @@ public static class Config {
 		root.AppendChild ( doc.CreateElement ( "PrintAutoCommands" ) ).InnerText = PrintAutoCommands ? "T" : "F";
 		root.AppendChild ( doc.CreateElement ( "MaxOnelinerLength" ) ).InnerText = MaxOnelinerLength.ToString ();
 		root.AppendChild ( doc.CreateElement ( "ResponsePrintFormat" ) ).InnerText = ResponsePrintFormat.ToString ();
-		
+
 		XmlElement autoCmds = doc.CreateElement ( "AutoCommands" );
 		root.AppendChild ( autoCmds );
 		foreach ( var pair in autoCommands ) {
@@ -99,13 +144,16 @@ public static class Config {
 			}
 		}
 
-		doc.Save ( SavePath );
+		FileManager.WriteFileWithHeader ( SavePath, doc.OuterXml, configPassword );
 	}
 
-	public static bool Load ( string path = null ) {
+	public bool Load ( string path = null ) {
+		if ( configPassword == null ) throw new InvalidOperationException ( "Config not initialized!" );
 		bool oldSkipAutoSave = SkipAutoSave;
 		SkipAutoSave = true;
 		if ( string.IsNullOrEmpty ( path ) ) path = Path.Combine ( HomePath, "config.xml" );
+
+		string content = FileManager.ReadFileWithHeader ( path, configPassword );
 
 		HomePath = path;
 
@@ -113,10 +161,10 @@ public static class Config {
 			// Create default config
 			//Save (); Moving this to higher level
 			SkipAutoSave = oldSkipAutoSave;
-			return true;
+			return true; // Shouldn't this be false??? 🤔
 		} else {
 			XmlDocument doc = new ();
-			doc.Load ( SavePath );
+			doc.LoadXml ( content );
 			XmlElement root = doc.DocumentElement;
 			if ( root.Name != "Config" ) throw new ArgumentException ( "Invalid root element." );
 			foreach ( XmlNode node in root.ChildNodes ) {
@@ -130,7 +178,6 @@ public static class Config {
 						SkipAutoSave = oldSkipAutoSave;
 						return true;
 					}
-					AdditionalPaths.Add ( HomePath );
 					break;
 				case "AutostartName": autostartName = node.InnerText; break;
 				case "PrintAutoCommands": PrintAutoCommands = node.InnerText == "T"; break;
@@ -140,18 +187,43 @@ public static class Config {
 					autoCommands.Clear ();
 					foreach ( XmlNode key in node.ChildNodes ) {
 						if ( key.NodeType != XmlNodeType.Element ) continue;
-						List<string> cmds = new ();
+						Dictionary<string, string> cmds = new ();
+						int cmdIndex = 0;
 						foreach ( XmlNode cmd in key.ChildNodes ) {
 							if ( cmd.NodeType != XmlNodeType.Element ) continue;
-							cmds.Add ( cmd.InnerText );
+							cmds.Add ( $"{cmd.Name}_{cmdIndex++}", cmd.InnerText );
 						}
-						autoCommands[key.Name] = cmds.ToArray ();
+						autoCommands[key.Name] = cmds.OrderBy ( c => c.Key ).Select ( c => c.Value ).ToArray ();
 					}
 					break;
 				}
 			}
 			SkipAutoSave = oldSkipAutoSave;
 			return true;
+		}
+	}
+
+	public override StateInfo Info => new VStateInfo ( this );
+
+	public class VStateInfo ( Config owner ) : StateInfo ( owner ) {
+		public readonly string HomePath = owner.HomePath;
+		public readonly string SavePath = owner.SavePath;
+		public readonly string AutostartName = owner.AutostartName;
+		public readonly bool PrintAutoCommands = owner.PrintAutoCommands;
+		public readonly int MaxOnelinerLength = owner.MaxOnelinerLength;
+		public readonly PrintFormat ResponsePrintFormat = owner.ResponsePrintFormat;
+
+		public override string AllInfo () {
+			string[] rets = [
+				base.AllInfo (),
+				$"Home Path: {HomePath}",
+				$"Save Path: {SavePath}",
+				$"Autostart Name: {AutostartName}",
+				$"Print Auto Commands: {PrintAutoCommands}",
+				$"Max Oneliner Length: {MaxOnelinerLength}",
+				$"Response Print Format: {ResponsePrintFormat}"
+			];
+			return string.Join ( BR, rets );
 		}
 	}
 }

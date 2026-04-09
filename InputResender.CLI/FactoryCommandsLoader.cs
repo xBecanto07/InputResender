@@ -54,7 +54,7 @@ public class InputCommandsLoader : ACommandLoader<DMainAppCore> {
 public class SeClavCommandLoader : ACommandLoader<DMainAppCore> {
 	public SeClavCommandLoader ( DMainAppCore owner ) : base ( owner, "seclavCmds" ) { }
 	private static Dictionary<Type, Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommandList = new () {
-		{ typeof(SeClavRunnerCommand), ( core ) => new SeClavRunnerCommand ( core, Config.LoadFileContent ) },
+		{ typeof(SeClavRunnerCommand), ( core ) => new SeClavRunnerCommand ( core, core.Fetch<Config> ().LoadFileContent ) },
 	};
 	protected override IReadOnlyCollection<Func<DMainAppCore, DCommand<DMainAppCore>>> NewCommands
 		=> NewCommandList.Values.Select<Func<DMainAppCore, DCommand<DMainAppCore>>, Func<DMainAppCore, DCommand<DMainAppCore>>>( f

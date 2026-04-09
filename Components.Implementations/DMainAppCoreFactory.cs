@@ -20,6 +20,7 @@ public class DMainAppCoreFactory {
 			( core ) => new VShortcutWorker ( core ),
 			( core ) => new VCommandWorker ( core ),
 			( core ) => new VComponentJoiner ( core ),
+			( core ) => new MFileManager ( core ),
 			selector
 			);
 		else return new VMainAppCore (
@@ -34,6 +35,7 @@ public class DMainAppCoreFactory {
 			( core ) => new VShortcutWorker ( core ),
 			( core ) => new VCommandWorker ( core ),
 			( core ) => new VComponentJoiner ( core ),
+			( core ) => new VFileManager ( core ),
 			selector
 			);
 	}

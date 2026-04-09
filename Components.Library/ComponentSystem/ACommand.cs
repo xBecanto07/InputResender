@@ -277,7 +277,10 @@ public abstract class DCommand<CoreT> : ComponentBase<CoreT> where CoreT : CoreB
 	protected Core GetCore<Core> ( CommandProcessor<CoreT>.CmdContext context ) where Core : CoreBase => Owner as Core ?? throw new InvalidCastException ( $"Owner is not of type {typeof(Core).Name}" );
 	[Obsolete("Use Owner property directly instead of GetCore()")]
 	protected Core GetCore<Core> () where Core : CoreBase => Owner as Core ?? throw new InvalidCastException ( $"Owner is not of type {typeof(Core).Name}" );
-	protected Core GetActiveCore<Core> () => Owner.Fetch<CommandProcessor<CoreT>> ().GetVar<Core> ( CoreManagerCommand<CoreT>.ActiveCoreVarName );
+
+	protected Core GetActiveCore<Core> () => GetActiveCore<Core> ( this );
+	public static Core GetActiveCore<Core> (ComponentBase<CoreT> component )
+		=> component.Owner.Fetch<CommandProcessor<CoreT>> ().GetVar<Core> ( CoreManagerCommand<CoreT>.ActiveCoreVarName );
 }
 
 // Type alias for backward compatibility - While a good idea, we want this change to be breaking to enforce proper usage.

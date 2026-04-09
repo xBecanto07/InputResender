@@ -8,25 +8,40 @@ namespace InputResender.CLI;
 public static class Program {
 	public static bool StartMain ( string[] args, ACommandLoader<DMainAppCore> TLLoader, CliWrapper cliWrapper ) {
 		ArgParser parser = new ( string.Join ( " ", args ), cliWrapper.Console.WriteLine );
-		if ( !Config.Load ( parser.String ( "cfg", null ) ) )
-			Config.Save (); // Couldn't load configuration, save the current one
-
+		//if ( !Config.Load ( parser.String ( "cfg", null ) ) )
+		//	Config.Save (); // Couldn't load configuration, save the current one
 		DMainAppCore core = cliWrapper.CmdProc.Owner;
+
+		FileManagerCLIWrapper fileManagerWrapper = new ( cliWrapper );
 		if ( core == null )
 			throw new InvalidOperationException (
 				"Provided CliWrapper does not have an owner set for its CommandProcessor!"
 			);
 		cliWrapper.CmdProc.SetVar ( CliWrapper.CLI_VAR_NAME, cliWrapper );
 
+		Config cfg = core.Fetch<Config> ();
+		if ( cfg == null ) {
+			string defConfigPath = parser.String ( "cfg", "Config path", -1 );
+			string password = parser.String ( "pass", "Config password", -1 );
+			while ( string.IsNullOrWhiteSpace ( password ) ) {
+				cliWrapper.Console.WriteLine ( "Please enter a password for configuration file:" );
+				password = cliWrapper.Console.ReadLineBlocking ();
+			}
+
+			PasswordHolder psswd = new (password);
+			cfg = new Config ( defConfigPath, psswd, core, fileManagerWrapper );
+		} else
+			cfg.FileManagerWrapper ??= fileManagerWrapper;
+
 		cliWrapper.CmdProc.AddCommand ( new BasicCommands<DMainAppCore> ( core, cliWrapper.Console.WriteLine, cliWrapper.Console.Clear, () => { /* Cleanup is done after main loop */ } ) );
 		cliWrapper.CmdProc.AddCommand ( new FactoryCommandsLoader ( core ) );
 		cliWrapper.CmdProc.AddCommand ( new InputCommandsLoader ( core ) );
 		if ( TLLoader != null ) cliWrapper.CmdProc.AddCommand ( TLLoader );
 
-		var startCommands = Config.FetchAutoCommands ( Config.AutostartName );
+		var startCommands = cfg.FetchAutoCommands ( cfg.AutostartName );
 		foreach ( var cmd in startCommands ) {
 			if ( cmd == "exit" ) return false;
-			if ( Config.PrintAutoCommands ) cliWrapper.ProcessLine ( cmd, true );
+			if ( cfg.PrintAutoCommands ) cliWrapper.ProcessLine ( cmd, true );
 			else cliWrapper.CmdProc.ProcessLine ( cmd );
 		}
 

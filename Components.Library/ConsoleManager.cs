@@ -111,7 +111,7 @@ public class ConsoleManager {
 				line += hidden;
 				if ( line.EndsWith ( '$' ) ) {
 					string end = RealReadLine ();
-					if ( end != null ) line = $"{line[..^1]} {end}";
+					if ( end != null ) line = $"{line[..^1]}{end}";
 				}
 			}
 

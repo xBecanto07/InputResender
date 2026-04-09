@@ -14,8 +14,8 @@ public class CliWrapper {
 
 	public event Action<string, CommandResult> OnCommandProcessed;
 
-	private bool PrintStart => Config.ResponsePrintFormat == Config.PrintFormat.Normal
-		|| Config.ResponsePrintFormat == Config.PrintFormat.Full;
+	private bool PrintStart => CmdProc.Owner.Fetch<Config> ().ResponsePrintFormat == Config.PrintFormat.Normal
+		|| CmdProc.Owner.Fetch<Config> ().ResponsePrintFormat == Config.PrintFormat.Full;
 
 	public CliWrapper ( DMainAppCore core, ConsoleManager console ) {
 		Console = console ?? throw new ArgumentNullException ( nameof ( console ) );
@@ -85,7 +85,8 @@ public class CliWrapper {
 		if ( printLine ) Console.WriteLine ( PrintStart ? $"$> {line}" : line );
 		var res = processFcn ( line );
 		CmdProc?.Owner?.FlushDelayedMsgs<DMainAppCore> ( Console.WriteLine );
-		if ( Config.ResponsePrintFormat != Config.PrintFormat.None ) Program.PrintResult ( res, Console, Config.MaxOnelinerLength );
+		if ( CmdProc?.Owner?.Fetch<Config> ().ResponsePrintFormat != Config.PrintFormat.None )
+			Program.PrintResult ( res, Console, CmdProc?.Owner?.Fetch<Config> ().MaxOnelinerLength ?? 60 );
 		OnCommandProcessed?.Invoke ( line, res );
 		return res;
 	}
