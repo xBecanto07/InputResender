@@ -43,8 +43,66 @@ public class SCLRunner : ICommand {
 	public DataTypeDefinition ReturnType => throw new NotImplementedException ();
 
 	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-		List<string> progress = [];
-		return ExecuteSafe ( runtime, args, ref progress ); // No fast version yet
+		Status.InactivePCs ??= [];
+		List<SIdVal> argIDs = [];
+		int watchdog = 0;
+
+		foreach ( int pc in Status.InactivePCs )
+			ActivePCs.Enqueue ( pc );
+		Status.InactivePCs.Clear ();
+		if ( ActivePCs.Count == 0 )
+			ActivePCs.Enqueue ( 0 );
+
+		while ( ActivePCs.Count > 0 ) {
+			if ( watchdog++ >= WatchdogMax )
+				throw new InvalidOperationException ( $"Watchdog limit of {WatchdogMax} exceeded. Possible infinite loop detected." );
+			int PC = ActivePCs.Dequeue ();
+			runtime.ResetFlag ( ~ISCLRuntime.SCLFlags.Empty );
+			int N = Script.CommandIndices.Count;
+			while ( PC < N ) {
+				CmdCall cmdIndices = Script.CommandIndices[PC];
+				int opCode = cmdIndices.opCode.ValueId;
+				if ( TestFlags ( runtime, cmdIndices.flags ) == false ) { PC++; continue; }
+
+				switch ( opCode ) {
+				case ISCLParsedScript.JMP_OPCODE_ID:
+					ActivePCs.Enqueue ( cmdIndices.dst.ValueId );
+					PC = N;
+					break;
+				case ISCLParsedScript.FORK_OPCODE_ID:
+					ActivePCs.Enqueue ( cmdIndices.dst.ValueId );
+					break;
+				case ISCLParsedScript.TERMINATE_OPCODE_ID:
+					Status.InactivePCs.Add ( cmdIndices.dst.ValueId );
+					PC = N;
+					break;
+				case ISCLParsedScript.SUSPEND_OPCODE_ID:
+					Status.InactivePCs.Add ( cmdIndices.dst.ValueId );
+					PC = N;
+					break;
+				default: {
+					var cmd = Script.Commands[opCode];
+					argIDs.Clear ();
+					for ( int i = 0; i < cmd.ArgC; i++ ) {
+						SIdVal argID = i switch {
+							0 => cmdIndices.arg1,
+							1 => cmdIndices.arg2,
+							2 => cmdIndices.arg3,
+							3 => cmdIndices.arg4,
+							_ => throw new NotSupportedException ( $"Command {cmd.CmdCode} has more than 4 arguments, which is not supported yet." )
+						};
+						argIDs.Add ( argID );
+					}
+					IDataType result = cmd.Execute ( runtime, argIDs );
+					if ( cmd.ReturnType != null && !cmdIndices.dst.Equals ( NoDst ) )
+						runtime.SetVar ( cmdIndices.dst, result );
+				}
+				break;
+				}
+				PC++;
+			}
+		}
+		return null;
 	}
 	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 		Status.InactivePCs ??= [];

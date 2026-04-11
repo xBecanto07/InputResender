@@ -62,14 +62,14 @@ namespace Components.Implementations;
 		public string Description => "Prints the status of the ScriptedInputProcessor.";
 
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-			List<string> progress = [];
-			return ExecuteSafe ( runtime, args, ref progress );
+			var status = (SCL_StatusType)runtime.GetVar ( args[0] );
+			status.Processor.Owner.PushDelayedMsg ( $"\n = = = = = = = = = = = =\nScriptedInputProcessor Status:\nInputCombination Count: {(status.InputCombination == null ? 0 : status.InputCombination.Length)}\n= = = = = = = = = = = = = = = =\n" );
+			return voidType.Default;
 		}
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 			var arg0 = runtime.SafeGetVar ( args[0] );
-			if ( arg0 is not SCL_StatusType status ) {
+			if ( arg0 is not SCL_StatusType status )
 				throw new InvalidOperationException ( "Argument is not of type SCL_StatusType." );
-			}
 
 			status.Processor.Owner.PushDelayedMsg ( $"\n = = = = = = = = = = = =\nScriptedInputProcessor Status:\nInputCombination Count: {(status.InputCombination == null ? 0 : status.InputCombination.Length)}\n= = = = = = = = = = = = = = = =\n" );
 			return voidType.Default;
@@ -92,8 +92,8 @@ namespace Components.Implementations;
 		public string Description => "Get name of i-th key in given input event";
 
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-			List<string> progress = [];
-			return ExecuteSafe ( runtime, args, ref progress );
+			var (status, idVal) = runtime.GetVar<SCL_StatusType, BasicValueInt> ( args[0], args[1] );
+			return new BasicValueString ( stringType, ((KeyCode)status.InputCombination[idVal.Value].InputCode).ToString () );
 		}
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 			var (status, idVal) = runtime.SafeGetVar<SCL_StatusType, BasicValueInt> ( args[0], args[1] );
@@ -122,14 +122,15 @@ namespace Components.Implementations;
 		public string Description => "Get press status of given key in given input event";
 
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-			List<string> progress = [];
-			return ExecuteSafe ( runtime, args, ref progress );
+			var (status, key) = runtime.GetVar<SCL_StatusType, BasicValueString> ( args[0], args[1] );
+			foreach ( var data in status.InputCombination ) {
+				if ( ((KeyCode)data.InputCode).ToString () == key.Value )
+					return new BasicValueInt ( intType, data.ValueX );
+			}
+			return new BasicValueInt ( intType, -1 );
 		}
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 			var (status, key) = runtime.SafeGetVar<SCL_StatusType, BasicValueString> ( args[0], args[1] );
-
-			//return new BasicValueString ( stringType, ((KeyCode)status.InputCombination[idVal.Value].InputCode).ToString () );
-
 			foreach ( var data in status.InputCombination ) {
 				if ( ((KeyCode)data.InputCode).ToString () == key.Value ) {
 					return new BasicValueInt ( intType, data.ValueX );
@@ -152,10 +153,28 @@ namespace Components.Implementations;
 			( "pressed", new BasicValueIntDef (), "1 to press the key, 0 to release, 2 to press and release" )
 		];
 		public DataTypeDefinition ReturnType => voidType;
+
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-			List<string> progress = [];
-			return ExecuteSafe ( runtime, args, ref progress );
+			var (status, keyVal, pressedVal) = runtime.GetVar<
+				SCL_StatusType, BasicValueString, BasicValueInt
+			> ( args[0], args[1], args[2] );
+			KeyCode key = Enum.Parse<KeyCode> ( keyVal.Value, ignoreCase: true );
+			List<InputData> eventsToFire = [];
+
+			switch ( pressedVal.Value ) {
+			case 0: eventsToFire.Add ( new InputData ( status.Processor, key, false ) ); break;
+			case 1: eventsToFire.Add ( new InputData ( status.Processor, key, true ) ); break;
+			case 2:
+				eventsToFire.Add ( new InputData ( status.Processor, key, true ) );
+				eventsToFire.Add ( new InputData ( status.Processor, key, false ) );
+				break;
+			default: throw new InvalidOperationException ( $"Key '{keyVal.Value}' is not a valid key action code." );
+			}
+
+			status.FireCallbacks ( eventsToFire );
+			return voidType.Default;
 		}
+
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 			var (status, keyVal, pressedVal) = runtime.SafeGetVar<
 				SCL_StatusType, BasicValueString, BasicValueInt
@@ -202,10 +221,33 @@ namespace Components.Implementations;
 			( "key3", stringType, "The third key to compare." ),
 		];
 		public DataTypeDefinition ReturnType => voidType;
+
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-			List<string> progress = [];
-			return ExecuteSafe ( runtime, args, ref progress );
+			var (status, keyVal1, keyVal2, keyVal3) = runtime.GetVar<
+				SCL_StatusType, BasicValueString, BasicValueString, BasicValueString
+			> ( args[0], args[1], args[2], args[3] );
+
+			string[] keys = [keyVal1.Value, keyVal2.Value, keyVal3.Value];
+			KeyCode[] keyCodes = new KeyCode[3];
+			(bool isPressed, DateTime eventTime)[] pressed = new (bool, DateTime)[3];
+			ISCLRuntime.SCLFlags[] flags = [ISCLRuntime.SCLFlags._A, ISCLRuntime.SCLFlags._B, ISCLRuntime.SCLFlags._C,];
+			for ( int i = 0; i < 3; i++ ) {
+				keyCodes[i] = Enum.Parse<KeyCode>(keys[i], ignoreCase: true);
+				foreach ( var data in status.InputCombination ) {
+					if ( data.CreationTime < pressed[i].eventTime ) continue;
+					if ( (KeyCode)data.InputCode != keyCodes[i] ) continue;
+
+					pressed[i] = (data.ValueX != 0, data.CreationTime);
+					break;
+				}
+
+				if ( pressed[i].isPressed ) runtime.SetFlag ( flags[i] );
+				else runtime.ResetFlag ( flags[i] );
+			}
+
+			return voidType.Default;
 		}
+
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 			var (status, keyVal1, keyVal2, keyVal3) = runtime.SafeGetVar<
 				SCL_StatusType, BasicValueString, BasicValueString, BasicValueString
@@ -259,8 +301,15 @@ namespace Components.Implementations;
 		];
 		public DataTypeDefinition ReturnType => voidType;
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-			List<string> progress = [];
-			return ExecuteSafe ( runtime, args, ref progress );
+			var (status, actType, procTimeout) = runtime.GetVar<
+				SCL_StatusType, BasicValueInt, BasicValueInt
+			> ( args[0], args[1], args[2] );
+
+			VKChangeMask actionMask = VKChangeMask.None;
+			if ( (actType.Value & 1) != 0 ) actionMask |= VKChangeMask.KeyDown;
+			if ( (actType.Value & 2) != 0 ) actionMask |= VKChangeMask.KeyUp;
+			status.SetListeningMask ( actionMask, procTimeout.Value );
+			return voidType.Default;
 		}
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 			var (status, actType, procTimeout) = runtime.SafeGetVar<
@@ -287,8 +336,12 @@ namespace Components.Implementations;
 		];
 		public DataTypeDefinition ReturnType => voidType;
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-			List<string> progress = [];
-			return ExecuteSafe ( runtime, args, ref progress );
+			var status = runtime.GetVar<SCL_StatusType> ( args[0] );
+			status.ResetListeningKeys ();
+			var manager = status.Processor.Owner.Fetch<DHookManager> ();
+			var cbInfo = manager.AddCallback ( DHookManager.CBType.Fast, -1 );
+			cbInfo.callback = null;
+			return voidType.Default;
 		}
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 			var status = runtime.SafeGetVar<SCL_StatusType> ( args[0] );
@@ -314,12 +367,14 @@ namespace Components.Implementations;
 		];
 		public DataTypeDefinition ReturnType => voidType;
 		public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-			List<string> progress = [];
-			return ExecuteSafe ( runtime, args, ref progress );
+			var (status, key) = runtime.GetVar<SCL_StatusType, BasicValueString> ( args[0], args[1] );
+			var keyCode = Enum.Parse<KeyCode>(key.Value, ignoreCase: true);
+			status.AddListeningKey ( keyCode );
+			return voidType.Default;
 		}
 		public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 			var (status, key) = runtime.SafeGetVar<SCL_StatusType, BasicValueString> ( args[0], args[1] );
-			var keyCode = (KeyCode)Enum.Parse ( typeof ( KeyCode ), key.Value, ignoreCase: true );
+			var keyCode = Enum.Parse<KeyCode>(key.Value, ignoreCase: true);
 			status.AddListeningKey ( keyCode );
 			return voidType.Default;
 		}

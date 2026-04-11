@@ -50,7 +50,7 @@ public class ArgParserTest {
 	}
 	private void ReadingValidArgs ( string line, params Instance[] args ) {
 		System.Text.StringBuilder SB = new ();
-		ArgParser parser = new ( line, ( s ) => SB.AppendLine ( s ) );
+		ArgParser parser = new ( line, ( s ) => SB.AppendLine ( s ), ArgParser.ErrLvl.Normal );
 
 		for ( int i = 0; i < args.Length; i++ )
 			AssertArg ( i );
@@ -74,7 +74,7 @@ public class ArgParserTest {
 	[InlineData ( "" )]
 	public void ReadingOfEmptyLine ( string line ) {
 		System.Text.StringBuilder SB = new ();
-		ArgParser parser = new ( line, ( s ) => SB.AppendLine ( s ) );
+		ArgParser parser = new ( line, ( s ) => SB.AppendLine ( s ), ArgParser.ErrLvl.Normal );
 		string arg1Dsc = "Non-existing argument #1";
 		parser.String ( 0, arg1Dsc ).Should ().NotBeNull ().And.BeEmpty ();
 		SB.ToString ().Should ().ContainAny ( "issing", "not found" ).And.Contain ( arg1Dsc );

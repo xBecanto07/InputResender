@@ -127,8 +127,13 @@ internal class CompareInt : ICommand {
 	];
 	public DataTypeDefinition ReturnType => new TestValueIntDef ();
 	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-		List<string> progress = [];
-		return ExecuteSafe ( runtime, args, ref progress );
+		var va = (TestValueInt)runtime.GetVar ( args[0] );
+		var vb = (TestValueInt)runtime.GetVar ( args[1] );
+		int result = va.Value.CompareTo ( vb.Value );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Equal, result == 0 );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Larger, result > 0 );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Smaller, result < 0 );
+		return new TestValueInt ( va.Definition, result );
 	}
 	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 		SIdVal aID = args[0];
@@ -246,7 +251,7 @@ internal class SetFlag : ICommand {
 	public DataTypeDefinition ReturnType => new SCLT_Void ();
 	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
 		var flag = runtime.GetVar ( args[0] ) as TestValueInt;
-		runtime.SetFlag ( ( ISCLRuntime.SCLFlags )flag.Value );
+		runtime.SetFlag ( ( ISCLRuntime.SCLFlags )(1 << flag.Value) );
 		return new SCLT_Void ().Default;
 	}
 	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
@@ -271,7 +276,7 @@ internal class ResetFlag : ICommand {
 	public DataTypeDefinition ReturnType => new SCLT_Void ();
 	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
 		var flag = runtime.GetVar ( args[0] ) as TestValueInt;
-		runtime.ResetFlag ( ( ISCLRuntime.SCLFlags )flag.Value );
+		runtime.ResetFlag ( ( ISCLRuntime.SCLFlags )( 1 << flag.Value ) );
 		return new SCLT_Void ().Default;
 	}
 	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {

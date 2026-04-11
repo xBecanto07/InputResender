@@ -105,8 +105,13 @@ public class CompareInt : ICommand {
 	];
 	public DataTypeDefinition ReturnType => new BasicValueIntDef ();
 	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-		List<string> progress = [];
-		return ExecuteSafe ( runtime, args, ref progress );
+		var va = (BasicValueInt)runtime.GetVar ( args[0] );
+		var vb = (BasicValueInt)runtime.GetVar ( args[1] );
+		int result = va.Value.CompareTo ( vb.Value );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Equal, result == 0 );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Larger, result > 0 );
+		ISCLRuntime.SetOrReset ( runtime, ISCLRuntime.SCLFlags.Smaller, result < 0 );
+		return new BasicValueInt ( va.Definition, result );
 	}
 	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
 		SIdVal aID = args[0];

@@ -9,7 +9,7 @@ namespace Components.LibraryTests;
 public class ArgParserTest {
 	[Fact]
 	public void BasicArgs () {
-		var parser = new ArgParser ( "A1 A2 A3", null );
+		var parser = new ArgParser ( "A1 A2 A3", null, ArgParser.ErrLvl.Normal );
 		parser.String ( 0, "Argument 1" ).Should ().Be ( "A1" );
 		parser.String ( 1, "Argument 2" ).Should ().Be ( "A2" );
 		parser.String ( 2, "Argument 3" ).Should ().Be ( "A3" );
@@ -24,7 +24,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void NamedArgs () {
-		var parser = new ArgParser ( "X=1 L=2 A1=3", null );
+		var parser = new ArgParser ( "X=1 L=2 A1=3", null, ArgParser.ErrLvl.Normal );
 		parser.Int (0, "X").Should ().Be ( 1 );
 		parser.Int (1, "L").Should ().Be ( 2 );
 		parser.Int (2, "A1").Should ().Be ( 3 );
@@ -40,7 +40,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void NamedArgsReversedOrderByID () {
-		var parser = new ArgParser ( "X=1 L=2 A1=3", null );
+		var parser = new ArgParser ( "X=1 L=2 A1=3", null, ArgParser.ErrLvl.Normal );
 		Action extraArg = () => parser.Int ( 3, "A2" );
 		AssertError ( extraArg, "Argument #3 not found", ArgParser.ErrArgNotFoundByID );
 		parser.Int ( 2, "A1" ).Should ().Be ( 3 );
@@ -50,7 +50,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void NamedArgsReversedOrderByName () {
-		var parser = new ArgParser ( "X=1 L=2 A1=3", null );
+		var parser = new ArgParser ( "X=1 L=2 A1=3", null, ArgParser.ErrLvl.Normal );
 		Action extraArg = () => parser.Int ( "A2", "A2" );
 		AssertError ( extraArg, "Argument 'A2' not found", ArgParser.ErrArgNotFoundByName );
 		parser.Int ( "A1", "A1" ).Should ().Be ( 3 );
@@ -60,7 +60,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void SwitchesRecognizedAndLoaded () {
-		var parser = new ArgParser ( "-a --all -a --something -b -f=5", null );
+		var parser = new ArgParser ( "-a --all -a --something -b -f=5", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'a', "all", "0" );
 		parser.RegisterSwitch ( 'b', "bsdf", "0" );
 		parser.RegisterSwitch ( 'f', "fdsa", "0" );
@@ -87,7 +87,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void UndefinedSwitchHasDefaultValue () {
-		var parser = new ArgParser ( "-a 3", null );
+		var parser = new ArgParser ( "-a 3", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'b', "beta", "5" );
 		parser.Present ( "-b" ).Should ().BeTrue ();
 		parser.HasValue ( "-b", true ).Should ().BeTrue ();
@@ -96,7 +96,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void OptionalSwitchStayesUndefined () {
-		var parser = new ArgParser ( "-a 5", null );
+		var parser = new ArgParser ( "-a 5", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'b', "beta", null );
 		parser.Present ( "-b" ).Should ().BeFalse ();
 		AssertError ( () => parser.Int ( "-b", "beta" ), "Switch '-b' not found.", ArgParser.ErrSwitchCharNotFound );
@@ -104,7 +104,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void SwitchesMultipleValuesExplicit () {
-		var parser = new ArgParser ( "-a -a=1 -a=2 -a=3", null );
+		var parser = new ArgParser ( "-a -a=1 -a=2 -a=3", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'a', "asdf", "0" );
 		parser.Present ( "-a" ).Should ().BeTrue ();
 		parser.HasValue ( "-a", true ).Should ().BeTrue ();
@@ -113,7 +113,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void SwitchWithSingleValueExplicit () {
-		var parser = new ArgParser ("-a -a -a=4 -a -a", null);
+		var parser = new ArgParser ( "-a -a -a=4 -a -a", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'a', "asdf", "0" );
 		parser.Present ( "-a" ).Should ().BeTrue ();
 		parser.HasValue ( "-a", true ).Should ().BeTrue ();
@@ -122,7 +122,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void SwitchesMultipleValuesReversedOrderExplicit () {
-		var parser = new ArgParser ( "-a=3 -a=2 -a=1 -a", null );
+		var parser = new ArgParser ( "-a=3 -a=2 -a=1 -a", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'a', "a", "0" );
 		parser.Present ( "-a" ).Should ().BeTrue ();
 		parser.HasValue ( "-a", true ).Should ().BeTrue ();
@@ -131,7 +131,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void SwitchesMultipleValuesImplicit () {
-		var parser = new ArgParser ( "-a -a 1 -a 2 -a 3", null );
+		var parser = new ArgParser ( "-a -a 1 -a 2 -a 3", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'a', "asdf", "0" );
 		parser.Present ( "-a" ).Should ().BeTrue ();
 		parser.HasValue ( "-a", true ).Should ().BeTrue ();
@@ -140,7 +140,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void SwitchWithSingleValueImplicit () {
-		var parser = new ArgParser ( "-a -a -a 4 -a -a", null );
+		var parser = new ArgParser ( "-a -a -a 4 -a -a", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'a', "asdf", "0" );
 		parser.Present ( "-a" ).Should ().BeTrue ();
 		parser.HasValue ( "-a", true ).Should ().BeTrue ();
@@ -149,7 +149,7 @@ public class ArgParserTest {
 
 	[Fact]
 	public void SwitchesMultipleValuesReversedOrderImplicit () {
-		var parser = new ArgParser ( "-a 3 -a 2 -a 1 -a", null );
+		var parser = new ArgParser ( "-a 3 -a 2 -a 1 -a", null, ArgParser.ErrLvl.Normal );
 		parser.RegisterSwitch ( 'a', "a", "0" );
 		parser.Present ( "-a" ).Should ().BeTrue ();
 		parser.HasValue ( "-a", true ).Should ().BeTrue ();

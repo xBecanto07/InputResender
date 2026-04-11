@@ -24,8 +24,9 @@ public class ScriptedInputProcessorCommand : DCommand<DMainAppCore> {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"status" => CallName + " status: Get the current status of the Scripted Input Processor.",
 			"force" => CallName + " force: Force to use SIP as input processor.",
-			"assign" => CallName + " assign <ScriptName>: Assign a compiled script to the SIP.\n\tScriptName: Name of the script to assign, compiled with 'seclav parse <ScriptFile>'.",
-			_ => null
+			"assign" => CallName + " assign <ScriptName> [-s|--safe]: Assign a compiled script to the SIP.\n\tScriptName: Name of the script to assign, compiled with 'seclav parse <ScriptFile>'.",
+			"safemode" => CallName + " on|off",
+			_ => null,
 		}, out var helpRes ) ) return helpRes;
 
 		//var SCLcmder = context.CmdProc.GetCommandInstance<Interfaces.Commands.SeClavRunnerCommand> ();
@@ -52,6 +53,7 @@ public class ScriptedInputProcessorCommand : DCommand<DMainAppCore> {
 			return new CommandResult ( "SIP assigned as Input Processor." );
 		}
 		case "assign": {
+			context.Args.RegisterSwitch ( 's', "safe", "Run in safe mode" );
 			string scriptName = context.Args.String ( context.ArgID + 1, "ScriptName" );
 			if ( string.IsNullOrEmpty ( scriptName ) )
 				return new CommandResult ( "ScriptName cannot be empty." );
@@ -72,7 +74,26 @@ public class ScriptedInputProcessorCommand : DCommand<DMainAppCore> {
 				return new CommandResult ( $"No parsed script found with name '{scriptName}'. Please parse it first using 'seclav parse <ScriptFile>'." );
 
 			scriptedSIP.AssignScript ( parsedScript );
+			scriptedSIP.ExecSafeMode = context.Args.Present ( "--safe" );
 			return new CommandResult ( $"Script '{scriptName}' assigned to SIP." );
+		}
+		case "safemode": {
+			DMainAppCore core = context.CmdProc.GetVar<DMainAppCore> ( CoreManagerCommand<DMainAppCore>.ActiveCoreVarName );
+			if ( core == null ) return new CommandResult ( "No active core found." );
+			var sip = core.Fetch<DInputProcessor> ();
+			if ( sip == null || sip is not VScriptedInputProcessor scriptedSIP )
+				return new CommandResult ( "Input Processor is not a SIP." );
+
+			string val = context.Args.String ( context.ArgID + 1, "Safemode value", 1, true )?.ToLower ();
+			switch ( val ) {
+				case "t": case "on":
+					scriptedSIP.ExecSafeMode = true;
+					return new CommandResult ( "SIP safe mode enabled." );
+				case "f": case "off":
+					scriptedSIP.ExecSafeMode = false;
+					return new CommandResult ( "SIP safe mode disabled." );
+				default: return new CommandResult ( $"Invalid safemode value '{val}'. Use 'on' or 'off'." );
+			}
 		}
 		default: return new CommandResult ( $"Unknown sub-action '{context.SubAction}'." );
 		}

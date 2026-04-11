@@ -21,6 +21,16 @@ public class VScriptedInputProcessor : DInputProcessor {
 	SCLDebugger Debugger;
 	readonly List<string> DebuggerLog = [];
 	private bool ShouldPreferConsume = false;
+	private bool _execSafeMode = false;
+	public bool ExecSafeMode {
+		get => _execSafeMode;
+		set {
+			_execSafeMode = value;
+			if ( Debugger != null ) {
+				Debugger.LoggingRate = _execSafeMode ? 1 : -1;
+			}
+		}
+	}
 
 	public override int ComponentVersion => 1;
 
@@ -31,7 +41,8 @@ public class VScriptedInputProcessor : DInputProcessor {
 
 	public override bool ProcessInput ( DataHolder[] inputCombination ) {
 		bool willConsume = ShouldPreferConsume;
-		DebuggerLog.Add ( $" ... Captured {inputCombination.Select ( ( d ) => d.ToString () ).Aggregate ( ( a, b ) => a + "+" + b )} ..." );
+		if ( _execSafeMode )
+			DebuggerLog.Add ( $" ... Captured {inputCombination.Select ( ( d ) => d.ToString () ).Aggregate ( ( a, b ) => a + "+" + b )} ..." );
 		if ( ListeningKeys.Count != 0 ) {
 			bool passingMask = false;
 			foreach ( var data in inputCombination[..1] ) {
@@ -61,7 +72,7 @@ public class VScriptedInputProcessor : DInputProcessor {
 			ScriptRuntime.SetExternVar<BasicValueIntDef> ( "SettingChanged", intDefinition => new BasicValueInt ( intDefinition, 0 ), Owner );
 			WasFired = false;
 			lock (ScriptRuntime) {
-				ScriptRuntime.Execute ( true );
+				ScriptRuntime.Execute ( _execSafeMode );
 				//ScriptRunner.ExecuteSafe ( ScriptRuntime, [], ref progress );
 			}
 
@@ -77,10 +88,14 @@ public class VScriptedInputProcessor : DInputProcessor {
 			Owner.PushDelayedError ( "Error during execution of input processing script!", ex );
 		}
 
-		DebuggerLog.Add ( $"= = = = = Script Execution Log after {inputCombination.Select ( ( d ) => d.ToString () ).Aggregate ( ( a, b ) => a + "+" + b )} = = = = =" );
-		foreach ( var log in Debugger.ExecutionLog )
-			DebuggerLog.Add ( log.ToString () );
-		Debugger.ClearLog ();
+		if ( _execSafeMode ) {
+			DebuggerLog.Add (
+				$"= = = = = Script Execution Log after {inputCombination.Select ( ( d ) => d.ToString () ).Aggregate ( ( a, b ) => a + "+" + b )} = = = = ="
+			);
+			foreach ( var log in Debugger.ExecutionLog ) DebuggerLog.Add ( log.ToString () );
+			Debugger.ClearLog ();
+		}
+
 		//PersistentScriptData = ScriptRunner.PersistantStatus;
 		//Task.Delay ( ProcessTimeout ).ContinueWith ( _ => {
 		//	if ( !WasFired ) {
@@ -102,6 +117,7 @@ public class VScriptedInputProcessor : DInputProcessor {
 		ScriptRuntime = new SCLRuntimeHolder ( Script );
 		//ScriptRunner = new SCLRunner ( Script );
 		Debugger = ScriptRuntime.SetupDebugger ();
+		Debugger.LoggingRate = _execSafeMode ? 1 : -1;
 		progress.EnsureCapacity ( 1024 );
 	}
 

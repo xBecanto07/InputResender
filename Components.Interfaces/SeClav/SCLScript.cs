@@ -182,7 +182,6 @@ public interface ISCLRuntime {
 			throw new InvalidOperationException ( $"Argument 0 is not of type {typeof(T).Name}." );
 		return status;
 	}
-
 	(T, U) SafeGetVar<T, U> ( SIdVal var0, SIdVal var1 )
 		where T : SeClav.IDataType where U : SeClav.IDataType
 		=> (SafeGetVar<T> ( var0 ), SafeGetVar<U> ( var1 ));
@@ -192,6 +191,17 @@ public interface ISCLRuntime {
 	(T, U, V, W) SafeGetVar<T, U, V, W> ( SIdVal var0, SIdVal var1, SIdVal var2, SIdVal var3 )
 		where T : SeClav.IDataType where U : SeClav.IDataType where V : SeClav.IDataType where W : SeClav.IDataType
 		=> (SafeGetVar<T> ( var0 ), SafeGetVar<U> ( var1 ), SafeGetVar<V> ( var2 ), SafeGetVar<W> ( var3 ));
+
+	T GetVar<T>( SIdVal varID ) where T : SeClav.IDataType => (T)GetVar ( varID );
+	(T, U) GetVar<T, U> ( SIdVal var0, SIdVal var1 )
+		where T : SeClav.IDataType where U : SeClav.IDataType
+		=> (GetVar<T> ( var0 ), GetVar<U> ( var1 ));
+	(T, U, V) GetVar<T, U, V> ( SIdVal var0, SIdVal var1, SIdVal var2 )
+		where T : SeClav.IDataType where U : SeClav.IDataType where V : SeClav.IDataType
+		=> (GetVar<T> ( var0 ), GetVar<U> ( var1 ), GetVar<V> ( var2 ));
+	(T, U, V, W) GetVar<T, U, V, W> ( SIdVal var0, SIdVal var1, SIdVal var2, SIdVal var3 )
+		where T : SeClav.IDataType where U : SeClav.IDataType where V : SeClav.IDataType where W : SeClav.IDataType
+		=> (GetVar<T> ( var0 ), GetVar<U> ( var1 ), GetVar<V> ( var2 ), GetVar<W> ( var3 ));
 
 	static void SetOrReset (ISCLRuntime runtime, SCLFlags flag, bool set ) {
 		if ( set ) runtime.SetFlag ( flag );
@@ -325,8 +335,9 @@ internal abstract class AExternFcn : ICommand {
 	}
 
 	public IDataType Execute ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args ) {
-		List<string> progress = [];
-		return ExecuteSafe ( runtime, args, ref progress );
+		for ( int i = 0; i < argBuffer.Length; i++ )
+			argBuffer[i] = runtime.GetVar ( args[i] );
+		return ExecuteInternal ( runtime );
 	}
 
 	public IDataType ExecuteSafe ( ISCLRuntime runtime, IReadOnlyList<SIdVal> args, ref List<string> progress ) {
