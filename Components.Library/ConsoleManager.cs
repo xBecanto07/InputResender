@@ -42,14 +42,20 @@ public class ConsoleManager {
 	}
 
 	public void Write ( string text ) { PushOut ( text, false ); RealWrite ( text ); }
-	public void WriteLine ( string text ) { 
-		int escStart = text.IndexOf ( PsswdStart );
-		if ( escStart >= 0 ) {
-			int escEnd = text.LastIndexOf ( PsswdEnd );
-			if ( escEnd >= 0 ) text = string.Concat ( text.AsSpan ( 0, escStart ), "***", text.AsSpan ( escEnd + 1 ) );
-		}
+	public void WriteLine ( string text ) {
+		text = HidePsswd ( text );
 		PushOut ( text, true );
 		RealWriteLine ( text );
+	}
+
+	private static string HidePsswd (string text) {
+		int escStart;
+		while ( (escStart = text.IndexOf ( PsswdStart )) >= 0 ) {
+			int nextEnd = text.IndexOf ( PsswdEnd, escStart + 1 );
+			if ( nextEnd < 0 ) break;
+			text = string.Concat ( text.AsSpan ( 0, escStart ), "***", text.AsSpan ( nextEnd + 1 ) );
+		}
+		return text;
 	}
 
 	private void PushOut (string text, bool endWithEOL) {
@@ -71,11 +77,11 @@ public class ConsoleManager {
 			char c = RealReadChar ();
 			if ( c == '#' ) {
 				RealWriteLine ( string.Empty );
-				return hidden;
+				return PsswdStart + hidden + PsswdEnd;
 			}
 			if (c == '$') {
 				RealWriteLine ( string.Empty );
-				return hidden + '$';
+				return PsswdStart + hidden + PsswdEnd + '$';
 			}
 			if ( c == '\x08' ) {
 				if ( hidden.Length > 0 ) {
@@ -117,8 +123,9 @@ public class ConsoleManager {
 
 			// Read input and wait for it to be processed
 			lock ( readerWaiter ) {
+				PushOut ( HidePsswd ( line ), true );
+				line = line.Replace ( PsswdStart, PsswdEnd ).Replace ( "" + PsswdEnd, string.Empty );
 				NewInput = line;
-				PushOut ( line, true );
 				InputBuffer.Insert ( 0, line );
 			}
 			readerWaiter.WaitOne ();

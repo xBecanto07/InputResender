@@ -34,11 +34,15 @@ public class FileManagerCommand : DCommand<DMainAppCore> {
 		if ( TryPrintHelp ( context.Args, context.ArgID + 1, () => context.SubAction switch {
 			"find" => CallName + " find <FileName> [BasePath]\n\tFileName: Name of the file to find"
 				+ "\n\tBasePath: Starting directory (default: current directory)",
-			"verify" => CallName + " verify <FilePath> [--update] [--show]\n\tFilePath: Path to the file to verify integrity"
+			"verify" => CallName + " verify <FilePath> [-u|--update] [-s|--show] [-p|--password]"
+				+ "\n\tFilePath: Path to the file to verify integrity"
 				+ "\n\t--update: If integrity check fails, show content and prompt user to store new hash"
-				+ "\n\t--show: Show content of the tested file",
+				+ "\n\t--show: Show content of the tested file"
+				+ "\n\t--password: If set, provided password is used to calculate header of the file",
 			"whitelist" => CallName + " whitelist <FilePath> <Hash>\n\tFilePath: Path to the file\n\tHash: Expected hash (hex or base64)",
-			"write" => CallName + " write <FilePath> <Content>\n\tFilePath: Path to the file\n\tContent: Content to write (header is generated automatically)",
+			"read" => CallName + " read <FilePath> [-u|--update] [-p|--password]\n\tFilePath: Path to the file to read\n\t--update: If integrity check fails, show content and prompt user to store new hash\n\t--password: If set, provided password is used to calculate header of the file",
+			"write" => CallName + " write <FilePath> <Content> [-p|--password]\n\tFilePath: Path to the file\n\tContent: Content to write (header is generated automatically)\n\t--password: If set, provided password is used to calculate header of the file",
+			"changepass" => CallName + " changepass <FilePath> <OldPassword> <NewPassword>\n\tFilePath: Path to the file\n\tOldPassword: Current password protecting the file\n\tNewPassword: New password to set",
 			_ => null
 		}, out var helpRes ) ) return helpRes;
 
@@ -48,6 +52,7 @@ public class FileManagerCommand : DCommand<DMainAppCore> {
 		case "whitelist": return ExecWhitelist ( context );
 		case "read": return ExecRead ( context );
 		case "write": return ExecWrite ( context );
+		case "changepass": return ExecChangePass ( context );
 		default: return new ( $"Unknown subcommand '{context.SubAction}'." );
 		}
 	}
@@ -56,13 +61,10 @@ public class FileManagerCommand : DCommand<DMainAppCore> {
 		var fm = GetFileManager ( context );
 		if ( fm == null ) return new ( "DFileManager not found in active core." );
 
-		string fileName = context.Args.String ( context.ArgID + 1, "FileName", 1, true );
-		string basePath = context.Args.String ( context.ArgID + 2, "BasePath", shouldThrow: false );
-		if ( string.IsNullOrEmpty ( basePath ) ) basePath = FileManagerCommand.GetHomePath ( context.CmdProc );
 
 		//string optionsStr = context.Args.String ( context.ArgID + 3, "SearchOptions", shouldThrow: false );
 		try {
-			string result = fm.FileService.GetAssetPath ( basePath, fileName, FileAccessService.SearchOptions.All );
+			string result = FindPath ( context, fm, 1 );
 			return new ( $"Found: {result}" );
 		} catch ( DirectoryNotFoundException ex ) {
 			return new ( $"File not found: {ex.Message}" );
@@ -76,7 +78,7 @@ public class FileManagerCommand : DCommand<DMainAppCore> {
 
 		context.Args.RegisterSwitch ( 's', "show" );
 		context.Args.RegisterSwitch ( 'p', "password" );
-		string filePath = context.Args.String ( context.ArgID + 1, "FilePath", 1, true );
+		string filePath = FindPath ( context, fm, 1 );
 		PasswordHolder pass = null;
 		if ( context.Args.Present ( "--password" ) )
 			pass = new (context.Args.String ( "password", "Password", 4, true ));
@@ -103,7 +105,7 @@ public class FileManagerCommand : DCommand<DMainAppCore> {
 		var fm = GetFileManager ( context );
 		if ( fm == null ) return new ( "DFileManager not found in active core." );
 
-		string filePath = context.Args.String ( context.ArgID + 1, "FilePath", 1, true );
+		string filePath = FindPath ( context, fm, 1 );
 		string hash = context.Args.String ( context.ArgID + 2, "Hash", 1, true );
 
 		try {
@@ -121,7 +123,7 @@ public class FileManagerCommand : DCommand<DMainAppCore> {
 
 		context.Args.RegisterSwitch ( 'p', "password" );
 		PasswordHolder pass = new (context.Args.String ( "password", "Password", 4, true ));
-		string filePath = context.Args.String ( context.ArgID + 1, "FilePath", 1, true );
+		string filePath = FindPath ( context, fm, 1 );
 
 		try {
 			string content = fm.ReadFileWithHeader ( filePath, pass );
@@ -142,7 +144,7 @@ public class FileManagerCommand : DCommand<DMainAppCore> {
 
 		context.Args.RegisterSwitch ( 'p', "password" );
 		PasswordHolder pass = new (context.Args.String ( "password", "Password", 4, true ));
-		string filePath = context.Args.String ( context.ArgID + 1, "FilePath", 1, true );
+		string filePath = FindPath ( context, fm, 1 );
 		string content = context.Args.String ( context.ArgID + 2, "Content", 0, true );
 
 		try {
@@ -151,5 +153,37 @@ public class FileManagerCommand : DCommand<DMainAppCore> {
 		} catch ( Exception ex ) {
 			return new ( $"Write failed: {ex.Message}" );
 		}
+	}
+
+	private CommandResult ExecChangePass ( CommandProcessor<DMainAppCore>.CmdContext context ) {
+		var fm = GetFileManager ( context, false );
+		if ( fm == null ) return new ( "DFileManager not found in active core." );
+
+		string filePath = FindPath ( context, fm, 1 );
+		PasswordHolder oldPass = new (context.Args.String ( context.ArgID + 2, "Old Password", 4, true ));
+		PasswordHolder newPass = new (context.Args.String ( context.ArgID + 3, "New Password", 4, true ));
+
+		try {
+			string content = fm.ReadFileWithHeader ( filePath, oldPass );
+			fm.WriteFileWithHeader ( filePath, content, newPass );
+			return new ( $"Password for file '{filePath}' changed successfully." );
+		} catch ( DFileManager.IntegrityException ex ) {
+			string msg = $"Integrity check failed for '{filePath}': {ex.Message}";
+			if ( ex.Hash != null )
+				msg += $"\n - Hash (hex): {Convert.ToHexString ( ex.Hash )}\n - Hash (base64): {Convert.ToBase64String ( ex.Hash )}";
+			return new ( msg );
+		} catch ( FileNotFoundException ex ) {
+			return new ( ex.Message );
+		}
+	}
+
+	public static string FindPath ( CommandProcessor<DMainAppCore>.CmdContext context, IFileManager fm, int argOffsetID ) {
+		string filePath = context.Args.String ( context.ArgID + argOffsetID, "FilePath", 1, true );
+		var activeCore = DCommand<DMainAppCore>.GetActiveCore<DMainAppCore> ( context.CmdProc );
+		var cmdProc = activeCore?.Fetch<CommandProcessor<DMainAppCore>> () ?? context.CmdProc;
+		string homePath = cmdProc.GetVar<string> ( HOME_PATH_VAR_NAME ) ?? AppDomain.CurrentDomain.BaseDirectory;
+		string fullPath = Path.Combine ( homePath, filePath );
+		if ( fm.FileService.Exists ( fullPath ) ) return fullPath;
+		return fm.FileService.GetAssetPath ( homePath, filePath, FileAccessService.SearchOptions.All );
 	}
 }

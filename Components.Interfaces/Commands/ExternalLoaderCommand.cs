@@ -23,16 +23,14 @@ public class ExternalLoaderCommand : DCommand<DMainAppCore> {
 
 		switch ( context.SubAction ) {
 		case "load": {
-			string path = context.Args.String ( context.ArgID + 1, "Path", 1, true );
+			var fileManager = GetActiveCore<DMainAppCore> ().FileManager;
+			string path = FileManagerCommand.FindPath ( context, fileManager, 1 );
+			if ( !fileManager.FileService.Exists ( path ) ) return new CommandResult ( $"File not found: {path}" );
+
 			string loaderName = context.Args.String ( context.ArgID + 2, "Loader name", 1, true );
 			var targetProcessor = core.Fetch<CommandProcessor<DMainAppCore>> ();
 			if ( targetProcessor == null ) return new CommandResult ( "Command processor not found in active core." );
-			if ( string.IsNullOrEmpty ( path ) ) return new CommandResult ( "Path cannot be empty." );
 
-			var fileManager = GetActiveCore<DMainAppCore> ().FileManager;
-			string homePath = FileManagerCommand.GetHomePath ( context.CmdProc );
-			path = fileManager.FileService.GetAssetPath ( homePath, path, InputResender.Services.FileAccessService.SearchOptions.All );
-			if ( !System.IO.File.Exists ( path ) ) return new CommandResult ( $"File not found: {path}" );
 			var extCmdLoader = loader.LoadExternal ( path, loaderName, context.Sub ().Args );
 			if ( extCmdLoader == null ) return new CommandResult ( "Failed to load external command loader." );
 			targetProcessor.AddCommand ( extCmdLoader );

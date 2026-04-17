@@ -1,4 +1,4 @@
-CVciZF2Oz+TMxdmRcwqrtKgWTkdZf59ZeK6EMZjUg/A=
+KmJsXHuHbR2PDjMbMnmG2j3Ax+J6zZWmQfgowz9cFGE=
 <Config>
   <AutostartName>initCmds</AutostartName>
   <PrintAutoCommands>T</PrintAutoCommands>
@@ -8,88 +8,65 @@ CVciZF2Oz+TMxdmRcwqrtKgWTkdZf59ZeK6EMZjUg/A=
     <initCmds>
       <C0>loadall</C0>
       <C1>clear</C1>
-      <C2>safemode off</C2>a a
+      <C2>safemode on</C2>
       <C3>core new</C3>
       <C4>core migrate act own skipSame</C4>
       <C5>core destroy</C5>
       <C6>core activate</C6>
       <C8>loglevel all</C8>
     </initCmds>
-    <setupPipes>
-      <P0>hook manager start</P0>
-      <P1>pipeline new Sender DInputProcessor DDataSigner DPacketSender</P1>
-      <P2>pipeline new RecverSender DPacketSender DDataSigner DInputSimulator DInputSimulator</P2>
-      <P2>pipeline new RecverCallback NetworkCallbacks DDataSigner DInputSimulator DInputSimulator</P2>
-      <P2>pipeline new LocalCallback DInputProcessor DInputSimulator SHookManager</P2>
-      <P3>pipeline new InputProcess DInputReader DInputMerger DInputProcessor</P3>
-      <P4>pipeline new HookManagerInputProcess SHookManager DInputMerger DInputProcessor</P4>
-    </setupPipes>
-    <testSimKey>
-      <K0>hook add Print Keydown KeyUp</K0>
-      <K1>sim keypress R</K1>
-    </testSimKey>
-    <printWinKey>
-      <W0>windows load --force</W0>
-      <W1>windows msgs start</W1>
-      <W2>hook add Print Keydown KeyUp</W2>
-    </printWinKey>
-    <startListener>
-      <L0>help</L0>
-    </startListener>
-    <TestSclAutorun>
-      <S0>load sclModules</S0>
-      <S1>load joiners</S1>
-      <S2>seclav parse SIPtest.scl</S2>
-      <S3>SIP force</S3>
-      <S4>SIP assign SIPtest.scl</S4>
-      <S5>auto run setupPipes</S5>
-      <S6>hook add Pipeline Keydown KeyUp</S6>etrws
-      <S7>sim keydown R</S7>
-    </TestSclAutorun>
+<printWinKey>
+    <W0>windows load --force</W0>
+    <W1>windows msgs start</W1>
+    <W2>hook manager start</W2>
+    <W3>hook add delayed Print Keydown KeyUp</W3>
+</printWinKey>
+    <HelloWorld>
+      <H0>windows load --force</H0>
+      <H1>hook manager start</H1>
+      <H2>sim keypress P R I N T</H2>
+      <H3>sim keydown Space</H3>
+      <H4>sim keyup Space</H4>
+      <H5>sim keypress H E L L O</H5>
+      <H6>sim keypress Enter</H6>
+    </HelloWorld>
     <Shared>
       <Sh0>windows load --force</Sh0>
       <Sh1>windows msgs start</Sh1>
       <Sh2>core new comp packetsender</Sh2>
-      <Sh3>network callback recv print</Sh3>
-      <Sh4>network callback newconn print</Sh4>
-      <Sh5>hook manager start</Sh5>
-      <Sh6>load sclModules</Sh6>
-      <Sh7>load joiners</Sh7>
-      <Sh8>SIP force</Sh8>
-      <Sh9>network callback recv pipeline</Sh9>
+      <Sh3>network callback newconn print</Sh3>
+      <Sh4>hook manager start</Sh4>
+      <Sh5>load sclModules</Sh5>
+      <Sh6>load joiners</Sh6>
+      <Sh7>SIP force</Sh7>
     </Shared>
     <Client>
       <Cl0>auto run Shared</Cl0>
-      <Cl1>pipeline new Recver NetworkCallbacks DDataSigner DInputSimulator SHookManager</Cl1>
+      <Cl1>pipeline new Recver NetworkCallbacks DDataSigner DInputSimulator exact=SHookManager</Cl1>
+      <Cl2>network callback recv pipeline</Cl2>
       <Cl3>password add blue</Cl3>
       <Cl4>network hostlist</Cl4>
     </Client>
-    <Client2>
-      <Cl0>auto run Shared</Cl0>
-      <Cl1>pipeline new Recver NetworkCallbacks DDataSigner DInputSimulator DInputSimulator</Cl1>
-      <Cl2>pipeline new HookManagerInputProcess SHookManager DInputMerger DInputProcessor</Cl2>
-      <Cl3>password add blue</Cl3>
-      <Cl4>network hostlist</Cl4>
-    </Client2>
+    <ServerPrep>
+      <Se0>auto run Shared</Se0>
+      <Se1>pipeline new ReadInputAndProcess DInputReader DInputMerger VScriptedInputProcessor</Se1>
+      <Se2>pipeline new Sender DInputProcessor DDataSigner DPacketSender</Se2>
+      <Se3>fm whitelist MorseCode.scl XAM5z0P9X1MwRmYLHQI/yP6MM5lB2StteLqaCWAAfwA=</Se3>
+      <Se4>seclav parse MorseCode.scl</Se4>
+      <Se5>SIP assign MorseCode.scl</Se5>
+    </ServerPrep>
     <Server>
-      <Se0>auto run Shared</Se0>
-      <Se1>pipeline new ReadInputAndProcess DInputReader DInputMerger VScriptedInputProcessor</Se1>
-      <Se2>pipeline new Sender DInputProcessor DDataSigner DPacketSender</Se2>
-      <Se3>seclav parse MorseCode.scl</Se3>
-      <Se4>SIP assign MorseCode.scl</Se4>
+      <Se5>auto run ServerPrep</Se5>
       <Se6>password add blue</Se6>
       <Se7>target set 192.168.72.12:45256</Se7>
+      <Se8>hook add fast Pipeline KeyDown KeyUp</Se8>
     </Server>
-    <Server2>
-      <Se0>auto run Shared</Se0>
-      <Se1>pipeline new ReadInputAndProcess DInputReader DInputMerger VScriptedInputProcessor</Se1>
-      <Se2>pipeline new Sender DInputProcessor DDataSigner DPacketSender</Se2>
-      <Se3>seclav parse MorseCode.scl</Se3>
-      <Se4>SIP assign MorseCode.scl</Se4>
-      <Se5>hook add Pipeline Keydown KeyUp</Se5>
-      <Se6>password add blue</Se6>
-      <Se7>target set 192.168.72.12:45256</Se7>
-    </Server2>
+    <externClipboard>
+      <ec0>fm whitelist InputResender.ExternalExtensions.dll 3NVdPEy9AHI/R+ATG9aLtdXak13KgW8FiElkXLzq81k=</ec0>
+      <ec1>externals load InputResender.ExternalExtensions.dll ExternalClipboardLoader</ec1>
+      <ec2>load-cmd-extClip</ec2>
+      <ec3>clipboard -h</ec3>
+    </externClipboard>
     <tapper>
       <ta00>tapper force A S D F Space CapsLock Scroll</ta00>
       <ta01>tapper wait 600</ta01>
@@ -131,9 +108,9 @@ CVciZF2Oz+TMxdmRcwqrtKgWTkdZf59ZeK6EMZjUg/A=
       <tr1>auto run tapper</tr1>
       <tr2>hook manager verbosity 0</tr2>
       <tr3>tapper verbosity 0</tr3>
-      <tr4>hook add Fast Pipeline Keydown KeyUp</tr4>
-      <tr5>pipeline new LocalCallback DInputProcessor DInputSimulator DInputSimulator</tr5>
-      <tr6>pipeline new ReadInputAndProcess SHookManager DInputMerger VTapperInput SHookManager</tr6>
+      <tr4>pipeline new LocalCallback DInputProcessor DInputSimulator DInputSimulator</tr4>
+      <tr5>pipeline new ReadInputAndProcess exact=SHookManager DInputMerger VTapperInput origin</tr5>
+      <tr6>hook add Fast Pipeline Keydown KeyUp</tr6>
     </tapperRun>
   </AutoCommands>
 </Config>
