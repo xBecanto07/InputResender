@@ -95,7 +95,10 @@ public class LoaderCommand : DCommand<DMainAppCore> {
 				new Components.Interfaces.SeClav.SCL_BasicModule ()
 				, new SCL_Module ()
 				];
-			foreach ( var module in knownModules ) sclRunner.ModuleManager.RegisterModule ( module );
+			foreach ( var module in knownModules ) {
+				try { sclRunner.ModuleManager.RegisterModule ( module ); }
+				catch ( Exception _ ) { }
+			}
 			return new CommandResult ( $"Loaded {knownModules.Count} SeClav modules:\n" + string.Join ( "\n", knownModules.Select ( m => $"- {m.Name}: {m.Description}" ) ) );
 		}
 		case "joiners": {

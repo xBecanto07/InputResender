@@ -111,16 +111,17 @@ public abstract class DataTypeDefinition {
 	protected DataTypeDefinition () {
 		lock ( globalIDLock )
 			GlobalID = nextGlobalID++;
-		Owner = string.Join ( "\n", DefineOwner () );
+		//Owner = string.Join ( "\n", DefineOwner () );
+		Owner = string.Empty;
 	}
 
-	private IReadOnlyList<string> DefineOwner () {
+	/*private IReadOnlyList<string> DefineOwner () {
 		var stack = new System.Diagnostics.StackTrace ( true );
 		List<string> lines = stack.ToString ().Split ( new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries ).ToList ();
 		lines.RemoveAll ( ( line ) => line.Contains ( "at System." ) || line.Contains ( "at Xunit." ) || line.Contains ( "at Reflection" ) );
 		lines.Reverse ();
 		return lines.AsReadOnly ();
-	}
+	}*/
 }
 
 public interface IDataType {

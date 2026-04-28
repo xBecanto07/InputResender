@@ -16,6 +16,7 @@ public class TopLevelLoader : ACommandLoader<DMainAppCore> {
 		{ typeof(GUICommands), ( core ) => new GUICommands ( core )},
 		{ typeof(ComponentVisualizer.ComponentVisualizerCommands), ( core ) => new ComponentVisualizer.ComponentVisualizerCommands ( core )},
 		{ typeof ( WindowsCommands ), ( core ) => new WindowsCommands ( core, self.consoleManager )},
+		{ typeof ( PerformanceTestCommand ), ( core ) => new PerformanceTestCommand ( core )},
 	};
 	private static Dictionary<Type, (string, Func<DCommand<DMainAppCore>, DCommand<DMainAppCore>>)> NewSubCommandList = new () {
 		{ typeof (LowLevelInputCommand), ("hook", ( DCommand<DMainAppCore> parent ) => {

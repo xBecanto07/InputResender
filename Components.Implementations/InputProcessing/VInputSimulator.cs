@@ -3,6 +3,8 @@ using Components.Library;
 
 namespace Components.Implementations {
 	public class VInputSimulator : DInputSimulator {
+		public int SimulateDelay = 50;
+
 		public VInputSimulator ( CoreBase newOwner ) : base ( newOwner ) {
 		}
 
@@ -19,7 +21,7 @@ namespace Components.Implementations {
 				Owner.PushDelayedMsg ( "Requested simulating input of " + string.Join ( " | ", data.ToList () ) );
 			foreach ( HInputEventDataHolder h in data ) {
 				ret += (short)simulator.SimulateInput ( h, AllowRecapture );
-				System.Threading.Tasks.Task.Delay ( 50 ).Wait ();
+				if ( SimulateDelay >= 0 ) System.Threading.Tasks.Task.Delay ( SimulateDelay ).Wait ();
 			}
 			return ret;
 		}

@@ -238,12 +238,26 @@ namespace Components.Library {
 		}
 
 		public void PushDelayedMsg ( string msg ) {
-			lock ( DelayedMessages ) DelayedMessages.Add ( msg );
+			lock (DelayedMessages) {
+				// Too many messages. If user is not picking it up, they probably don't care. Let's clear it
+				if ( DelayedMessages.Count > 2048 ) {
+					DelayedMessages.Clear ();
+					DelayedMessages.Add ( "Too many delayed messages. Clearing the backlog." );
+				}
+				DelayedMessages.Add ( msg );
+			}
 			OnMessage?.Invoke ( msg );
 		}
 		public void PushDelayedError ( string msg, Exception ex ) {
 			msg = $"{msg}: {ex.Message}{Environment.NewLine}{ex.StackTrace}";
-			lock ( DelayedMessages ) DelayedMessages.Add ( msg );
+			lock (DelayedMessages) {
+				// Too many messages. If user is not picking it up, they probably don't care. Let's clear it
+				if ( DelayedMessages.Count > 2048 ) {
+					DelayedMessages.Clear ();
+					DelayedMessages.Add ( "Too many delayed messages. Clearing the backlog." );
+				}
+				DelayedMessages.Add ( msg );
+			}
 			OnError?.Invoke ( msg );
 		}
 		public void FlushDelayedMsgs<CoreT> ( Action<string> printer = null ) where CoreT : CoreBase {
